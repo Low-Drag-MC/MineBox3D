@@ -1,0 +1,235 @@
+plugins {
+    id 'java-library'
+    id 'idea'
+    id 'maven-publish'
+    id 'net.neoforged.gradle.userdev' version '7.0.181'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = "${project.name}-${minecraft_version}"
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation "net.neoforged:neoforge:${neo_version}"
+
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.10.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.0'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.0'
+}
+
+// =================================================================================================
+// The native library
+//
+// native/box3d is the Box3D git submodule; native/src is the JNI bridge. CMake builds the two into
+// one shared library for the platform Gradle runs on, which lands in the jar at
+// natives/minebox3d/<os>-<arch>/<library>. A release jar carries every platform: CI builds each one on
+// its own runner and hands the folder in with -Pminebox3d.natives=<dir> (see .github/workflows).
+// =================================================================================================
+
+static String nativeOs() {
+    String os = System.getProperty('os.name').toLowerCase(Locale.ROOT)
+    if (os.contains('win')) return 'windows'
+    if (os.contains('mac') || os.contains('darwin')) return 'macos'
+    return 'linux'
+}
+
+static String nativeArch() {
+    String arch = System.getProperty('os.arch').toLowerCase(Locale.ROOT)
+    if (arch in ['amd64', 'x86_64', 'x64']) return 'x86_64'
+    if (arch in ['aarch64', 'arm64']) return 'aarch64'
+    return arch
+}
+
+static String nativeFileName(String os) {
+    return os == 'windows' ? 'minebox3d.dll' : os == 'macos' ? 'libminebox3d.dylib' : 'libminebox3d.so'
+}
+
+def nativePlatform = "${nativeOs()}-${nativeArch()}"
+def nativeCmakeDir = layout.buildDirectory.dir('native/cmake')
+def nativeOutDir = layout.buildDirectory.dir("native/out/${nativePlatform}")
+def nativeResourcesDir = layout.buildDirectory.dir('native/resources')
+def nativeLibraryFile = nativeOutDir.map { it.file(nativeFileName(nativeOs())) }
+
+// CMake: -Pminebox3d.cmake=<path>, else PATH, else the copy Visual Studio ships (found with vswhere).
+def findCmake = {
+    if (project.hasProperty('minebox3d.cmake')) return project.property('minebox3d.cmake').toString()
+    String exe = nativeOs() == 'windows' ? 'cmake.exe' : 'cmake'
+    for (String dir : (System.getenv('PATH') ?: '').split(File.pathSeparator)) {
+        File candidate = new File(dir, exe)
+        if (candidate.isFile()) return candidate.absolutePath
+    }
+    if (nativeOs() == 'windows') {
+        File vswhere = new File(System.getenv('ProgramFiles(x86)') ?: 'C:/Program Files (x86)',
+                'Microsoft Visual Studio/Installer/vswhere.exe')
+        if (vswhere.isFile()) {
+            def process = [vswhere.absolutePath, '-latest', '-products', '*', '-property', 'installationPath'].execute()
+            String installation = process.text.trim()
+            File bundled = new File(installation, 'Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe')
+            if (bundled.isFile()) return bundled.absolutePath
+        }
+    }
+    return null
+}
+def cmakeExecutable = findCmake()
+def jdkHome = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(21) }
+        .map { it.metadata.installationPath.asFile.absolutePath }
+
+tasks.register('configureNative', Exec) {
+    group = 'native'
+    description = 'Configures the Box3D JNI library for this platform.'
+    inputs.file('native/CMakeLists.txt')
+    outputs.dir(nativeCmakeDir)
+    doFirst {
+        if (cmakeExecutable == null) {
+            throw new GradleException('CMake not found: put it on PATH, install Visual Studio with C++ tools, or pass -Pminebox3d.cmake=<path>')
+        }
+        if (!file('native/box3d/CMakeLists.txt').isFile()) {
+            throw new GradleException('native/box3d is empty: run `git submodule update --init`')
+        }
+    }
+    def args = [cmakeExecutable ?: 'cmake', '-S', file('native').absolutePath, '-B', nativeCmakeDir.get().asFile.absolutePath,
+                "-DMB3_JNI_INCLUDE=${jdkHome.get()}/include",
+                "-DMB3_OUTPUT_DIR=${nativeOutDir.get().asFile.absolutePath}",
+                '-DCMAKE_BUILD_TYPE=RelWithDebInfo']
+    if (nativeOs() == 'windows') {
+        args += ['-G', 'Visual Studio 17 2022', '-A', nativeArch() == 'aarch64' ? 'ARM64' : 'x64']
+    }
+    commandLine args
+}
+
+tasks.register('buildNative', Exec) {
+    group = 'native'
+    description = 'Builds the Box3D JNI library for this platform.'
+    dependsOn 'configureNative'
+    inputs.dir('native/src')
+    inputs.dir('native/box3d/src')
+    inputs.dir('native/box3d/include')
+    outputs.file(nativeLibraryFile)
+    commandLine cmakeExecutable ?: 'cmake', '--build', nativeCmakeDir.get().asFile.absolutePath,
+            '--config', 'RelWithDebInfo', '--target', 'minebox3d', '--parallel'
+}
+
+tasks.register('collectNatives', Sync) {
+    group = 'native'
+    description = 'Lays the native libraries out the way the jar carries them.'
+    into nativeResourcesDir.map { it.dir('natives/minebox3d') }
+    if (project.hasProperty('minebox3d.natives')) {
+        // a release: every platform, built elsewhere, as <dir>/<os>-<arch>/<library>
+        from(project.property('minebox3d.natives').toString())
+    } else {
+        dependsOn 'buildNative'
+        from(nativeLibraryFile) { into nativePlatform }
+    }
+}
+
+sourceSets.main.resources.srcDir(nativeResourcesDir)
+tasks.named('processResources') { dependsOn 'collectNatives' }
+tasks.named('sourcesJar') { dependsOn 'collectNatives' }
+
+// Dev runs and tests load the freshly built file directly instead of the copy inside the jar.
+def nativeLibraryPath = nativeLibraryFile.map { it.asFile.absolutePath }
+
+// =================================================================================================
+
+runs {
+    configureEach {
+        systemProperty 'forge.logging.markers', 'REGISTRIES'
+        systemProperty 'forge.logging.console.level', 'debug'
+        modSource project.sourceSets.main
+    }
+
+    client {
+        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        systemProperty 'minebox3d.native.path', nativeLibraryPath.get()
+    }
+
+    server {
+        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        systemProperty 'minebox3d.native.path', nativeLibraryPath.get()
+        programArgument '--nogui'
+    }
+
+    // ⚠️ No minebox3d.native.path here, on purpose: the GameTest server finds the library the way a
+    // player's game does — as a resource of the mod, copied out and loaded — so the one path that
+    // only exists inside Minecraft's module layers is the one the tests cross.
+    gameTestServer {
+        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+    }
+
+    data {
+        programArguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+    }
+}
+
+tasks.matching { it.name in ['runClient', 'runServer', 'runGameTestServer', 'runData'] }.configureEach {
+    dependsOn 'buildNative'
+}
+
+// GameTests live in the main source set because NeoForge only scans that one for @GameTestHolder;
+// nothing outside the package refers to them, so the shipped jar simply leaves them out.
+tasks.withType(Jar).configureEach {
+    if (name == 'jar') {
+        exclude 'com/lowdragmc/minebox3d/test/**'
+    }
+}
+
+test {
+    useJUnitPlatform()
+    dependsOn 'buildNative'
+    systemProperty 'minebox3d.native.path', nativeLibraryPath.get()
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+tasks.withType(ProcessResources).configureEach {
+    var replaceProperties = [
+            "minecraft_version"      : minecraft_version,
+            "minecraft_version_range": minecraft_version_range,
+            "neo_version_range"      : neo_version_range,
+            "loader_version_range"   : loader_version_range,
+            "mod_id"                 : mod_id,
+            "mod_name"               : mod_name,
+            "mod_license"            : mod_license,
+            "mod_version"            : mod_version,
+            "mod_authors"            : mod_authors,
+            "mod_description"        : mod_description,
+            "mod_url"                : mod_url,
+    ]
+    inputs.properties replaceProperties
+    filesMatching(['META-INF/neoforge.mods.toml']) {
+        expand replaceProperties
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+publishing {
+    publications {
+        register('mavenJava', MavenPublication) {
+            artifactId = base.archivesName.get()
+            from components.java
+        }
+    }
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
