@@ -14,6 +14,11 @@
 		}                                                                                                                      \
 		b3ShapeId id = call;                                                                                                   \
 		mb3_shape_def_release( &def );                                                                                         \
+		/* a failed check does not stop Box3D making the shape: Java never gets its id, so it would be an orphan */            \
+		if ( mb3_assert_pending() && B3_IS_NON_NULL( id ) )                                                                    \
+		{                                                                                                                      \
+			b3DestroyShape( id, true );                                                                                        \
+		}                                                                                                                      \
 		if ( mb3_check( env ) )                                                                                                \
 		{                                                                                                                      \
 			return 0;                                                                                                          \
@@ -65,4 +70,50 @@ MB3_JNI( jboolean, shapeIsValid )( JNIEnv* env, jclass type, jlong shape )
 	(void)env;
 	(void)type;
 	return b3Shape_IsValid( mb3_shape( shape ) ) ? JNI_TRUE : JNI_FALSE;
+}
+
+MB3_JNI( jlong, shapeGetBody )( JNIEnv* env, jclass type, jlong shape )
+{
+	(void)type;
+	b3BodyId body = b3Shape_GetBody( mb3_shape( shape ) );
+	if ( mb3_check( env ) )
+	{
+		return 0;
+	}
+	return mb3_pack_body( body );
+}
+
+MB3_JNI( void, shapeSetFilter )( JNIEnv* env, jclass type, jlong shape, jlong categoryBits, jlong maskBits, jint groupIndex,
+								 jboolean invokeContacts )
+{
+	(void)type;
+	b3Filter filter = { (uint64_t)categoryBits, (uint64_t)maskBits, groupIndex };
+	b3Shape_SetFilter( mb3_shape( shape ), filter, invokeContacts );
+	mb3_check( env );
+}
+
+MB3_JNI( void, shapeSetFriction )( JNIEnv* env, jclass type, jlong shape, jfloat friction )
+{
+	(void)type;
+	b3Shape_SetFriction( mb3_shape( shape ), friction );
+	mb3_check( env );
+}
+
+MB3_JNI( void, shapeSetRestitution )( JNIEnv* env, jclass type, jlong shape, jfloat restitution )
+{
+	(void)type;
+	b3Shape_SetRestitution( mb3_shape( shape ), restitution );
+	mb3_check( env );
+}
+
+MB3_JNI( void, shapeGetAABB )( JNIEnv* env, jclass type, jlong shape, jfloatArray out )
+{
+	(void)type;
+	b3AABB box = b3Shape_GetAABB( mb3_shape( shape ) );
+	if ( mb3_check( env ) == false )
+	{
+		float values[6] = { box.lowerBound.x, box.lowerBound.y, box.lowerBound.z,
+							box.upperBound.x, box.upperBound.y, box.upperBound.z };
+		mb3_put_floats( env, out, 0, values, 6 );
+	}
 }

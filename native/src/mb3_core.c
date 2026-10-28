@@ -66,25 +66,39 @@ static MB3_THREAD_LOCAL char t_error[MB3_ERROR_CAPACITY];
 
 static jclass s_exceptionClass;
 
+static void mb3_log( const char* message );
+
 static int mb3_assert( const char* condition, const char* fileName, int lineNumber )
 {
+	const char* file = fileName;
+	for ( const char* c = fileName; *c != '\0'; ++c )
+	{
+		if ( *c == '/' || *c == '\\' )
+		{
+			file = c + 1;
+		}
+	}
+	char message[MB3_ERROR_CAPACITY];
+	snprintf( message, MB3_ERROR_CAPACITY, "Box3D assertion failed: %s (%s:%d)", condition, file, lineNumber );
+
+	// Into the log as well: on Box3D's own worker threads (a world with workerCount > 1) nothing ever asks for the
+	// thread's pending error, and the log is the only trace
+	mb3_log( message );
+
 	// Keep the first one: what follows a failed assertion is usually its consequence.
 	if ( t_errorPending == false )
 	{
-		const char* file = fileName;
-		for ( const char* c = fileName; *c != '\0'; ++c )
-		{
-			if ( *c == '/' || *c == '\\' )
-			{
-				file = c + 1;
-			}
-		}
-		snprintf( t_error, MB3_ERROR_CAPACITY, "Box3D assertion failed: %s (%s:%d)", condition, file, lineNumber );
+		snprintf( t_error, MB3_ERROR_CAPACITY, "%s", message );
 		t_errorPending = true;
 	}
 	// 0 = no debugger break. Box3D carries on past the assertion; the Java call that caused it
 	// throws on its way out, and the Java side validates arguments so that this stays the exception.
 	return 0;
+}
+
+bool mb3_assert_pending( void )
+{
+	return t_errorPending;
 }
 
 bool mb3_check( JNIEnv* env )

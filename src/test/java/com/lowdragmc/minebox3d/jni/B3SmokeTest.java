@@ -18,6 +18,66 @@ class B3SmokeTest {
         NativeLibrary.load();
     }
 
+    /** The bindings no Java class calls yet: each once, with an effect that can be seen. */
+    @Test
+    void everyOtherBindingDoesWhatItSays() {
+        int world = B3.createWorld(new WorldDef().gravity(0, -9, 0));
+        try {
+            float[] v = new float[3];
+            B3.worldGetGravity(world, v);
+            assertArrayEquals(new float[]{0, -9, 0}, v);
+            B3.worldEnableContinuous(world, false); // no visible effect without a tunnelling setup; must not fail
+
+            long body = B3.createBody(world, new BodyDef().type(BodyType.DYNAMIC));
+            long shape = B3.createSphereShape(body, new ShapeDef(), 0, 0, 0, 0.5f);
+            assertTrue(B3.bodyIsValid(body));
+            assertTrue(B3.shapeIsValid(shape));
+            assertEquals(body, B3.shapeGetBody(shape));
+            assertEquals(BodyType.DYNAMIC.ordinal(), B3.bodyGetType(body));
+            B3.shapeSetRestitution(shape, 0.5f);
+            B3.bodySetBullet(body, true);
+
+            B3.worldSetGravity(world, 0, 0, 0);
+            B3.bodyApplyAngularImpulse(body, 0, 1, 0, true);
+            B3.bodyGetAngularVelocity(body, v);
+            assertTrue(v[1] > 0, "spins about +y");
+            B3.bodySetAngularVelocity(body, 0, 0, 0);
+            B3.bodyApplyTorque(body, 0, 0, 5, true);
+            B3.worldStep(world, 1 / 60f, 4);
+            B3.bodyGetAngularVelocity(body, v);
+            assertTrue(v[2] > 0, "torque about +z");
+            B3.bodySetAngularVelocity(body, 0, 0, 0);
+            B3.bodyApplyForce(body, 10, 0, 0, 0, 0, 0, true);
+            B3.worldStep(world, 1 / 60f, 4);
+            B3.bodyGetLinearVelocity(body, v);
+            assertTrue(v[0] > 0, "pushed along +x");
+
+            // damping slows it
+            B3.bodySetLinearVelocity(body, 5, 0, 0);
+            B3.bodySetDamping(body, 5, 0);
+            for (int i = 0; i < 30; i++) {
+                B3.worldStep(world, 1 / 60f, 4);
+            }
+            B3.bodyGetLinearVelocity(body, v);
+            assertTrue(v[0] < 2.5f, "damped: " + v[0]);
+
+            // a body that may not sleep stays awake at rest
+            B3.bodySetLinearVelocity(body, 0, 0, 0);
+            B3.bodySetAngularVelocity(body, 0, 0, 0);
+            B3.bodyEnableSleep(body, false);
+            for (int i = 0; i < 200; i++) {
+                B3.worldStep(world, 1 / 60f, 4);
+            }
+            assertTrue(B3.bodyIsAwake(body));
+
+            B3.destroyBody(body);
+            assertFalse(B3.bodyIsValid(body));
+            assertFalse(B3.shapeIsValid(shape));
+        } finally {
+            B3.destroyWorld(world);
+        }
+    }
+
     @Test
     void theLibraryIsTheOneWeBuilt() {
         assertTrue(B3.isDoublePrecision(), "positions must be double for Minecraft coordinates");

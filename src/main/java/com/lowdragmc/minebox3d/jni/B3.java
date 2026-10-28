@@ -86,6 +86,51 @@ public final class B3 {
 
     public static native int worldGetAwakeBodyCount(int world);
 
+    public static native void worldEnableSleeping(int world, boolean flag);
+
+    public static native void worldEnableContinuous(int world, boolean flag);
+
+    /**
+     * The bodies that moved in the last step. Writes up to {@code capacity}: the id, seven doubles of
+     * transform ({@code [px, py, pz, qx, qy, qz, qw]}) and whether it fell asleep this step. Returns the
+     * total, which may be more than was written; the events stay valid until the next step.
+     */
+    public static native int worldGetBodyMoveEvents(int world, long[] ids, double[] transforms, boolean[] fellAsleep, int capacity);
+
+    /**
+     * Closest hit along {@code origin + translation}, or 0. On a hit, {@code pointAndFraction} gets
+     * {@code [px, py, pz, fraction, triangleIndex]} and {@code normal} the surface normal.
+     */
+    public static native long worldCastRayClosest(int world, double ox, double oy, double oz, float tx, float ty, float tz,
+                                                  long categoryBits, long maskBits, double[] pointAndFraction, float[] normal);
+
+    /**
+     * Closest hit of a shape ({@code count} points {@code [x, y, z]} relative to the origin, swept with
+     * {@code radius}) moved by {@code translation}; outputs as {@link #worldCastRayClosest}. A shape touching
+     * something at the start hits it at fraction 0.
+     */
+    public static native long worldCastShapeClosest(int world, double ox, double oy, double oz, float[] points, int count,
+                                                    float radius, float tx, float ty, float tz, long categoryBits,
+                                                    long maskBits, double[] pointAndFraction, float[] normal);
+
+    /** Shapes overlapping the query shape: ids into {@code shapeIds}; returns how many there are (may exceed the array). */
+    public static native int worldOverlapShape(int world, double ox, double oy, double oz, float[] points, int count,
+                                               float radius, long categoryBits, long maskBits, long[] shapeIds);
+
+    /**
+     * Collision planes around a capsule mover relative to the origin: {@code [nx, ny, nz, offset, px, py, pz]} per
+     * plane, its shape and triangle index; returns the count, at most {@code shapeIds.length}.
+     */
+    public static native int worldCollideMover(int world, double ox, double oy, double oz, float x1, float y1, float z1,
+                                               float x2, float y2, float z2, float radius, long categoryBits, long maskBits,
+                                               float[] planes, long[] shapeIds, int[] triangleIndices);
+
+    /**
+     * {@code [bodies, shapes, contacts, joints, islands, awake contacts]} into {@code out}; returns the
+     * last step's time in milliseconds.
+     */
+    public static native float worldGetCounters(int world, int[] out);
+
     // ---- body ---------------------------------------------------------------------------------
 
     public static native long createBody(int world, BodyDef definition);
@@ -115,6 +160,52 @@ public final class B3 {
 
     public static native float bodyGetMass(long body);
 
+    /** {@link com.lowdragmc.minebox3d.physics.BodyType#ordinal()} */
+    public static native int bodyGetType(long body);
+
+    public static native void bodySetType(long body, int type);
+
+    /** Moves a kinematic body to the target over {@code timeStep} by velocity, pushing what it meets. */
+    public static native void bodySetTargetTransform(long body, double px, double py, double pz,
+                                                     float qx, float qy, float qz, float qw, float timeStep, boolean wake);
+
+    public static native void bodySetEnabled(long body, boolean enabled);
+
+    public static native boolean bodyIsEnabled(long body);
+
+    public static native void bodySetAwake(long body, boolean awake);
+
+    public static native void bodyEnableSleep(long body, boolean enableSleep);
+
+    /**
+     * The body's touching contact points: per point {@code [nx, ny, nz, separation, normalImpulse, ax, ay, az]} (normal
+     * from the other shape into this body, anchor on this body relative to its centre of mass), the other shape and
+     * its triangle index. Returns how many there are, which may be more than the arrays take.
+     */
+    public static native int bodyGetContactPoints(long body, float[] points, long[] otherShapes, int[] triangleIndices);
+
+    /** {@code [minX, minY, minZ, maxX, maxY, maxZ]}, world space, float (the broad phase's own box). */
+    public static native void bodyComputeAABB(long body, float[] out);
+
+    public static native void bodyApplyLinearImpulse(long body, float ix, float iy, float iz,
+                                                     double px, double py, double pz, boolean wake);
+
+    public static native void bodyApplyLinearImpulseToCenter(long body, float ix, float iy, float iz, boolean wake);
+
+    public static native void bodyApplyAngularImpulse(long body, float ix, float iy, float iz, boolean wake);
+
+    public static native void bodyApplyForce(long body, float fx, float fy, float fz, double px, double py, double pz, boolean wake);
+
+    public static native void bodyApplyForceToCenter(long body, float fx, float fy, float fz, boolean wake);
+
+    public static native void bodyApplyTorque(long body, float tx, float ty, float tz, boolean wake);
+
+    public static native void bodySetGravityScale(long body, float scale);
+
+    public static native void bodySetDamping(long body, float linear, float angular);
+
+    public static native void bodySetBullet(long body, boolean bullet);
+
     // ---- shape --------------------------------------------------------------------------------
 
     public static native long createSphereShape(long body, ShapeDef definition, float cx, float cy, float cz, float radius);
@@ -129,4 +220,79 @@ public final class B3 {
     public static native void destroyShape(long shape, boolean updateBodyMass);
 
     public static native boolean shapeIsValid(long shape);
+
+    public static native long shapeGetBody(long shape);
+
+    public static native void shapeSetFilter(long shape, long categoryBits, long maskBits, int groupIndex, boolean invokeContacts);
+
+    public static native void shapeSetFriction(long shape, float friction);
+
+    public static native void shapeSetRestitution(long shape, float restitution);
+
+    /** {@code [minX, minY, minZ, maxX, maxY, maxZ]}, world space. */
+    public static native void shapeGetAABB(long shape, float[] out);
+
+    // ---- mesh ---------------------------------------------------------------------------------
+
+    /**
+     * Builds Box3D mesh data (its BVH, and edge flags when {@code identifyEdges}) and returns the
+     * pointer. Nothing passed in is kept. ⚠️ The data must outlive every shape made from it.
+     *
+     * @param materialIndices one per triangle, indexing the shape definition's materials, or null
+     */
+    public static native long createMesh(float[] vertices, int vertexCount, int[] indices, int triangleCount,
+                                         byte[] materialIndices, float weldTolerance, boolean weldVertices,
+                                         boolean useMedianSplit, boolean identifyEdges, boolean clockWiseWinding);
+
+    public static native void destroyMesh(long mesh);
+
+    public static native long createMeshShape(long body, ShapeDef definition, long mesh, float sx, float sy, float sz);
+
+    // ---- voxel terrain (our Box3D fork) -------------------------------------------------------
+
+    /** A voxel grid for the world; every section's shape copies {@code shapeDefinition}. Returns the pointer. */
+    public static native long createVoxelGrid(int world, ShapeDef shapeDefinition);
+
+    /** Destroys the grid and, if the world still exists, every section body it made. */
+    public static native void destroyVoxelGrid(long grid);
+
+    /** Adds a surface material to the grid's table; returns its index. */
+    public static native int voxelGridAddMaterial(long grid, SurfaceMaterial material);
+
+    /**
+     * Adds a collider: {@code [minX, minY, minZ, maxX, maxY, maxZ]} per box in the unit cell, boxes not
+     * overlapping. Returns its id, 1 or more.
+     */
+    public static native int voxelGridAddCollider(long grid, float[] boxes, int boxCount, int material);
+
+    public static native int voxelGridGetColliderCount(long grid);
+
+    /** 4096 collider ids indexed {@code x + 16 * z + 256 * y}; null or all zero removes the section. */
+    public static native void voxelGridSetSection(long grid, int sx, int sy, int sz, short[] cells);
+
+    /** {@code [x, y, z, collider]} per edit, grid cell coordinates. */
+    public static native void voxelGridSetCells(long grid, int[] edits, int count);
+
+    public static native int voxelGridGetCell(long grid, int x, int y, int z);
+
+    public static native boolean voxelGridHasSection(long grid, int sx, int sy, int sz);
+
+    public static native int voxelGridGetSectionCount(long grid);
+
+    /** The section's shape id, 0 if there is no such section. */
+    public static native long voxelGridGetSectionShape(long grid, int sx, int sy, int sz);
+
+    /**
+     * What contacts see of a section: its exposed triangles overlapping {@code bounds} ({@code [minX, minY,
+     * minZ, maxX, maxY, maxZ]}, section coordinates), 9 floats each into {@code vertices} and Box3D edge flags
+     * into {@code flags}. Returns how many there are, which may be more than fit.
+     */
+    public static native int voxelGridCollectTriangles(long grid, int sx, int sy, int sz, float[] bounds, float[] vertices,
+                                                        byte[] flags);
+
+    /**
+     * The grid cell a contact point or query hit on one of this grid's voxel shapes names, into {@code out[0..2]}; false
+     * if the shape is not one of the grid's (another world's included) or no longer exists.
+     */
+    public static native boolean voxelShapeGetFeatureCell(long grid, long shape, int triangleIndex, int[] out);
 }

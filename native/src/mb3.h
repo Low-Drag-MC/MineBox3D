@@ -32,6 +32,9 @@
 // Throws the Box3DException for an assertion that fired during this call, if one did.
 // Returns true when an exception is now pending.
 bool mb3_check( JNIEnv* env );
+// Whether an assertion fired on this thread since the last mb3_check, without reporting it. For undoing what a
+// call created before the assertion is reported (Box3D creates the object even when one of its checks fails).
+bool mb3_assert_pending( void );
 void mb3_throw( JNIEnv* env, const char* message );
 void mb3_throw_illegal_argument( JNIEnv* env, const char* message );
 

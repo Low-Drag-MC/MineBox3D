@@ -28,7 +28,12 @@ public final class WorldDef {
     public float isotropicInertiaTolerance;
     public boolean enableSleep;
     public boolean enableContinuous;
-    /** Above 1, Box3D starts its own worker threads for this world's step. */
+    /**
+     * Threads stepping this world, the stepping thread included; 0 and 1 mean the stepping thread alone. Above 1,
+     * Box3D starts {@code workerCount - 1} threads of its own <b>for this world</b>, which spin while they wait for
+     * work: only worth it for a large world, and never for many small ones. Box3D's internal checks failing on those
+     * threads are only logged ({@link com.lowdragmc.minebox3d.jni.B3#pollLog()}), not thrown.
+     */
     public int workerCount;
     /** Optional initial capacities, to avoid growing at run time. */
     public int staticShapeCapacity, dynamicShapeCapacity, staticBodyCapacity, dynamicBodyCapacity, contactCapacity;
