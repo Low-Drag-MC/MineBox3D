@@ -84,6 +84,9 @@ def findCmake = {
     return null
 }
 def cmakeExecutable = findCmake()
+
+// Box3D is our fork's `minebox3d` branch (Low-Drag-MC/box3d), built straight from the submodule;
+// what the fork changes and why is docs/design/02-box3d-fork.md.
 def jdkHome = javaToolchains.compilerFor { languageVersion = JavaLanguageVersion.of(21) }
         .map { it.metadata.installationPath.asFile.absolutePath }
 
@@ -91,6 +94,12 @@ tasks.register('configureNative', Exec) {
     group = 'native'
     description = 'Configures the Box3D JNI library for this platform.'
     inputs.file('native/CMakeLists.txt')
+    // ⚠️ the sources too: CMake globs them, and a file added after the last configure is only picked up
+    // by a configure. Its CONFIGURE_DEPENDS check regenerates the project mid-build, too late for that
+    // build, which then produces a library without the new file's functions — and Gradle calls it done.
+    inputs.dir('native/src')
+    inputs.file('native/box3d/CMakeLists.txt')
+    inputs.file('native/box3d/src/CMakeLists.txt')
     outputs.dir(nativeCmakeDir)
     doFirst {
         if (cmakeExecutable == null) {
@@ -176,6 +185,11 @@ runs {
 
 tasks.matching { it.name in ['runClient', 'runServer', 'runGameTestServer', 'runData'] }.configureEach {
     dependsOn 'buildNative'
+}
+
+// the server console reads commands from this process's stdin: `printf 'cmd\nstop\n' | ./gradlew runServer`
+tasks.matching { it.name == 'runServer' }.configureEach {
+    standardInput = System.in
 }
 
 // GameTests live in the main source set because NeoForge only scans that one for @GameTestHolder;

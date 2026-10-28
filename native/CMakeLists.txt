@@ -31,7 +31,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # float, docs/large_worlds.md).
 set(BOX3D_DOUBLE_PRECISION ON CACHE BOOL "" FORCE)
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-add_subdirectory(box3d EXCLUDE_FROM_ALL)
+# The submodule is our fork's `minebox3d` branch (docs/design/02-box3d-fork.md).
+add_subdirectory(box3d box3d EXCLUDE_FROM_ALL)
 
 # One world per level per side plus one per simulation that wants its own (a ragdoll that only
 # poses, a preview in an editor): Box3D's default of 128 is a compile-time array size.

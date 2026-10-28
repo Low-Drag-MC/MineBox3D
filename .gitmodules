@@ -1,3 +1,4 @@
 [submodule "native/box3d"]
 	path = native/box3d
-	url = https://github.com/erincatto/box3d.git
+	url = https://github.com/Low-Drag-MC/box3d.git
+	branch = minebox3d
