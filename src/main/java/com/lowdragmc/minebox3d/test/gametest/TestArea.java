@@ -2,7 +2,12 @@ package com.lowdragmc.minebox3d.test.gametest;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.Blocks;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 /**
  * ⚠️ A GameTest structure is walled in barriers (StructureUtils.encaseStructure: the walls always, the
@@ -12,7 +17,57 @@ import net.minecraft.world.level.block.Blocks;
  */
 final class TestArea {
 
+    /** each running test's forced area, relative: {x0, z0, x1, z1} */
+    private static final Map<GameTestHelper, int[]> FORCED = Collections.synchronizedMap(new WeakHashMap<>());
+
     private TestArea() {
+    }
+
+    /**
+     * ⚠️ Entities beyond the structure's own chunk may not tick at all (a stand pushed 30 ticks with tickCount 0): the
+     * runner keeps the structure's chunk going, and where the area crosses into the next chunk depends on where the run
+     * happens to place the test. A test whose entities must move forces the chunks of its area ({@code forced = true}),
+     * waits for them ({@link #ticks}) and lets them go when it is done.
+     */
+    static void forceChunks(GameTestHelper helper, int x0, int z0, int x1, int z1, boolean forced) {
+        BlockPos from = helper.absolutePos(new BlockPos(x0, 0, z0)), to = helper.absolutePos(new BlockPos(x1, 0, z1));
+        for (int cx = Math.min(from.getX(), to.getX()) >> 4; cx <= Math.max(from.getX(), to.getX()) >> 4; cx++) {
+            for (int cz = Math.min(from.getZ(), to.getZ()) >> 4; cz <= Math.max(from.getZ(), to.getZ()) >> 4; cz++) {
+                helper.getLevel().setChunkForced(cx, cz, forced);
+            }
+        }
+        if (forced) {
+            FORCED.put(helper, new int[]{x0, z0, x1, z1});
+        } else {
+            FORCED.remove(helper);
+        }
+    }
+
+    /**
+     * Whether the entities have ticked, and every chunk the test forced ticks entities: a forced chunk comes up over a
+     * while — far out, and with the runner ticking as fast as it can, hundreds of ticks — and an entity that walks into
+     * one still coming up stops there.
+     */
+    static boolean ticks(GameTestHelper helper, Entity... entities) {
+        for (Entity entity : entities) {
+            if (entity.tickCount < 2) {
+                return false;
+            }
+        }
+        int[] area = FORCED.get(helper);
+        if (area == null) {
+            return true;
+        }
+        BlockPos from = helper.absolutePos(new BlockPos(area[0], 0, area[1]));
+        BlockPos to = helper.absolutePos(new BlockPos(area[2], 0, area[3]));
+        for (int cx = Math.min(from.getX(), to.getX()) >> 4; cx <= Math.max(from.getX(), to.getX()) >> 4; cx++) {
+            for (int cz = Math.min(from.getZ(), to.getZ()) >> 4; cz <= Math.max(from.getZ(), to.getZ()) >> 4; cz++) {
+                if (!helper.getLevel().isPositionEntityTicking(new BlockPos(cx << 4, 0, cz << 4))) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     static void clear(GameTestHelper helper, int x0, int y0, int z0, int x1, int y1, int z1) {

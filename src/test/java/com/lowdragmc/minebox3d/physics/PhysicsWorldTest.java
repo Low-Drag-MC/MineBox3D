@@ -1,6 +1,6 @@
 package com.lowdragmc.minebox3d.physics;
 
-import com.lowdragmc.minebox3d.jni.B3;
+import com.lowdragmc.minebox3d.internal.B3;
 import org.junit.jupiter.api.Test;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
@@ -58,7 +58,22 @@ class PhysicsWorldTest {
         }
     }
 
-    /** Runs {@code action} on a new thread and returns what it threw, if anything. */
+    @Test
+    void aCorrectionAfterAStepIsDrawnAsMotionATeleportIsNot() {
+        try (PhysicsWorld world = world()) {
+            Body box = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 3, 0).gravityScale(0));
+            box.createShape(new ShapeDef(), Geometry.Box.of(0.5f, 0.5f, 0.5f));
+            world.beginInterpolationFrame();
+            world.step(1 / 60f, 4);
+            box.correctTransform(1, 3, 0, new Quaternionf(), false);
+            assertEquals(0, box.renderPosition(0, new Vector3d()).x, 1e-9, "drawn from where the frame began");
+            assertEquals(1, box.renderPosition(1, new Vector3d()).x, 1e-9, "to where it was put");
+            assertEquals(1, box.position(new Vector3d()).x, 1e-9, "and it is there");
+            box.setTransform(2, 3, 0, new Quaternionf(), false);
+            assertEquals(2, box.renderPosition(0, new Vector3d()).x, 1e-9, "a teleport is not drawn on the way");
+        }
+    }
+
     private static Throwable onAnotherThread(Runnable action) throws InterruptedException {
         AtomicReference<Throwable> thrown = new AtomicReference<>();
         Thread thread = new Thread(() -> {
@@ -81,7 +96,8 @@ class PhysicsWorldTest {
             // the world is idle: refused all the same, not only when two threads happen to meet
             assertInstanceOf(WrongThreadException.class, onAnotherThread(() -> box.setLinearVelocity(1, 0, 0)));
             assertInstanceOf(WrongThreadException.class, onAnotherThread(() -> world.step(1 / 60f, 4)));
-            assertInstanceOf(WrongThreadException.class, onAnotherThread(() -> world.castRayClosest(0, 5, 0, 0, -10, 0, -1L, -1L)));
+            assertInstanceOf(WrongThreadException.class, onAnotherThread(() -> world.castRayClosest(0, 5, 0, 0, -10, 0, QueryFilter.ALL)));
+            assertInstanceOf(WrongThreadException.class, onAnotherThread(world::use));
             assertInstanceOf(WrongThreadException.class, onAnotherThread(world::close));
             assertTrue(world.isOpen(), "a refused close closed nothing");
             box.setLinearVelocity(1, 0, 0);
@@ -218,7 +234,7 @@ class PhysicsWorldTest {
             ground(world);
             Body box = world.createBody(new BodyDef().position(0, 3, 0));
             Shape top = box.createShape(new ShapeDef(), Geometry.Box.of(1, 1, 1));
-            CastHit hit = world.castRayClosest(0, 10, 0, 0, -20, 0, -1L, -1L);
+            CastHit hit = world.castRayClosest(0, 10, 0, 0, -20, 0, QueryFilter.ALL);
             assertNotNull(hit);
             assertSame(top, hit.shape(), "the box above the ground, not the ground");
             assertEquals(4, hit.y(), 1e-4);

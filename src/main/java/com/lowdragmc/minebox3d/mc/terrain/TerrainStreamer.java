@@ -1,11 +1,14 @@
 package com.lowdragmc.minebox3d.mc.terrain;
 
 import com.lowdragmc.minebox3d.mc.CollisionCategories;
+import com.lowdragmc.minebox3d.mc.LevelBodies;
 import com.lowdragmc.minebox3d.mc.LevelThreads;
 import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.BodyType;
+import com.lowdragmc.minebox3d.physics.Joint;
 import com.lowdragmc.minebox3d.physics.PhysicsWorld;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
+import com.lowdragmc.minebox3d.physics.ThreadMode;
 import com.lowdragmc.minebox3d.physics.VoxelGrid;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
@@ -24,6 +27,7 @@ import net.minecraft.world.phys.AABB;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -35,7 +39,6 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
-import java.util.function.Predicate;
 
 /**
  * <b>Streams block collision into a {@link PhysicsWorld}</b>, one chunk section at a time, around the bodies
@@ -43,15 +46,16 @@ import java.util.function.Predicate;
  * {@link VoxelGrid} as collider ids ({@link BlockColliders}); nothing is meshed.
  *
  * <ul>
- *   <li>A section a dynamic body overlaps (bounds + {@link #margin}) is loaded <b>at once</b>, before the step
- *       that could drop the body through it.</li>
- *   <li>A section the body is heading into (its bounds pushed {@link #lookaheadSeconds} along its velocity) is
- *       queued and loaded under {@link #loadBudget} per tick.</li>
- *   <li>A section no body has wanted for {@link #keepTicks} is removed.</li>
+ *   <li>A section a body that {@linkplain LevelBodies#needsTerrain needs terrain} overlaps (bounds +
+ *       {@link Settings#margin()}) is loaded <b>at once</b>, before the step that could drop the body through it.</li>
+ *   <li>A section the body is heading into (its bounds pushed {@link Settings#lookaheadSeconds()} along its velocity)
+ *       is queued and loaded under {@link Settings#loadBudget()} per tick.</li>
+ *   <li>A section no body has wanted for {@link Settings#keepTicks()} is removed.</li>
  *   <li>A block change in a loaded section changes that cell, and the cells around it when a taller shape
  *       (fence, wall) came or went, at the next {@link #update()}. Chunk unloads remove sections.</li>
- *   <li>A body over a chunk that is not loaded is <b>parked</b> — taken out of the simulation, like an entity in a
- *       chunk that is not ticking — until its chunks are back, instead of falling through the missing ground.</li>
+ *   <li>A body over a chunk that is not loaded is <b>parked</b> ({@link Body#setParked}) with the bodies jointed to
+ *       it — taken out of the simulation, like an entity in a chunk that is not ticking — until their chunks are
+ *       back, instead of falling through the missing ground.</li>
  * </ul>
  *
  * <p>Every streamer of a level hears its block and chunk changes, the level's own one and private ones alike. Runs on
@@ -74,22 +78,94 @@ public final class TerrainStreamer implements AutoCloseable {
     private LongLinkedOpenHashSet changedCells = new LongLinkedOpenHashSet();
     /** block changes made on other threads, taken in on the level's */
     private final ConcurrentLinkedQueue<OffThreadChange> offThreadChanges = new ConcurrentLinkedQueue<>();
-    /** bodies this streamer took out of the simulation because their chunks are not loaded */
+    /** bodies this streamer took out of the simulation because their chunks (or a jointed body's) are not loaded */
     private final Set<Body> parked = Collections.newSetFromMap(new IdentityHashMap<>());
+    /** this update's: the bodies that need terrain, and the ones to be parked */
+    private final List<Body> needing = new ArrayList<>();
+    private final Set<Body> out = Collections.newSetFromMap(new IdentityHashMap<>());
     private final IntArrayList edits = new IntArrayList();
     private final List<Request> requests = new ArrayList<>();
-    private Predicate<Body> consumers = body -> body.type() == BodyType.DYNAMIC;
+    private final Settings settings = new Settings();
 
-    /** Blocks added around a body's bounds before deciding which sections it overlaps. */
-    public float margin = 1.0f;
-    /** How far ahead along its velocity a body's sections are prepared. */
-    public float lookaheadSeconds = 0.5f;
-    /** Sections loaded per tick beyond the ones a body is already touching. */
-    public int loadBudget = 32;
-    /** Ticks a section stays after the last body that wanted it has gone. */
-    public int keepTicks = 40;
-    /** Every this many ticks, loaded sections whose chunk has gone without an unload event are dropped. */
-    public int chunkCheckTicks = 20;
+    /** How the streamer behaves; one per streamer, so per world. */
+    public static final class Settings {
+        private float margin = 1.0f;
+        private float lookaheadSeconds = 0.5f;
+        private int loadBudget = 32;
+        private int keepTicks = 40;
+        private int chunkCheckTicks = 20;
+
+        private Settings() {
+        }
+
+        /** Blocks added around a body's bounds before deciding which sections it overlaps. */
+        public float margin() {
+            return margin;
+        }
+
+        public Settings margin(float margin) {
+            if (!(margin >= 0) || !Float.isFinite(margin)) {
+                throw new IllegalArgumentException("margin must be zero or more: " + margin);
+            }
+            this.margin = margin;
+            return this;
+        }
+
+        /** How far ahead along its velocity a body's sections are prepared. */
+        public float lookaheadSeconds() {
+            return lookaheadSeconds;
+        }
+
+        public Settings lookaheadSeconds(float seconds) {
+            if (!(seconds >= 0) || !Float.isFinite(seconds)) {
+                throw new IllegalArgumentException("lookahead must be zero or more seconds: " + seconds);
+            }
+            this.lookaheadSeconds = seconds;
+            return this;
+        }
+
+        /** Sections loaded per tick beyond the ones a body is already touching. */
+        public int loadBudget() {
+            return loadBudget;
+        }
+
+        public Settings loadBudget(int sections) {
+            if (sections < 0) {
+                throw new IllegalArgumentException("load budget must be zero or more: " + sections);
+            }
+            this.loadBudget = sections;
+            return this;
+        }
+
+        /** Updates a section stays after the last body that wanted it has gone. */
+        public int keepTicks() {
+            return keepTicks;
+        }
+
+        public Settings keepTicks(int ticks) {
+            if (ticks < 0) {
+                throw new IllegalArgumentException("keep ticks must be zero or more: " + ticks);
+            }
+            this.keepTicks = ticks;
+            return this;
+        }
+
+        /** Every this many updates, loaded sections whose chunk has gone without an unload event are dropped; 0 never. */
+        public int chunkCheckTicks() {
+            return chunkCheckTicks;
+        }
+
+        public Settings chunkCheckTicks(int ticks) {
+            if (ticks < 0) {
+                throw new IllegalArgumentException("chunk check interval must be zero or more: " + ticks);
+            }
+            this.chunkCheckTicks = ticks;
+            return this;
+        }
+    }
+
+    /** chunk events not taken in at once (see {@link #onChunk}), at the next update; any thread may add */
+    private final ConcurrentLinkedQueue<PendingChunk> pendingChunks = new ConcurrentLinkedQueue<>();
 
     private long tick;
     private int loadedLastTick;
@@ -103,6 +179,10 @@ public final class TerrainStreamer implements AutoCloseable {
         this.world = world;
         ShapeDef template = new ShapeDef();
         template.filter.categoryBits = CollisionCategories.TERRAIN;
+        // Box3D's default, said out loud: it reports a touch when either shape asks, and terrain asking would report every
+        // body landing anywhere
+        template.enableContactEvents = false;
+        template.enableHitEvents = false;
         this.grid = world.createVoxelGrid(template);
         this.colliders = new BlockColliders(grid);
         wanted.defaultReturnValue(Long.MIN_VALUE);
@@ -111,7 +191,6 @@ public final class TerrainStreamer implements AutoCloseable {
         }
     }
 
-    /** Runs {@code action} for every open streamer of {@code level}. */
     public static void forLevel(Level level, Consumer<TerrainStreamer> action) {
         TerrainStreamer[] streamers;
         synchronized (STREAMERS) {
@@ -126,9 +205,8 @@ public final class TerrainStreamer implements AutoCloseable {
         }
     }
 
-    /** Which bodies need terrain. By default every dynamic body. */
-    public void setConsumers(Predicate<Body> consumers) {
-        this.consumers = consumers;
+    public Settings settings() {
+        return settings;
     }
 
     /** Keeps the sections overlapping {@code box} in the world for the next {@code ticks} ticks. */
@@ -138,37 +216,67 @@ public final class TerrainStreamer implements AutoCloseable {
 
     // ---- the tick -----------------------------------------------------------------------------
 
+    /** The streamer's tick: on the level's thread (it reads chunks), holding the world. */
     public void update() {
+        checkLevelThread();
         tick++;
         loadedLastTick = 0;
+        for (PendingChunk pending; (pending = pendingChunks.poll()) != null; ) {
+            if (pending.loaded) {
+                loadChunk(pending.chunk);
+            } else {
+                unloadChunk(pending.chunk);
+            }
+        }
         applyChangedCells();
-        if (chunkCheckTicks > 0 && tick % chunkCheckTicks == 0) {
+        if (settings.chunkCheckTicks > 0 && tick % settings.chunkCheckTicks == 0) {
             dropSectionsOfGoneChunks();
         }
 
+        float margin = settings.margin;
         urgent.clear();
+        needing.clear();
+        out.clear();
         for (Body body : world.bodies()) {
-            if (!consumers.test(body)) {
+            if (!LevelBodies.needsTerrain(body)) {
+                continue;
+            }
+            needing.add(body);
+            body.bounds(bounds);
+            if (!out.contains(body) && !chunksLoaded(bounds[0] - margin, bounds[2] - margin, bounds[3] + margin,
+                    bounds[5] + margin)) {
+                withJointed(body, out);
+            }
+        }
+        for (Iterator<Body> it = parked.iterator(); it.hasNext(); ) {
+            Body body = it.next();
+            if (!out.contains(body)) {
+                if (body.isValid()) {
+                    body.setParked(false);
+                }
+                it.remove();
+            }
+        }
+        for (Body body : out) {
+            park(body);
+        }
+        for (Body body : needing) {
+            if (out.contains(body)) {
                 continue;
             }
             body.bounds(bounds);
             float minX = bounds[0] - margin, minY = bounds[1] - margin, minZ = bounds[2] - margin;
             float maxX = bounds[3] + margin, maxY = bounds[4] + margin, maxZ = bounds[5] + margin;
-            if (!chunksLoaded(minX, minZ, maxX, maxZ)) {
-                park(body);
-                continue;
-            }
-            unpark(body);
             // what it touches now: needed before this tick's step
             mark(minX, minY, minZ, maxX, maxY, maxZ, urgent);
             // where it is going: needed soon
-            body.linearVelocity(velocity).mul(lookaheadSeconds);
+            body.linearVelocity(velocity).mul(settings.lookaheadSeconds);
             mark(Math.min(bounds[0], bounds[0] + velocity.x) - margin, Math.min(bounds[1], bounds[1] + velocity.y) - margin,
                     Math.min(bounds[2], bounds[2] + velocity.z) - margin, Math.max(bounds[3], bounds[3] + velocity.x) + margin,
                     Math.max(bounds[4], bounds[4] + velocity.y) + margin, Math.max(bounds[5], bounds[5] + velocity.z) + margin,
                     null);
         }
-        parked.removeIf(body -> !body.isValid());
+        needing.clear();
         for (Iterator<Request> it = requests.iterator(); it.hasNext(); ) {
             Request request = it.next();
             if (request.untilTick < tick) {
@@ -179,25 +287,23 @@ public final class TerrainStreamer implements AutoCloseable {
             }
         }
 
-        // sections a body is touching: loaded now, whatever the budget
         for (LongIterator it = urgent.iterator(); it.hasNext(); ) {
             long section = it.nextLong();
             if (!loaded.contains(section)) {
                 load(section);
             }
         }
-        int budget = loadBudget;
+        int budget = settings.loadBudget;
         while (budget > 0 && !queue.isEmpty()) {
             long section = queue.removeFirstLong();
-            if (!loaded.contains(section) && wanted.get(section) >= tick - keepTicks && load(section)) {
+            if (!loaded.contains(section) && wanted.get(section) >= tick - settings.keepTicks && load(section)) {
                 budget--;
             }
         }
 
-        // sections nobody wants any more
         for (LongIterator it = loaded.iterator(); it.hasNext(); ) {
             long section = it.nextLong();
-            if (wanted.get(section) < tick - keepTicks) {
+            if (wanted.get(section) < tick - settings.keepTicks) {
                 grid.setSection(SectionPos.x(section), SectionPos.y(section), SectionPos.z(section), null);
                 wanted.remove(section);
                 it.remove();
@@ -222,14 +328,28 @@ public final class TerrainStreamer implements AutoCloseable {
     }
 
     private void park(Body body) {
-        if (parked.add(body)) {
-            body.setEnabled(false);
+        if (body.isValid() && parked.add(body)) {
+            body.setParked(true);
         }
     }
 
-    private void unpark(Body body) {
-        if (parked.remove(body)) {
-            body.setEnabled(true);
+    /**
+     * {@code body} and every dynamic body joined to it, joint by joint, into {@code into}: a group is parked whole — one
+     * half of a cart left simulating would fall away from the other, and spring back at it when let go.
+     */
+    private void withJointed(Body body, Set<Body> into) {
+        if (!into.add(body)) {
+            return;
+        }
+        ArrayDeque<Body> walk = new ArrayDeque<>();
+        walk.add(body);
+        for (Body next; (next = walk.poll()) != null; ) {
+            for (Joint joint : next.joints()) {
+                Body other = joint.bodyA() == next ? joint.bodyB() : joint.bodyA();
+                if (other.isValid() && other.type() == BodyType.DYNAMIC && into.add(other)) {
+                    walk.add(other);
+                }
+            }
         }
     }
 
@@ -353,17 +473,65 @@ public final class TerrainStreamer implements AutoCloseable {
         }
     }
 
-    /** A chunk is going: its sections leave the grid, and bodies over it are parked first so they do not fall. */
+    /**
+     * A chunk is going: its sections leave the grid, and bodies over it are parked first so they do not fall. At once
+     * when the calling thread may use the world now, else at the next update (see {@link #onChunk}).
+     */
     public void onChunkUnloaded(ChunkPos chunk) {
+        onChunk(chunk, false);
+    }
+
+    /**
+     * A chunk arrived, or the client was sent a chunk it had again: its own loaded sections are read anew, and the cells
+     * of loaded sections next to it, which had read it as air, look again — a taller shape in it may reach across. At
+     * once or at the next update, like {@link #onChunkUnloaded}.
+     */
+    public void onChunkLoaded(ChunkPos chunk) {
+        onChunk(chunk, true);
+    }
+
+    /**
+     * At once only where that cannot get in anyone's way: the owner of an {@link ThreadMode#OWNER_THREAD} world, or the
+     * thread already holding an {@link ThreadMode#EXCLUSIVE} one. Never by taking a free exclusive world: its users
+     * schedule their own uses, and a chunk event taking it would make one of them throw at a moment no one chose.
+     */
+    private void onChunk(ChunkPos chunk, boolean loaded) {
+        if (!world.isOpen()) {
+            return;
+        }
+        if (world.owner() != Thread.currentThread()) {
+            pendingChunks.add(new PendingChunk(chunk, loaded));
+            return;
+        }
+        if (loaded) {
+            loadChunk(chunk);
+        } else {
+            unloadChunk(chunk);
+        }
+    }
+
+    private void checkLevelThread() {
+        if (!LevelThreads.isLevelThread(level)) {
+            throw new WrongThreadException("the terrain of " + level.dimension().location() + " is read on its level's thread, not "
+                    + Thread.currentThread().getName());
+        }
+    }
+
+    private void unloadChunk(ChunkPos chunk) {
+        float margin = settings.margin;
+        Set<Body> going = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Body body : world.bodies()) {
-            if (!consumers.test(body) || parked.contains(body)) {
+            if (!LevelBodies.needsTerrain(body) || parked.contains(body)) {
                 continue;
             }
             body.bounds(bounds);
             if (Mth.floor(bounds[0] - margin) <= chunk.getMaxBlockX() && Mth.floor(bounds[3] + margin) >= chunk.getMinBlockX()
                     && Mth.floor(bounds[2] - margin) <= chunk.getMaxBlockZ() && Mth.floor(bounds[5] + margin) >= chunk.getMinBlockZ()) {
-                park(body);
+                withJointed(body, going);
             }
+        }
+        for (Body body : going) {
+            park(body);
         }
         for (LongIterator it = loaded.iterator(); it.hasNext(); ) {
             long section = it.nextLong();
@@ -374,11 +542,7 @@ public final class TerrainStreamer implements AutoCloseable {
         }
     }
 
-    /**
-     * A chunk arrived, or the client was sent a chunk it had again: its own loaded sections are read anew, and the cells
-     * of loaded sections next to it, which had read it as air, look again — a taller shape in it may reach across.
-     */
-    public void onChunkLoaded(ChunkPos chunk) {
+    private void loadChunk(ChunkPos chunk) {
         int minX = chunk.getMinBlockX() - 1, maxX = chunk.getMaxBlockX() + 1;
         int minZ = chunk.getMinBlockZ() - 1, maxZ = chunk.getMaxBlockZ() + 1;
         LongOpenHashSet reload = new LongOpenHashSet();
@@ -440,8 +604,8 @@ public final class TerrainStreamer implements AutoCloseable {
         loaded.forEach(action);
     }
 
-    @Override
-    public void close() {
+    /** No longer hears the level's block and chunk changes ({@link #forLevel}); closing does it first. */
+    public void stopListening() {
         synchronized (STREAMERS) {
             List<TerrainStreamer> list = STREAMERS.get(level);
             if (list != null) {
@@ -451,10 +615,16 @@ public final class TerrainStreamer implements AutoCloseable {
                 }
             }
         }
-        if (world.isOpen()) {
+    }
+
+    @Override
+    public void close() {
+        stopListening();
+        // a faulted world is only let go of: its close frees the grid and its sections
+        if (world.isOpen() && !world.isFaulted()) {
             for (Body body : parked) {
                 if (body.isValid()) {
-                    body.setEnabled(true);
+                    body.setParked(false);
                 }
             }
             grid.close();
@@ -465,11 +635,15 @@ public final class TerrainStreamer implements AutoCloseable {
         queue.clear();
         changedCells.clear();
         offThreadChanges.clear();
+        pendingChunks.clear();
     }
 
     private record Request(AABB box, long untilTick) {
     }
 
     private record OffThreadChange(BlockPos pos, @Nullable BlockState previous, BlockState current) {
+    }
+
+    private record PendingChunk(ChunkPos chunk, boolean loaded) {
     }
 }

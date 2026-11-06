@@ -3,10 +3,15 @@ package com.lowdragmc.minebox3d.client;
 import com.lowdragmc.minebox3d.MineBox3D;
 import com.lowdragmc.minebox3d.mc.LevelPhysics;
 import com.lowdragmc.minebox3d.mc.LevelPhysicsEvents;
+import com.lowdragmc.minebox3d.mc.entity.EntityCollisions;
+import com.lowdragmc.minebox3d.mc.sync.StandingPayload;
+import com.lowdragmc.minebox3d.mc.sync.SyncedBodies;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientPacketListener;
+import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -25,13 +30,30 @@ public final class ClientPhysicsEvents {
     private ClientPhysicsEvents() {
     }
 
+    /** A client tick starts: an entity move a thrown error left open on this thread is let go (EntityCollisions). */
+    @SubscribeEvent
+    public static void onClientTickStart(ClientTickEvent.Pre event) {
+        EntityCollisions.newTick();
+    }
+
     @SubscribeEvent
     public static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level != null && !minecraft.isPaused()) {
             LevelPhysics physics = LevelPhysics.existing(minecraft.level);
             if (physics != null) {
+                ClientPacketListener connection = minecraft.getConnection();
+                // how long the replicas this client pushes are simulated here (SyncedBodies.predict)
+                PlayerInfo self = connection == null || minecraft.player == null ? null
+                        : connection.getPlayerInfo(minecraft.player.getUUID());
+                if (self != null) {
+                    SyncedBodies.setRoundTrip(self.getLatency());
+                }
                 physics.tick();
+                // after the step: our player's pushes on replicas told to the server, and the others the server says
+                // stand on bodies put there (design doc 04 §11.2 #3, §11.5)
+                physics.sync().riders().afterClientTick(minecraft.player,
+                        connection != null && connection.hasChannel(StandingPayload.TYPE));
             }
         }
         LevelPhysicsEvents.drainLog();

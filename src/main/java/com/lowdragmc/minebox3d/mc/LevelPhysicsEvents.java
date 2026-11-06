@@ -1,17 +1,23 @@
 package com.lowdragmc.minebox3d.mc;
 
 import com.lowdragmc.minebox3d.MineBox3D;
-import com.lowdragmc.minebox3d.jni.B3;
+import com.lowdragmc.minebox3d.internal.B3;
+import com.lowdragmc.minebox3d.mc.entity.EntityCollisions;
+import com.lowdragmc.minebox3d.mc.sync.SyncedBodies;
+import com.lowdragmc.minebox3d.mc.sync.SyncedRiders;
 import com.lowdragmc.minebox3d.mc.terrain.TerrainStreamer;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.ChunkEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,6 +44,18 @@ public final class LevelPhysicsEvents {
         }
     }
 
+    /** A server tick starts: an entity move a thrown error left open on this thread is let go (EntityCollisions). */
+    @SubscribeEvent
+    public static void onServerTickStart(ServerTickEvent.Pre event) {
+        EntityCollisions.newTick();
+    }
+
+    /** Every level has sent its bodies: the clients waiting for the bodies around their players are told (SyncedRiders). */
+    @SubscribeEvent
+    public static void onServerTickEnd(ServerTickEvent.Post event) {
+        SyncedRiders.afterServerTick(event.getServer().getTickCount());
+    }
+
     @SubscribeEvent
     public static void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof Level level) {
@@ -48,6 +66,36 @@ public final class LevelPhysicsEvents {
     @SubscribeEvent
     public static void onServerStopped(ServerStoppedEvent event) {
         LevelPhysics.unloadAll(false);
+    }
+
+    // A client that drops a level drops the synced bodies it had of it: the server forgets it sent them
+
+    @SubscribeEvent
+    public static void onLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            SyncedBodies.forget(player, true);
+            SyncedRiders.forget(player, true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            SyncedBodies.forget(player, false);
+            SyncedRiders.forget(player, false);
+        }
+    }
+
+    /**
+     * A respawn: the new player stands on nothing; in another dimension its client also dropped what it had of the old
+     * one. One in the same keeps the client's level, and what it was sent.
+     */
+    @SubscribeEvent
+    public static void onRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            SyncedBodies.forget(player, false);
+            SyncedRiders.forget(player, false);
+        }
     }
 
     // Chunk and block changes go to every terrain streamer of the level: the level's own and private ones

@@ -2,8 +2,10 @@ package com.lowdragmc.minebox3d.physics;
 
 import com.lowdragmc.minebox3d.physics.VoxelTerrainTest.Face;
 import com.lowdragmc.minebox3d.physics.VoxelTerrainTest.Terrain;
+import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+import org.joml.Vector3i;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -17,7 +19,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * <b>Voxel terrain in the corners</b>: every neighbour direction, far coordinates, rays in every direction, query
- * filters, contact points, push-out directions, exposure details, the candidate cap, per-cell materials.
+ * filters, contact points, continuous collision with pre-solve events, section borders at every alignment, push-out
+ * directions, exposure details, the candidate cap, per-cell materials.
  */
 class VoxelDetailTest {
 
@@ -53,7 +56,8 @@ class VoxelDetailTest {
                 }
             }
 
-            // section (-1, 0, 0) holds the cube's cells at x = -1, y and z in {0, 1}: without it, the four faces behind it show
+            // section (-1, 0, 0) holds the cube's cells at x = -1, y and z in {0, 1}: without it, the four faces behind
+            // it show
             assertEquals(0, westAt0(t), 1e-4);
             t.grid.setSection(-1, 0, 0, null);
             assertEquals(4, westAt0(t), 1e-4, "the neighbour gone, its side shows");
@@ -121,43 +125,57 @@ class VoxelDetailTest {
                 t.set(3, y, 2, t.full);
                 t.set(2, y, 6, t.full);
             }
-            int[] cell = new int[3];
-
             // from another section along +x
-            CastHit east = t.world.castRayClosest(-20, 2.5, 2.5, 40, 0, 0, -1L, -1L);
+            CastHit east = t.world.castRayClosest(-20, 2.5, 2.5, 40, 0, 0, QueryFilter.ALL);
             assertNotNull(east);
             assertEquals(3, east.x(), 1e-4);
             assertEquals(-1, east.normalX(), 1e-4);
-            assertTrue(t.grid.featureCell(east.shapeId(), east.triangleIndex(), cell));
-            assertArrayEquals(new int[]{3, 2, 2}, cell);
+            assertArrayEquals(new int[]{3, 2, 2}, cell(east));
 
-            CastHit west = t.world.castRayClosest(20, 1.5, 2.5, -40, 0, 0, -1L, -1L);
+            CastHit west = t.world.castRayClosest(20, 1.5, 2.5, -40, 0, 0, QueryFilter.ALL);
             assertNotNull(west);
             assertEquals(4, west.x(), 1e-4);
             assertEquals(1, west.normalX(), 1e-4);
 
-            CastHit south = t.world.castRayClosest(2.5, 3.5, -20, 0, 0, 40, -1L, -1L);
+            CastHit south = t.world.castRayClosest(2.5, 3.5, -20, 0, 0, 40, QueryFilter.ALL);
             assertNotNull(south);
             assertEquals(6, south.z(), 1e-4);
             assertEquals(-1, south.normalZ(), 1e-4);
-            assertTrue(t.grid.featureCell(south.shapeId(), south.triangleIndex(), cell));
-            assertArrayEquals(new int[]{2, 3, 6}, cell);
+            assertArrayEquals(new int[]{2, 3, 6}, cell(south));
 
-            CastHit north = t.world.castRayClosest(2.5, 1.5, 30, 0, 0, -40, -1L, -1L);
+            CastHit north = t.world.castRayClosest(2.5, 1.5, 30, 0, 0, -40, QueryFilter.ALL);
             assertNotNull(north);
             assertEquals(7, north.z(), 1e-4);
             assertEquals(1, north.normalZ(), 1e-4);
 
             // diagonal, starting in the section at -x, -z, down onto the floor
-            CastHit diagonal = t.world.castRayClosest(-3.3, 6, -2.7, 10, -10, 8, -1L, -1L);
+            CastHit diagonal = t.world.castRayClosest(-3.3, 6, -2.7, 10, -10, 8, QueryFilter.ALL);
             assertNotNull(diagonal);
             assertEquals(0.5, diagonal.fraction(), 1e-4);
             assertEquals(1.7, diagonal.x(), 1e-4);
             assertEquals(1.3, diagonal.z(), 1e-4);
             assertEquals(1, diagonal.normalY(), 1e-4);
-            assertTrue(t.grid.featureCell(diagonal.shapeId(), diagonal.triangleIndex(), cell));
-            assertArrayEquals(new int[]{1, 0, 1}, cell);
+            assertArrayEquals(new int[]{1, 0, 1}, cell(diagonal));
+
+            // every shape along the way, closest first (one hit per shape: a section is one shape); a box above the
+            // column at (3, 1..3, 2), the room for one hit to start with
+            Body box = t.world.createBody(new BodyDef().position(3.5, 8, 2.5));
+            Shape boxShape = box.createShape(new ShapeDef(), Geometry.Box.of(0.25f, 0.25f, 0.25f));
+            CastHits all = new CastHits(1);
+            assertEquals(2, t.world.castRay(3.5, 10, 2.5, 0, -20, 0, QueryFilter.ALL, all));
+            assertSame(boxShape, all.shape(0), "the box first");
+            assertEquals(8.25, all.y(0), 1e-4);
+            assertFalse(all.isTerrain(0));
+            assertTrue(all.isTerrain(1), "then the terrain");
+            assertEquals(4, all.y(1), 1e-4, "the column's top");
+            assertEquals(3, all.cellY(1));
+            assertTrue(all.fraction(0) < all.fraction(1));
         }
+    }
+
+    private static int[] cell(CastHit hit) {
+        assertTrue(hit.terrain(), "a hit on terrain");
+        return new int[]{hit.cellX(), hit.cellY(), hit.cellZ()};
     }
 
     // ---- query filters --------------------------------------------------------------------------
@@ -184,37 +202,41 @@ class VoxelDetailTest {
             proxyDef.filter.maskBits = ~(TERRAIN | ENTITY);
             Shape box = proxy.createShape(proxyDef, Geometry.Box.of(0.5f, 0.5f, 0.5f));
 
-            CastHit hit = world.castRayClosest(4.5, 10, 4.5, 0, -20, 0, -1L, TERRAIN);
+            CastHit hit = world.castRayClosest(4.5, 10, 4.5, 0, -20, 0, QueryFilter.only(TERRAIN));
             assertEquals(section, hit.shapeId(), "terrain only: through the box");
-            hit = world.castRayClosest(4.5, 10, 4.5, 0, -20, 0, -1L, ENTITY);
+            hit = world.castRayClosest(4.5, 10, 4.5, 0, -20, 0, QueryFilter.only(ENTITY));
             assertEquals(box.id(), hit.shapeId(), "entities only: the box");
-            hit = world.castRayClosest(4.5, 10, 4.5, 0, -20, 0, TERRAIN, -1L);
+            hit = world.castRayClosest(4.5, 10, 4.5, 0, -20, 0, new QueryFilter(TERRAIN, -1L));
             assertEquals(section, hit.shapeId(), "a query that is terrain is not something the box collides with");
 
-            float[] point = {0, 0, 0};
-            hit = world.castShapeClosest(4.5, 10, 4.5, point, 1, 0.2f, 0, -20, 0, -1L, TERRAIN);
+            Geometry ball = new Geometry.Sphere(0, 0, 0, 0.2f);
+            hit = world.castShapeClosest(ball, 4.5, 10, 4.5, new Quaternionf(), 0, -20, 0, QueryFilter.only(TERRAIN));
             assertEquals(section, hit.shapeId());
-            hit = world.castShapeClosest(4.5, 10, 4.5, point, 1, 0.2f, 0, -20, 0, -1L, ENTITY);
+            hit = world.castShapeClosest(ball, 4.5, 10, 4.5, new Quaternionf(), 0, -20, 0, QueryFilter.only(ENTITY));
             assertEquals(box.id(), hit.shapeId());
 
-            long[] ids = new long[4];
             // a sphere touching both the ground and the box's underside
-            assertEquals(1, world.overlapShape(4.5, 1.25, 4.5, point, 1, 0.3f, -1L, TERRAIN, ids));
-            assertEquals(section, ids[0]);
-            assertEquals(1, world.overlapShape(4.5, 1.25, 4.5, point, 1, 0.3f, -1L, ENTITY, ids));
-            assertEquals(box.id(), ids[0]);
+            Overlaps overlaps = new Overlaps();
+            Geometry touching = new Geometry.Sphere(0, 0, 0, 0.3f);
+            assertEquals(1, world.overlapShape(touching, 4.5, 1.25, 4.5, QueryFilter.only(TERRAIN), overlaps));
+            assertEquals(section, overlaps.shapeId(0));
+            assertEquals(1, world.overlapShape(touching, 4.5, 1.25, 4.5, QueryFilter.only(ENTITY), overlaps));
+            assertSame(box, overlaps.shape(0));
+            assertEquals(2, world.overlapShape(touching, 4.5, 1.25, 4.5, QueryFilter.ALL, new Overlaps(1)), "grown to fit both");
 
-            float[] planes = new float[7 * 8];
-            long[] planeShapes = new long[8];
-            int[] triangles = new int[8];
             // a capsule from the ground up into the box
-            int count = world.collideMover(4.5, 0, 4.5, 0, 1.2f, 0, 0, 1.4f, 0, 0.25f, -1L, -1L, planes, planeShapes, triangles);
-            assertTrue(Arrays.stream(planeShapes, 0, count).anyMatch(id -> id == section));
-            assertTrue(Arrays.stream(planeShapes, 0, count).anyMatch(id -> id == box.id()));
-            count = world.collideMover(4.5, 0, 4.5, 0, 1.2f, 0, 0, 1.4f, 0, 0.25f, -1L, TERRAIN, planes, planeShapes, triangles);
+            MoverPlanes planes = new MoverPlanes(1);
+            int count = world.collideMover(4.5, 0, 4.5, 0, 1.2f, 0, 0, 1.4f, 0, 0.25f, QueryFilter.ALL, planes);
+            boolean sawSection = false, sawBox = false;
+            for (int i = 0; i < count; i++) {
+                sawSection |= planes.shapeId(i) == section;
+                sawBox |= planes.shapeId(i) == box.id();
+            }
+            assertTrue(sawSection && sawBox, "both, past the room for one plane it started with");
+            count = world.collideMover(4.5, 0, 4.5, 0, 1.2f, 0, 0, 1.4f, 0, 0.25f, QueryFilter.only(TERRAIN), planes);
             assertTrue(count > 0);
             for (int i = 0; i < count; i++) {
-                assertEquals(section, planeShapes[i], "terrain planes only");
+                assertEquals(section, planes.shapeId(i), "terrain planes only");
             }
         }
     }
@@ -233,40 +255,35 @@ class VoxelDetailTest {
             top.createShape(new ShapeDef().friction(0.6f), Geometry.Box.of(0.2f, 0.2f, 0.2f));
             t.step(240);
             assertEquals(2.0, VoxelTerrainTest.y(top), 0.02, "the stack stands");
-            float[] points = new float[8 * 16];
-            long[] shapes = new long[16];
-            int[] triangles = new int[16];
+            ContactPoints points = new ContactPoints(1);
+            Vector3f normal = new Vector3f();
 
-            int n = top.contactPoints(points, shapes, triangles);
+            int n = top.contactPoints(points);
             assertTrue(n >= 1);
             for (int i = 0; i < n; i++) {
-                assertEquals(1, points[8 * i + 1], 1e-3, "the top box is held up: normal +y");
-                assertEquals(bottom.shapes().getFirst().id(), shapes[i]);
-                assertTrue(points[8 * i + 4] > 0, "and pressed");
+                assertEquals(1, points.normal(i, normal).y, 1e-3, "the top box is held up: normal +y");
+                assertSame(bottom.shapes().getFirst(), points.otherShape(i));
+                assertTrue(points.normalImpulse(i) > 0, "and pressed");
+                assertFalse(points.isTerrain(i));
             }
 
-            n = bottom.contactPoints(points, shapes, triangles);
+            n = bottom.contactPoints(points);
             int fromTop = 0, fromGround = 0;
-            int[] cell = new int[3];
+            Vector3i cell = new Vector3i();
             for (int i = 0; i < n; i++) {
-                if (shapes[i] == top.shapes().getFirst().id()) {
+                if (points.otherShapeId(i) == top.shapes().getFirst().id()) {
                     fromTop++;
-                    assertEquals(-1, points[8 * i + 1], 1e-3, "the top box presses it down: normal -y");
+                    assertEquals(-1, points.normal(i, normal).y, 1e-3, "the top box presses it down: normal -y");
                 } else {
                     fromGround++;
-                    assertEquals(1, points[8 * i + 1], 1e-3);
-                    assertTrue(Math.abs(points[8 * i + 3]) < 0.01f, "touching: " + points[8 * i + 3]);
-                    assertTrue(points[8 * i + 4] > 0);
-                    assertTrue(t.grid.featureCell(shapes[i], triangles[i], cell));
-                    assertArrayEquals(new int[]{3, 0, 3}, cell, "the floor cell under the box");
+                    assertEquals(1, points.normal(i, normal).y, 1e-3);
+                    assertTrue(Math.abs(points.separation(i)) < 0.01f, "touching: " + points.separation(i));
+                    assertTrue(points.normalImpulse(i) > 0);
+                    assertTrue(points.isTerrain(i));
+                    assertEquals(new Vector3i(3, 0, 3), points.cell(i, cell), "the floor cell under the box");
                 }
             }
-            assertTrue(fromTop >= 1 && fromGround >= 1);
-
-            // too small an array: the count says how many there are, only what fits is written
-            float[] one = new float[8];
-            assertEquals(n, bottom.contactPoints(one, new long[1], new int[1]));
-            assertNotEquals(0, Math.abs(one[0]) + Math.abs(one[1]) + Math.abs(one[2]), "the first one written");
+            assertTrue(fromTop >= 1 && fromGround >= 1, "more points than the room for one it started with");
         }
     }
 
@@ -438,7 +455,8 @@ class VoxelDetailTest {
                     if (Math.abs(m.x - 5) > 1e-4f) {
                         continue;
                     }
-                    // the stone's top meets the stair's upper half (z 4 to 4.5) flat, and its tread (z 4.5 to 5) as an edge
+                    // the stone's top meets the stair's upper half (z 4 to 4.5) flat, and its tread (z 4.5 to 5) as an
+                    // edge
                     assertEquals(m.z < 4.5f, face.flat()[e], "the stone top's east edge at " + m);
                     checked++;
                 }
@@ -474,29 +492,34 @@ class VoxelDetailTest {
     // ---- the candidate cap ----------------------------------------------------------------------
 
     /**
-     * Box3D gives one convex shape at most {@code B3_MAX_MESH_CONTACT_TRIANGLES} (512) triangles of one section;
-     * cells are taken y, z, x, so past the cap the far rows in z are dropped. A stair is six triangles under a
-     * body: 6 × 6 blocks (7 × 7 cells with the margin, 294) fits, 10 × 10 (726) does not (doc 01 §12.6).
+     * Box3D gives one convex shape at most {@code B3_MAX_MESH_CONTACT_TRIANGLES} triangles of one section; cells are
+     * taken y, z, x, so past the cap the far rows in z are dropped. A stair is six triangles under a body. At Box3D's
+     * 512, 10 × 10 blocks (726) lost its far half and 12 × 12 sank in (doc 01 §12.6.3); MineBox3D builds with 2048, a
+     * whole section of stairs.
      */
     @Test
-    void aBoxOnStairsUnderTheCandidateCapIsHeldUpUnderAllFourCorners() {
-        try (Terrain t = new Terrain()) {
-            t.floor(0, 16, 0, 16, 0, (x, z) -> t.stairs);
-            Body slab = t.body(Geometry.Box.of(3, 0.5f, 3), 8, 3, 8);
-            t.step(240);
-            assertEquals(1.5, VoxelTerrainTest.y(slab), 0.02, "on the stairs' upper halves");
-            assertTrue(slab.angularVelocity(new Vector3f()).length() < 0.05f);
+    void aBoxOnStairsIsHeldUpUnderAllFourCornersUpToAWholeSection() {
+        for (float half : new float[]{3, 5, 6, 7}) {
+            try (Terrain t = new Terrain()) {
+                t.floor(0, 16, 0, 16, 0, (x, z) -> t.stairs);
+                Body slab = t.body(Geometry.Box.of(half, 0.5f, half), 8, 3, 8);
+                t.step(240);
+                assertEquals(1.5, VoxelTerrainTest.y(slab), 0.02, "on the stairs' upper halves, " + 2 * half + " wide");
+                assertTrue(slab.angularVelocity(new Vector3f()).length() < 0.05f);
 
-            float[] points = new float[8 * 64];
-            int n = slab.contactPoints(points, new long[64], new int[64]);
-            boolean[] quadrants = new boolean[4];
-            for (int i = 0; i < Math.min(n, 64); i++) {
-                float ax = points[8 * i + 5], az = points[8 * i + 7];
-                if (Math.abs(ax) > 1.5f && Math.abs(az) > 1.5f) {
-                    quadrants[(ax > 0 ? 1 : 0) + (az > 0 ? 2 : 0)] = true;
+                ContactPoints points = new ContactPoints();
+                int n = slab.contactPoints(points);
+                boolean[] quadrants = new boolean[4];
+                Vector3f anchor = new Vector3f();
+                for (int i = 0; i < n; i++) {
+                    float ax = points.anchor(i, anchor).x, az = anchor.z;
+                    if (Math.abs(ax) > half / 2 && Math.abs(az) > half / 2) {
+                        quadrants[(ax > 0 ? 1 : 0) + (az > 0 ? 2 : 0)] = true;
+                    }
                 }
+                assertArrayEquals(new boolean[]{true, true, true, true}, quadrants,
+                        "touching near every corner, far rows included, " + 2 * half + " wide");
             }
-            assertArrayEquals(new boolean[]{true, true, true, true}, quadrants, "touching near every corner, far rows included");
         }
     }
 

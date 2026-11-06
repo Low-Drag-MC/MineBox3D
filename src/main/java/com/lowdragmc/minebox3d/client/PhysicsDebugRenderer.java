@@ -111,8 +111,8 @@ public final class PhysicsDebugRenderer {
     }
 
     /**
-     * What contacts see of a section: the edges of its exposed block faces that are real edges — the flat ones,
-     * where the surface carries on in the same plane, are left out — nudged a hair outward.
+     * What contacts see of a section: the edges of its exposed block faces, less the flat ones where the surface
+     * carries on in the same plane.
      */
     private static SectionLines sectionLines(VoxelGrid grid, long section) {
         int sx = SectionPos.x(section), sy = SectionPos.y(section), sz = SectionPos.z(section);
@@ -193,8 +193,22 @@ public final class PhysicsDebugRenderer {
                     }
                 }
             }
+            case Geometry.Hull hull -> {
+                // the vertices only: Java does not keep the hull's edges
+                float[] points = hull.points();
+                for (int i = 0; i < points.length; i += 3) {
+                    Vector3f p = rotation.transform(new Vector3f(points[i], points[i + 1], points[i + 2])).add(origin);
+                    for (int axis = 0; axis < 3; axis++) {
+                        Vector3f d = new Vector3f(axis == 0 ? 0.05f : 0, axis == 1 ? 0.05f : 0, axis == 2 ? 0.05f : 0);
+                        segment(lines, pose, new Vector3f(p).sub(d), new Vector3f(p).add(d), colour);
+                    }
+                }
+            }
             case Geometry.Mesh mesh -> {
                 // meshes on moving bodies are rare
+            }
+            case Geometry.HeightField field -> {
+                // static ground, drawn by whatever made it
             }
         }
     }

@@ -1,8 +1,9 @@
-package com.lowdragmc.minebox3d.jni;
+package com.lowdragmc.minebox3d.internal;
 
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;
+import com.lowdragmc.minebox3d.physics.Box3DException;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import com.lowdragmc.minebox3d.physics.WorldDef;
 import org.junit.jupiter.api.BeforeAll;
@@ -26,7 +27,8 @@ class B3SmokeTest {
             float[] v = new float[3];
             B3.worldGetGravity(world, v);
             assertArrayEquals(new float[]{0, -9, 0}, v);
-            B3.worldEnableContinuous(world, false); // no visible effect without a tunnelling setup; must not fail
+            B3.worldSetFlag(world, 1, false); // continuous: no visible effect without a tunnelling setup
+            assertFalse(B3.worldGetFlag(world, 1));
 
             long body = B3.createBody(world, new BodyDef().type(BodyType.DYNAMIC));
             long shape = B3.createSphereShape(body, new ShapeDef(), 0, 0, 0, 0.5f);
@@ -35,7 +37,8 @@ class B3SmokeTest {
             assertEquals(body, B3.shapeGetBody(shape));
             assertEquals(BodyType.DYNAMIC.ordinal(), B3.bodyGetType(body));
             B3.shapeSetRestitution(shape, 0.5f);
-            B3.bodySetBullet(body, true);
+            B3.bodySetFlag(body, 0, true); // bullet
+            assertTrue(B3.bodyGetFlag(body, 0));
 
             B3.worldSetGravity(world, 0, 0, 0);
             B3.bodyApplyAngularImpulse(body, 0, 1, 0, true);
@@ -52,9 +55,8 @@ class B3SmokeTest {
             B3.bodyGetLinearVelocity(body, v);
             assertTrue(v[0] > 0, "pushed along +x");
 
-            // damping slows it
             B3.bodySetLinearVelocity(body, 5, 0, 0);
-            B3.bodySetDamping(body, 5, 0);
+            B3.bodySetFloat(body, 0, 5); // linear damping
             for (int i = 0; i < 30; i++) {
                 B3.worldStep(world, 1 / 60f, 4);
             }
@@ -64,7 +66,7 @@ class B3SmokeTest {
             // a body that may not sleep stays awake at rest
             B3.bodySetLinearVelocity(body, 0, 0, 0);
             B3.bodySetAngularVelocity(body, 0, 0, 0);
-            B3.bodyEnableSleep(body, false);
+            B3.bodySetFlag(body, 1, false); // sleep enabled
             for (int i = 0; i < 200; i++) {
                 B3.worldStep(world, 1 / 60f, 4);
             }
@@ -137,10 +139,10 @@ class B3SmokeTest {
         int world = B3.createWorld(new WorldDef());
         try {
             long body = B3.createBody(world, new BodyDef().type(BodyType.DYNAMIC));
-            // not a unit quaternion: Box3D asserts b3IsValidQuat
+            // a NaN position: Box3D asserts b3IsValidPosition (a rotation off unit length the bridge normalises)
             Box3DException e = assertThrows(Box3DException.class,
-                    () -> B3.bodySetTransform(body, 0, 0, 0, 0, 0, 0, 2));
-            assertTrue(e.getMessage().contains("b3IsValidQuat"), e.getMessage());
+                    () -> B3.bodySetTransform(body, Double.NaN, 0, 0, 0, 0, 0, 1));
+            assertTrue(e.getMessage().contains("b3IsValidPosition"), e.getMessage());
             // and the next call on this thread is clean again
             B3.bodySetTransform(body, 0, 1, 0, 0, 0, 0, 1);
         } finally {

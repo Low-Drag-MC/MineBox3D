@@ -1,6 +1,7 @@
 package com.lowdragmc.minebox3d.physics;
 
-import com.lowdragmc.minebox3d.jni.B3;
+import com.lowdragmc.minebox3d.internal.B3;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Quaternionfc;
@@ -16,28 +17,50 @@ import java.util.List;
  * where it was at the start of the current interpolation frame and where it is now — so a renderer
  * can draw it between the two (see {@link PhysicsWorld#beginInterpolationFrame()}).
  *
- * <p>Belongs to its world's owner thread, like the world.
+ * <p>Its bounds and velocities come back with every step for every awake body, so reading them costs no call into
+ * Box3D; a call that changes them reads them again the next time they are asked for.
+ *
+ * <p>Belongs to its world's thread rule, like the world.
  */
 public final class Body {
+
+    /** floats of state a step reports: {@code [minX, minY, minZ, maxX, maxY, maxZ, vx, vy, vz, wx, wy, wz]} */
+    static final int STATE = 12;
 
     private final PhysicsWorld world;
     final long id;
     private final List<Shape> shapes = new ArrayList<>(2);
+    private final List<Joint> joints = new ArrayList<>(0);
     /** [px, py, pz, qx, qy, qz, qw] */
     final double[] current = new double[7];
     final double[] previous = new double[7];
     /** whether {@link #current} changed in the current interpolation frame */
     boolean movedThisFrame;
+    private final float[] state = new float[STATE];
+    private boolean boundsKnown, velocityKnown;
+    /** the world's {@link PhysicsWorld#motionEpoch} when the velocities were last known */
+    private int velocityEpoch;
     /** kept on this side: asked for every tick by the terrain streamer, and only this class changes it */
     private BodyType type;
+    private final Attachments attachments = new Attachments();
     @Nullable
-    private Object userObject;
+    private final String name;
+    private final long userData;
+    private int shapesRevision;
+    private int massRevision;
     private boolean destroyed;
+    /** disabled by its maker; parked ({@link #setParked}): enabled in Box3D only when neither */
+    private boolean disabled, parked;
+    /** {@link #setTag}, {@link #setIgnoredTag}: kept on this side, as sent */
+    private long tag, ignoredTag;
 
     Body(PhysicsWorld world, long id, BodyDef def) {
         this.world = world;
         this.id = id;
         this.type = def.type;
+        this.name = def.name;
+        this.userData = def.userData;
+        this.disabled = !def.enabled;
         current[0] = def.positionX;
         current[1] = def.positionY;
         current[2] = def.positionZ;
@@ -60,17 +83,63 @@ public final class Body {
         return !destroyed && world.isOpen();
     }
 
+    /** {@link BodyDef#name}, as it was made. */
     @Nullable
-    public Object userObject() {
-        return userObject;
+    public String name() {
+        return name;
     }
 
-    public void setUserObject(@Nullable Object userObject) {
-        this.userObject = userObject;
+    /** {@link BodyDef#userData}, as it was made. */
+    public long userData() {
+        return userData;
+    }
+
+    /**
+     * A number that changes whenever one of the body's shapes is added, removed, given a new geometry or a new filter, or
+     * the body's tags change — so whoever copies the shapes elsewhere (the network sync) knows when to copy them again.
+     */
+    public int shapesRevision() {
+        return shapesRevision;
+    }
+
+    void shapesChanged() {
+        shapesRevision++;
+    }
+
+    /**
+     * A number that changes whenever the body's type or mass is set ({@link #setType}, {@link #setMassData},
+     * {@link #applyMassFromShapes}) — a shape change that moves the mass changes {@link #shapesRevision} instead.
+     */
+    public int massRevision() {
+        return massRevision;
+    }
+
+    /** What is attached under {@code type}, or {@code null}. Any number of mods can attach their own, one per type. */
+    @Nullable
+    public <T> T attachment(Class<T> type) {
+        return attachments.get(type);
+    }
+
+    /** Attaches {@code value} under {@code type}, replacing what was there; {@code null} removes it. */
+    public <T> void attach(Class<T> type, @Nullable T value) {
+        attachments.put(type, value);
     }
 
     public List<Shape> shapes() {
         return Collections.unmodifiableList(shapes);
+    }
+
+    /** The joints this body is in, either end. */
+    public List<Joint> joints() {
+        return Collections.unmodifiableList(joints);
+    }
+
+    void addJoint(Joint joint) {
+        joints.add(joint);
+    }
+
+    void removeJoint(Joint joint) {
+        joints.remove(joint);
     }
 
     // ---- shapes -------------------------------------------------------------------------------
@@ -81,11 +150,13 @@ public final class Body {
             checkValid();
             Checks.shapeDef(def);
             Checks.geometry(geometry);
+            geometry = Geometry.asBuilt(geometry);
             long shapeId = switch (geometry) {
                 case Geometry.Sphere s -> B3.createSphereShape(id, def, s.cx(), s.cy(), s.cz(), s.radius());
                 case Geometry.Capsule c -> B3.createCapsuleShape(id, def, c.ax(), c.ay(), c.az(), c.bx(), c.by(), c.bz(), c.radius());
                 case Geometry.Box b -> B3.createBoxShape(id, def, b.hx(), b.hy(), b.hz(), b.cx(), b.cy(), b.cz(),
                         b.qx(), b.qy(), b.qz(), b.qw());
+                case Geometry.Hull h -> B3.createHullShape(id, def, h.points(), h.vertexCount());
                 case Geometry.Mesh m -> {
                     m.data().retain();
                     try {
@@ -95,10 +166,24 @@ public final class Body {
                         throw e;
                     }
                 }
+                case Geometry.HeightField f -> {
+                    f.data().retain();
+                    try {
+                        yield B3.createHeightFieldShape(id, def, f.data().pointer());
+                    } catch (RuntimeException e) {
+                        f.data().release();
+                        throw e;
+                    }
+                }
             };
             Shape shape = new Shape(this, shapeId, geometry);
             shapes.add(shape);
             world.registerShape(shape);
+            shapesChanged();
+            boundsKnown = false;
+            // a new centre of mass under a turning body changes its linear velocity (Box3D keeps the motion of the
+            // points, v += w x (c' - c))
+            forgetMotion();
             return shape;
         } finally {
             world.exit();
@@ -111,10 +196,15 @@ public final class Body {
             if (!shape.isValid() || shape.body() != this) {
                 return;
             }
-            B3.destroyShape(shape.id, updateBodyMass);
+            if (!world.isFaulted()) {
+                B3.destroyShape(shape.id, updateBodyMass);
+            }
             shapes.remove(shape);
             world.unregisterShape(shape);
+            shapesChanged();
             shape.markDestroyed();
+            boundsKnown = false;
+            velocityKnown = false;
         } finally {
             world.exit();
         }
@@ -129,11 +219,36 @@ public final class Body {
                 shape.markDestroyed();
             }
             shapes.clear();
+            joints.clear();
         }
     }
 
     public void destroy() {
         world.destroyBody(this);
+    }
+
+    // ---- what a step reports ------------------------------------------------------------------
+
+    /** A step moved the body: its bounds and velocities as it ended, from {@code states} at {@code offset}. */
+    void moved(float[] states, int offset, boolean fellAsleep) {
+        System.arraycopy(states, offset, state, 0, STATE);
+        if (fellAsleep) {
+            // Box3D reports a sleeping body as still
+            for (int i = 6; i < STATE; i++) {
+                state[i] = 0;
+            }
+        }
+        boundsKnown = true;
+        velocityKnown = true;
+        velocityEpoch = world.motionEpoch;
+    }
+
+    void forgetMotion() {
+        velocityKnown = false;
+    }
+
+    void forgetBounds() {
+        boundsKnown = false;
     }
 
     // ---- transform ----------------------------------------------------------------------------
@@ -160,10 +275,33 @@ public final class Body {
     }
 
     /**
-     * Teleports the body, and wakes it if it moves: a sleeping body put in mid air falls. Not interpolated: the
+     * Teleports the body and wakes it unless static: a sleeping body put in mid air falls. Not interpolated: the
      * previous frame jumps along with it.
      */
     public void setTransform(double x, double y, double z, Quaternionfc rotation) {
+        setTransform(x, y, z, rotation, true);
+    }
+
+    /**
+     * {@link #setTransform(double, double, double, Quaternionfc)}, waking the body only if {@code wake} — PhysX's
+     * {@code setGlobalPose(pose, autowake)}. For a body moved only by teleport that nothing has to answer, such as a
+     * query volume: a query meets a sleeping body as it does an awake one, and an awake body costs every step. ⚠️ A
+     * resting body it is teleported into stays resting until something else wakes it.
+     */
+    public void setTransform(double x, double y, double z, Quaternionfc rotation, boolean wake) {
+        place(x, y, z, rotation, wake, true);
+    }
+
+    /**
+     * {@link #setTransform(double, double, double, Quaternionfc, boolean)} as part of the motion since the last step, not a
+     * teleport: the previous frame stays, so {@link #renderPosition} draws it moving there — a correction made after a
+     * step, such as a joint's projection.
+     */
+    public void correctTransform(double x, double y, double z, Quaternionfc rotation, boolean wake) {
+        place(x, y, z, rotation, wake, false);
+    }
+
+    private void place(double x, double y, double z, Quaternionfc rotation, boolean wake, boolean teleport) {
         world.enter();
         try {
             checkValid();
@@ -178,7 +316,7 @@ public final class Body {
             qz /= length;
             qw /= length;
             B3.bodySetTransform(id, x, y, z, qx, qy, qz, qw);
-            if (type != BodyType.STATIC) {
+            if (wake && type != BodyType.STATIC) {
                 B3.bodySetAwake(id, true);
             }
             current[0] = x;
@@ -188,7 +326,11 @@ public final class Body {
             current[4] = qy;
             current[5] = qz;
             current[6] = qw;
-            System.arraycopy(current, 0, previous, 0, 7);
+            if (teleport) {
+                System.arraycopy(current, 0, previous, 0, 7);
+            }
+            boundsKnown = false;
+            forgetMotion();
         } finally {
             world.exit();
         }
@@ -210,6 +352,7 @@ public final class Body {
                 throw new IllegalArgumentException("target rotation has no direction: " + rotation);
             }
             B3.bodySetTargetTransform(id, x, y, z, qx / length, qy / length, qz / length, qw / length, timeStep, true);
+            forgetMotion();
         } finally {
             world.exit();
         }
@@ -217,13 +360,24 @@ public final class Body {
 
     // ---- motion -------------------------------------------------------------------------------
 
+    private void knowMotion() {
+        if (!velocityKnown || velocityEpoch != world.motionEpoch) {
+            float[] v = world.vector;
+            B3.bodyGetLinearVelocity(id, v);
+            System.arraycopy(v, 0, state, 6, 3);
+            B3.bodyGetAngularVelocity(id, v);
+            System.arraycopy(v, 0, state, 9, 3);
+            velocityKnown = true;
+            velocityEpoch = world.motionEpoch;
+        }
+    }
+
     public Vector3f linearVelocity(Vector3f out) {
         world.enter();
         try {
             checkValid();
-            float[] v = world.vector;
-            B3.bodyGetLinearVelocity(id, v);
-            return out.set(v[0], v[1], v[2]);
+            knowMotion();
+            return out.set(state[6], state[7], state[8]);
         } finally {
             world.exit();
         }
@@ -235,6 +389,7 @@ public final class Body {
             checkValid();
             Checks.finite(x, y, z, "linear velocity");
             B3.bodySetLinearVelocity(id, x, y, z);
+            forgetMotion();
         } finally {
             world.exit();
         }
@@ -244,9 +399,8 @@ public final class Body {
         world.enter();
         try {
             checkValid();
-            float[] v = world.vector;
-            B3.bodyGetAngularVelocity(id, v);
-            return out.set(v[0], v[1], v[2]);
+            knowMotion();
+            return out.set(state[9], state[10], state[11]);
         } finally {
             world.exit();
         }
@@ -258,6 +412,7 @@ public final class Body {
             checkValid();
             Checks.finite(x, y, z, "angular velocity");
             B3.bodySetAngularVelocity(id, x, y, z);
+            forgetMotion();
         } finally {
             world.exit();
         }
@@ -271,6 +426,7 @@ public final class Body {
             Checks.finite(ix, iy, iz, "impulse");
             Checks.finite(px, py, pz, "impulse point");
             B3.bodyApplyLinearImpulse(id, ix, iy, iz, px, py, pz, true);
+            forgetMotion();
         } finally {
             world.exit();
         }
@@ -282,6 +438,7 @@ public final class Body {
             checkValid();
             Checks.finite(ix, iy, iz, "impulse");
             B3.bodyApplyLinearImpulseToCenter(id, ix, iy, iz, true);
+            forgetMotion();
         } finally {
             world.exit();
         }
@@ -299,18 +456,401 @@ public final class Body {
         }
     }
 
+    /** A force for the next step at a world point — it turns the body too — waking the body. */
+    public void applyForce(float fx, float fy, float fz, double px, double py, double pz) {
+        world.enter();
+        try {
+            checkValid();
+            Checks.finite(fx, fy, fz, "force");
+            Checks.finite(px, py, pz, "force point");
+            B3.bodyApplyForce(id, fx, fy, fz, px, py, pz, true);
+        } finally {
+            world.exit();
+        }
+    }
+
+    /** A torque for the next step, N·m, world space, waking the body. */
+    public void applyTorque(float tx, float ty, float tz) {
+        world.enter();
+        try {
+            checkValid();
+            Checks.finite(tx, ty, tz, "torque");
+            B3.bodyApplyTorque(id, tx, ty, tz, true);
+        } finally {
+            world.exit();
+        }
+    }
+
+    /** An angular impulse, N·m·s, world space, waking the body. */
+    public void applyAngularImpulse(float ix, float iy, float iz) {
+        world.enter();
+        try {
+            checkValid();
+            Checks.finite(ix, iy, iz, "angular impulse");
+            B3.bodyApplyAngularImpulse(id, ix, iy, iz, true);
+            forgetMotion();
+        } finally {
+            world.exit();
+        }
+    }
+
+    /** The velocity of the body's material at a world point: its linear velocity plus the turn's, m/s. */
+    public Vector3f pointVelocity(double x, double y, double z, Vector3f out) {
+        world.enter();
+        try {
+            checkValid();
+            Checks.finite(x, y, z, "point");
+            float[] v = world.vector;
+            B3.bodyGetWorldPointVelocity(id, x, y, z, v);
+            return out.set(v[0], v[1], v[2]);
+        } finally {
+            world.exit();
+        }
+    }
+
+    /** A point in the body's space, in the world, where the body is now. */
+    public Vector3d toWorld(float x, float y, float z, Vector3d out) {
+        Vector3f p = rotation(new Quaternionf()).transform(new Vector3f(x, y, z));
+        return out.set(current[0] + p.x, current[1] + p.y, current[2] + p.z);
+    }
+
+    /** A world point in the body's space, where the body is now. */
+    public Vector3f toLocal(double x, double y, double z, Vector3f out) {
+        out.set((float) (x - current[0]), (float) (y - current[1]), (float) (z - current[2]));
+        return rotation(new Quaternionf()).transformInverse(out);
+    }
+
+    // ---- mass ---------------------------------------------------------------------------------
+
+    /** Mass, centre of mass and inertia, body space, into {@code out}. */
+    public MassData massData(MassData out) {
+        world.enter();
+        try {
+            checkValid();
+            B3.bodyGetMassData(id, world.massValues);
+            out.read(world.massValues);
+            return out;
+        } finally {
+            world.exit();
+        }
+    }
+
+    /**
+     * Overrides what the shapes' densities give — until the next shape change that updates the mass, or
+     * {@link #applyMassFromShapes()}. The inertia must be a real one: symmetric, nothing negative on its diagonal or in
+     * its determinants (Box3D stores a determinant below zero before it complains, and with two negative diagonals a body
+     * gains energy as it spins).
+     */
+    public void setMassData(MassData data) {
+        world.enter();
+        try {
+            checkValid();
+            Checks.notNegative(data.mass, "mass");
+            Checks.finite(data.centerX, data.centerY, data.centerZ, "centre of mass");
+            Checks.inertia(data.inertia);
+            float[] v = world.massValues;
+            data.write(v);
+            B3.bodySetMassData(id, v);
+            massRevision++;
+            forgetMotion();
+        } finally {
+            world.exit();
+        }
+    }
+
+    /** Mass, centre and inertia from the shapes' densities again. */
+    public void applyMassFromShapes() {
+        world.enter();
+        try {
+            checkValid();
+            B3.bodyApplyMassFromShapes(id);
+            massRevision++;
+            forgetMotion();
+        } finally {
+            world.exit();
+        }
+    }
+
+    /** The centre of mass in the world. */
+    public Vector3d worldCenter(Vector3d out) {
+        world.enter();
+        try {
+            checkValid();
+            double[] p = world.point;
+            B3.bodyGetWorldCenter(id, p);
+            return out.set(p[0], p[1], p[2]);
+        } finally {
+            world.exit();
+        }
+    }
+
+    // ---- settings -----------------------------------------------------------------------------
+
+    // the bridge's numbers (mb3_body.c)
+    private static final int LINEAR_DAMPING = 0, ANGULAR_DAMPING = 1, GRAVITY_SCALE = 2, SLEEP_THRESHOLD = 3,
+            SAFETY_FACTOR = 4;
+    private static final int BULLET = 0, SLEEP_ENABLED = 1, FAST_ROTATION = 2, CONTACT_RECYCLING = 3;
+
+    private void setFloat(int param, float value) {
+        world.enter();
+        try {
+            checkValid();
+            B3.bodySetFloat(id, param, value);
+        } finally {
+            world.exit();
+        }
+    }
+
+    private float getFloat(int param) {
+        world.enter();
+        try {
+            checkValid();
+            return B3.bodyGetFloat(id, param);
+        } finally {
+            world.exit();
+        }
+    }
+
+    private void setFlag(int flag, boolean value) {
+        world.enter();
+        try {
+            checkValid();
+            B3.bodySetFlag(id, flag, value);
+        } finally {
+            world.exit();
+        }
+    }
+
+    private boolean getFlag(int flag) {
+        world.enter();
+        try {
+            checkValid();
+            return B3.bodyGetFlag(id, flag);
+        } finally {
+            world.exit();
+        }
+    }
+
+    public float linearDamping() {
+        return getFloat(LINEAR_DAMPING);
+    }
+
+    public void setLinearDamping(float damping) {
+        Checks.notNegative(damping, "linear damping");
+        setFloat(LINEAR_DAMPING, damping);
+    }
+
+    public float angularDamping() {
+        return getFloat(ANGULAR_DAMPING);
+    }
+
+    public void setAngularDamping(float damping) {
+        Checks.notNegative(damping, "angular damping");
+        setFloat(ANGULAR_DAMPING, damping);
+    }
+
+    public float gravityScale() {
+        return getFloat(GRAVITY_SCALE);
+    }
+
+    public void setGravityScale(float scale) {
+        Checks.finite(scale, "gravity scale");
+        setFloat(GRAVITY_SCALE, scale);
+    }
+
+    /** m/s: slower than this for a while, the body may sleep. */
+    public float sleepThreshold() {
+        return getFloat(SLEEP_THRESHOLD);
+    }
+
+    public void setSleepThreshold(float speed) {
+        Checks.notNegative(speed, "sleep threshold");
+        setFloat(SLEEP_THRESHOLD, speed);
+    }
+
+    /** Continuous collision safety factor, 0.01–0.5. */
+    public float safetyFactor() {
+        return getFloat(SAFETY_FACTOR);
+    }
+
+    public void setSafetyFactor(float factor) {
+        if (!(factor >= 0.01f) || !(factor <= 0.5f)) {
+            throw new IllegalArgumentException("safety factor must be 0.01 to 0.5: " + factor);
+        }
+        setFloat(SAFETY_FACTOR, factor);
+    }
+
+    /** A bullet is swept against other moving bodies too, not only static ones: small and fast. */
+    public boolean isBullet() {
+        return getFlag(BULLET);
+    }
+
+    public void setBullet(boolean bullet) {
+        setFlag(BULLET, bullet);
+    }
+
+    public boolean isSleepEnabled() {
+        return getFlag(SLEEP_ENABLED);
+    }
+
+    /** False keeps the body (and its island) awake. */
+    public void enableSleep(boolean enable) {
+        setFlag(SLEEP_ENABLED, enable);
+    }
+
+    public boolean isFastRotationAllowed() {
+        return getFlag(FAST_ROTATION);
+    }
+
+    /** Lets a body spin faster than Box3D's per-step cap: wheels. */
+    public void allowFastRotation(boolean allow) {
+        setFlag(FAST_ROTATION, allow);
+    }
+
+    public boolean isContactRecyclingEnabled() {
+        return getFlag(CONTACT_RECYCLING);
+    }
+
+    public void enableContactRecycling(boolean enable) {
+        setFlag(CONTACT_RECYCLING, enable);
+    }
+
+    /** Hit events on every shape of the body (each shape keeps its own switch afterwards). */
+    public void enableHitEvents(boolean enable) {
+        world.enter();
+        try {
+            checkValid();
+            B3.bodyEnableHitEvents(id, enable);
+        } finally {
+            world.exit();
+        }
+    }
+
+    public MotionLocks motionLocks() {
+        world.enter();
+        try {
+            checkValid();
+            return MotionLocks.of(B3.bodyGetMotionLocks(id));
+        } finally {
+            world.exit();
+        }
+    }
+
+    public void setMotionLocks(MotionLocks locks) {
+        world.enter();
+        try {
+            checkValid();
+            B3.bodySetMotionLocks(id, locks.bits());
+            forgetMotion();
+        } finally {
+            world.exit();
+        }
+    }
+
+    // ---- queries against this body only -------------------------------------------------------
+
+    /** The closest of this body's shapes along {@code origin + translation} that {@code filter} lets through. */
+    public boolean castRay(double ox, double oy, double oz, float tx, float ty, float tz, QueryFilter filter, CastResult out) {
+        world.enter();
+        try {
+            checkValid();
+            Checks.finite(ox, oy, oz, "ray origin");
+            Checks.finite(tx, ty, tz, "ray translation");
+            CastHits hit = out.hit;
+            hit.clear(world);
+            if (B3.bodyCastRay(id, ox, oy, oz, tx, ty, tz, filter.categoryBits(), filter.maskBits(), hit.doubles, hit.longs)) {
+                hit.count = 1;
+            }
+            return hit.count > 0;
+        } finally {
+            world.exit();
+        }
+    }
+
+    /**
+     * The closest hit of {@code geometry} at {@code (x, y, z)} turned by {@code rotation}, moved by {@code translation},
+     * on this body's shapes only; touching at the start hits at fraction 0.
+     */
+    public boolean castShape(Geometry geometry, double x, double y, double z, Quaternionfc rotation, float tx, float ty,
+                             float tz, QueryFilter filter, CastResult out) {
+        world.enter();
+        try {
+            checkValid();
+            Checks.finite(x, y, z, "cast position");
+            Checks.finite(tx, ty, tz, "cast translation");
+            int count = world.queryProxy(geometry, rotation);
+            CastHits hit = out.hit;
+            hit.clear(world);
+            if (B3.bodyCastShape(id, x, y, z, world.queryPoints, count, world.queryRadius, tx, ty, tz, filter.categoryBits(),
+                    filter.maskBits(), hit.doubles, hit.longs)) {
+                hit.count = 1;
+            }
+            return hit.count > 0;
+        } finally {
+            world.exit();
+        }
+    }
+
+    /** Whether {@code geometry} at {@code (x, y, z)} turned by {@code rotation} overlaps one of this body's shapes. */
+    public boolean overlaps(Geometry geometry, double x, double y, double z, Quaternionfc rotation, QueryFilter filter) {
+        world.enter();
+        try {
+            checkValid();
+            Checks.finite(x, y, z, "overlap position");
+            int count = world.queryProxy(geometry, rotation);
+            return B3.bodyOverlapShape(id, x, y, z, world.queryPoints, count, world.queryRadius, filter.categoryBits(),
+                    filter.maskBits());
+        } finally {
+            world.exit();
+        }
+    }
+
+    /**
+     * The closest point of the body's spheres, capsules, boxes and hulls to a world point, into {@code out}; returns the
+     * distance, 0 inside, {@link Float#POSITIVE_INFINITY} with none of those shapes. Exact far from the origin.
+     */
+    public float closestPoint(double x, double y, double z, Vector3d out) {
+        world.enter();
+        try {
+            checkValid();
+            Checks.finite(x, y, z, "point");
+            double[] p = world.point;
+            float distance = B3.bodyGetClosestPoint(id, x, y, z, p);
+            if (distance == Float.MAX_VALUE) {
+                out.set(x, y, z);
+                return Float.POSITIVE_INFINITY;
+            }
+            out.set(p[0], p[1], p[2]);
+            return distance;
+        } finally {
+            world.exit();
+        }
+    }
+
     // ---- state --------------------------------------------------------------------------------
 
     public BodyType type() {
         return type;
     }
 
+    /** ⚠️ A body with a height field stays static: Box3D quietly refuses, so this refuses out loud. */
     public void setType(BodyType type) {
         world.enter();
         try {
             checkValid();
+            if (type != BodyType.STATIC) {
+                for (Shape shape : shapes) {
+                    if (shape.geometry() instanceof Geometry.HeightField) {
+                        throw new IllegalStateException("a body with a height field stays static");
+                    }
+                }
+            }
             B3.bodySetType(id, type.ordinal());
             this.type = type;
+            massRevision++;
+            boundsKnown = false;
+            // its islands are rebuilt: the bodies around it may sleep or wake with it
+            world.motionEpoch++;
         } finally {
             world.exit();
         }
@@ -341,22 +881,53 @@ public final class Body {
         try {
             checkValid();
             B3.bodySetAwake(id, awake);
+            // Box3D puts the body's whole island to sleep, and a sleeping body is still: everyone in it changed
+            world.motionEpoch++;
         } finally {
             world.exit();
         }
     }
 
-    /** A disabled body is out of the simulation: it does not move, collide or show up in queries. */
+    /**
+     * A disabled body is out of the simulation: it does not move, collide or show up in queries. A {@linkplain #setParked
+     * parked} body stays out till it is let back, then is as this says.
+     */
     public void setEnabled(boolean enabled) {
         world.enter();
         try {
             checkValid();
-            B3.bodySetEnabled(id, enabled);
+            disabled = !enabled;
+            B3.bodySetEnabled(id, enabled && !parked);
+            world.motionEpoch++;
         } finally {
             world.exit();
         }
     }
 
+    /**
+     * Out of the simulation for a while whatever {@link #setEnabled} says, and back as it says: the terrain streamer's, for
+     * a body whose chunks are not loaded.
+     */
+    @ApiStatus.Internal
+    public void setParked(boolean parked) {
+        world.enter();
+        try {
+            checkValid();
+            if (this.parked != parked) {
+                this.parked = parked;
+                B3.bodySetEnabled(id, !disabled && !parked);
+                world.motionEpoch++;
+            }
+        } finally {
+            world.exit();
+        }
+    }
+
+    public boolean isParked() {
+        return parked;
+    }
+
+    /** Whether it is in the simulation now: enabled, and not parked. */
     public boolean isEnabled() {
         world.enter();
         try {
@@ -367,29 +938,60 @@ public final class Body {
         }
     }
 
-    public void setGravityScale(float scale) {
+    /** What this body is, to the bodies that ignore a tag ({@link #setIgnoredTag}); 0 is nothing. */
+    public long tag() {
+        return tag;
+    }
+
+    /** MineBox3D tags an entity's proxy so ({@code EntityShapes.tagOf}): a mod's own tags leave bit 62 clear. */
+    public void setTag(long tag) {
+        setTags(tag, ignoredTag);
+    }
+
+    /** The tag of the bodies this one never meets; 0 for none. */
+    public long ignoredTag() {
+        return ignoredTag;
+    }
+
+    /**
+     * The bodies tagged {@code tag} ({@link #setTag}) and this one never meet: no contact, and a box swept as one of them
+     * ({@link PhysicsWorld#sweepBox}) passes through this one — a ragdoll and its own entity's proxy. Box3D's custom filter
+     * decides, so only for pairs one of whose shapes was made with {@link ShapeDef#enableCustomFiltering}; pairs already
+     * touching are let go. 0 for none.
+     */
+    public void setIgnoredTag(long tag) {
+        setTags(this.tag, tag);
+    }
+
+    private void setTags(long tag, long ignoredTag) {
         world.enter();
         try {
             checkValid();
-            Checks.finite(scale, "gravity scale");
-            B3.bodySetGravityScale(id, scale);
+            if (tag != this.tag || ignoredTag != this.ignoredTag) {
+                B3.bodySetTags(world.id, id, tag, ignoredTag);
+                this.tag = tag;
+                this.ignoredTag = ignoredTag;
+                // what it meets, as a new filter is: whoever copies it elsewhere copies it again
+                shapesChanged();
+            }
         } finally {
             world.exit();
         }
     }
 
-    /**
-     * Where the body touches things, as of the last step. Per point: {@code points} gets
-     * {@code [nx, ny, nz, separation, normalImpulse, ax, ay, az]} — the normal from the other shape into this body,
-     * the anchor on this body relative to its centre of mass in world orientation — {@code otherShapes} the shape
-     * touched and {@code triangleIndices} its triangle index (on terrain, {@link VoxelGrid#featureCell} gives the
-     * cell). Returns how many points there are, which may be more than the arrays take.
-     */
-    public int contactPoints(float[] points, long[] otherShapes, int[] triangleIndices) {
+    /** Where the body touches things as of the last step, into {@code out}; returns how many points. */
+    public int contactPoints(ContactPoints out) {
         world.enter();
         try {
             checkValid();
-            return B3.bodyGetContactPoints(id, points, otherShapes, triangleIndices);
+            out.world = world;
+            int count = B3.bodyGetContactPoints(id, out.floats, out.shapes, out.cells);
+            if (count > out.shapes.length) {
+                out.ensureCapacity(count);
+                count = B3.bodyGetContactPoints(id, out.floats, out.shapes, out.cells);
+            }
+            out.count = Math.min(count, out.shapes.length);
+            return out.count;
         } finally {
             world.exit();
         }
@@ -403,7 +1005,12 @@ public final class Body {
         world.enter();
         try {
             checkValid();
-            B3.bodyComputeAABB(id, out);
+            if (!boundsKnown) {
+                B3.bodyComputeAABB(id, world.bounds);
+                System.arraycopy(world.bounds, 0, state, 0, 6);
+                boundsKnown = true;
+            }
+            System.arraycopy(state, 0, out, 0, 6);
             return out;
         } finally {
             world.exit();

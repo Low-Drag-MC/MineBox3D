@@ -1,8 +1,9 @@
 package com.lowdragmc.minebox3d.physics;
 
-import com.lowdragmc.minebox3d.jni.B3;
+import com.lowdragmc.minebox3d.internal.B3;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 
+import java.lang.ref.Cleaner;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -21,11 +22,15 @@ public final class MeshData implements AutoCloseable {
     private final long pointer;
     /** shapes alive + 1 for the owner until {@link #close()} */
     private final AtomicInteger references = new AtomicInteger(1);
+    private final Owner owner;
+    private final Cleaner.Cleanable cleanable;
 
     private MeshData(float[] vertices, int[] indices, long pointer) {
         this.vertices = vertices;
         this.indices = indices;
         this.pointer = pointer;
+        this.owner = new Owner(pointer, references);
+        this.cleanable = Cleaners.CLEANER.register(this, owner);
     }
 
     /**
@@ -43,6 +48,9 @@ public final class MeshData implements AutoCloseable {
         NativeLibrary.load();
         if (vertices.length % 3 != 0 || indices.length % 3 != 0) {
             throw new IllegalArgumentException("vertices and indices must come in threes");
+        }
+        for (float value : vertices) {
+            Checks.finite(value, "mesh vertex");
         }
         long pointer = B3.createMesh(vertices, vertices.length / 3, indices, indices.length / 3, materialIndices,
                 1.0e-4f, true, false, identifyEdges, false);
@@ -85,14 +93,39 @@ public final class MeshData implements AutoCloseable {
         }
     }
 
-    private volatile boolean closed;
-
-    /** Frees the native data now, or as soon as the last shape using it is destroyed. */
+    /**
+     * Frees the native data now, or as soon as the last shape using it is destroyed. Mesh data dropped without this is
+     * freed once garbage collected (and no shape uses it), with a warning.
+     */
     @Override
     public synchronized void close() {
-        if (!closed) {
-            closed = true;
+        if (!owner.closed) {
+            owner.closed = true;
             release();
+            cleanable.clean();
+        }
+    }
+
+    /** The owner's reference, without the mesh: released by the cleaner when the mesh was dropped without closing. */
+    private static final class Owner implements Runnable {
+        private final long pointer;
+        private final AtomicInteger references;
+        private volatile boolean closed;
+
+        Owner(long pointer, AtomicInteger references) {
+            this.pointer = pointer;
+            this.references = references;
+        }
+
+        @Override
+        public void run() {
+            if (closed) {
+                return;
+            }
+            Cleaners.LOGGER.warn("MeshData was garbage collected without close(); freeing it now");
+            if (references.decrementAndGet() == 0) {
+                B3.destroyMesh(pointer);
+            }
         }
     }
 }

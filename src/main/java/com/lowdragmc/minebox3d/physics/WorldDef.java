@@ -1,6 +1,6 @@
 package com.lowdragmc.minebox3d.physics;
 
-import com.lowdragmc.minebox3d.jni.B3;
+import com.lowdragmc.minebox3d.internal.B3;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 
 /**
@@ -32,11 +32,13 @@ public final class WorldDef {
      * Threads stepping this world, the stepping thread included; 0 and 1 mean the stepping thread alone. Above 1,
      * Box3D starts {@code workerCount - 1} threads of its own <b>for this world</b>, which spin while they wait for
      * work: only worth it for a large world, and never for many small ones. Box3D's internal checks failing on those
-     * threads are only logged ({@link com.lowdragmc.minebox3d.jni.B3#pollLog()}), not thrown.
+     * threads are only logged (MineBox3D's log), not thrown.
      */
     public int workerCount;
     /** Optional initial capacities, to avoid growing at run time. */
     public int staticShapeCapacity, dynamicShapeCapacity, staticBodyCapacity, dynamicBodyCapacity, contactCapacity;
+    /** How the world is shared between threads; MineBox3D's own, not Box3D's. */
+    public ThreadMode threadMode = ThreadMode.OWNER_THREAD;
 
     public WorldDef() {
         NativeLibrary.load();
@@ -62,6 +64,11 @@ public final class WorldDef {
 
     public WorldDef workerCount(int workerCount) {
         this.workerCount = workerCount;
+        return this;
+    }
+
+    public WorldDef threadMode(ThreadMode threadMode) {
+        this.threadMode = threadMode;
         return this;
     }
 }

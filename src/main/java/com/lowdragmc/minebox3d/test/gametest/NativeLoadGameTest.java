@@ -1,7 +1,7 @@
 package com.lowdragmc.minebox3d.test.gametest;
 
 import com.lowdragmc.minebox3d.MineBox3D;
-import com.lowdragmc.minebox3d.jni.B3;
+import com.lowdragmc.minebox3d.internal.B3;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;

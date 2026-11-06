@@ -10,6 +10,39 @@
 #include <stdlib.h>
 #include <string.h>
 
+void mb3_cell( b3ShapeId shape, int triangleIndex, int out[4] )
+{
+	int x, y, z;
+	if ( B3_IS_NON_NULL( shape ) && b3Shape_GetVoxelCell( shape, triangleIndex, &x, &y, &z ) )
+	{
+		out[0] = 1, out[1] = x, out[2] = y, out[3] = z;
+	}
+	else
+	{
+		out[0] = 0, out[1] = 0, out[2] = 0, out[3] = 0;
+	}
+}
+
+void mb3_hit( b3ShapeId shape, b3Pos point, b3Vec3 normal, float fraction, uint64_t userMaterialId, int triangleIndex,
+			  double* doubles, jlong* longs )
+{
+	int cell[4];
+	mb3_cell( shape, triangleIndex, cell );
+	doubles[0] = point.x;
+	doubles[1] = point.y;
+	doubles[2] = point.z;
+	doubles[3] = fraction;
+	doubles[4] = normal.x;
+	doubles[5] = normal.y;
+	doubles[6] = normal.z;
+	doubles[7] = cell[0];
+	doubles[8] = cell[1];
+	doubles[9] = cell[2];
+	doubles[10] = cell[3];
+	longs[0] = mb3_pack_shape( shape );
+	longs[1] = (jlong)( userMaterialId & MB3_USER_MATERIAL_BITS );
+}
+
 static b3VoxelGrid* mb3_grid( JNIEnv* env, jlong grid )
 {
 	if ( grid == 0 )
@@ -77,7 +110,6 @@ MB3_JNI( jint, voxelGridAddMaterial )( JNIEnv* env, jclass type, jlong grid, job
 	return mb3_check( env ) ? -1 : index;
 }
 
-// boxes: [minX, minY, minZ, maxX, maxY, maxZ] per box, in the unit cell
 MB3_JNI( jint, voxelGridAddCollider )( JNIEnv* env, jclass type, jlong grid, jfloatArray boxes, jint boxCount, jint material )
 {
 	(void)type;
@@ -117,7 +149,6 @@ MB3_JNI( jint, voxelGridGetColliderCount )( JNIEnv* env, jclass type, jlong grid
 	return g == NULL ? 0 : b3VoxelGrid_GetColliderCount( g );
 }
 
-// cells: B3_VOXEL_SECTION_CELLS collider ids, x + 16 * z + 256 * y (Minecraft's section order); null removes
 MB3_JNI( void, voxelGridSetSection )( JNIEnv* env, jclass type, jlong grid, jint sx, jint sy, jint sz, jshortArray cells )
 {
 	(void)type;
@@ -142,7 +173,6 @@ MB3_JNI( void, voxelGridSetSection )( JNIEnv* env, jclass type, jlong grid, jint
 	mb3_check( env );
 }
 
-// edits: [x, y, z, collider] per edit
 MB3_JNI( void, voxelGridSetCells )( JNIEnv* env, jclass type, jlong grid, jintArray edits, jint count )
 {
 	(void)type;
@@ -208,9 +238,6 @@ MB3_JNI( jlong, voxelGridGetSectionShape )( JNIEnv* env, jclass type, jlong grid
 	return B3_IS_NULL( id ) ? 0 : mb3_pack_shape( id );
 }
 
-// What contacts see of a section: the exposed triangles overlapping bounds [minX, minY, minZ, maxX, maxY, maxZ]
-// (section coordinates), 9 floats each into vertices and edge flags into flags, as many as both arrays take.
-// Returns how many there are, which may be more.
 MB3_JNI( jint, voxelGridCollectTriangles )( JNIEnv* env, jclass type, jlong grid, jint sx, jint sy, jint sz, jfloatArray bounds,
 											jfloatArray vertices, jbyteArray flags )
 {
@@ -251,29 +278,4 @@ MB3_JNI( jint, voxelGridCollectTriangles )( JNIEnv* env, jclass type, jlong grid
 	free( v );
 	free( f );
 	return count;
-}
-
-// The grid cell a contact point or query result names, into out[0..2]. False if it is not a voxel shape.
-MB3_JNI( jboolean, voxelShapeGetFeatureCell )( JNIEnv* env, jclass type, jlong grid, jlong shape, jint triangleIndex,
-												jintArray out )
-{
-	(void)type;
-	b3VoxelGrid* g = mb3_grid( env, grid );
-	if ( g == NULL )
-		return JNI_FALSE;
-	if ( out == NULL || ( *env )->GetArrayLength( env, out ) < 3 )
-	{
-		mb3_throw_illegal_argument( env, "output int[] is null or too short" );
-		return JNI_FALSE;
-	}
-	int found[3];
-	// Checks the shape belongs to this grid's world before reading anything of it
-	if ( b3VoxelGrid_GetFeatureCell( g, mb3_shape( shape ), triangleIndex, found, found + 1, found + 2 ) == false )
-	{
-		mb3_check( env );
-		return JNI_FALSE;
-	}
-	jint cell[3] = { found[0], found[1], found[2] };
-	( *env )->SetIntArrayRegion( env, out, 0, 3, cell );
-	return mb3_check( env ) ? JNI_FALSE : JNI_TRUE;
 }

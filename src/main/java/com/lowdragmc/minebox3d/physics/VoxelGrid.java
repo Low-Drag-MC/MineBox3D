@@ -1,6 +1,6 @@
 package com.lowdragmc.minebox3d.physics;
 
-import com.lowdragmc.minebox3d.jni.B3;
+import com.lowdragmc.minebox3d.internal.B3;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -176,23 +176,6 @@ public final class VoxelGrid implements AutoCloseable {
         }
     }
 
-    /**
-     * The grid cell a hit on voxel terrain in this grid's world names ({@link CastHit#triangleIndex()}, a
-     * contact point's triangle index), into {@code out[0..2]}. False if the shape is not voxel terrain or no
-     * longer exists.
-     */
-    public boolean featureCell(long shapeId, int triangleIndex, int[] out) {
-        world.enter();
-        try {
-            world.checkOpen();
-            // the grid is passed so a shape of another world (a server hit asked of the client's grid) is refused
-            // without touching that world
-            return B3.voxelShapeGetFeatureCell(pointer(), shapeId, triangleIndex, out);
-        } finally {
-            world.exit();
-        }
-    }
-
     /** Destroys the grid and its section bodies. */
     @Override
     public void close() {
@@ -201,7 +184,7 @@ public final class VoxelGrid implements AutoCloseable {
         }
         world.enter();
         try {
-            world.forgetGrid(this);
+            world.forgetGrid(this, pointer);
             free();
         } finally {
             world.exit();

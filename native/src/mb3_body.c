@@ -2,18 +2,19 @@
 
 #include "mb3.h"
 
+#include <float.h>
 #include <stdlib.h>
 
-// The touching contact points of a body, seen from the body: per point, points gets
-// [nx, ny, nz, separation, normalImpulse, ax, ay, az] with the normal pointing from the other shape into this
-// body and the anchor on this body relative to its centre of mass (world orientation); otherShapes the other
-// shape and triangleIndices the other shape's triangle index (a voxel feature key on terrain). Returns the
-// number of points, which may be more than the arrays take.
+#define MB3_CONTACT_FLOATS 10
+
+// Seen from the body (layout in B3.bodyGetContactPoints). normalVelocity is negative approaching, the same either way
+// round (so no flip), and sampled by Box3D only for a pair with hit events or restitution, else 0. The anchor is in
+// world orientation.
 MB3_JNI( jint, bodyGetContactPoints )( JNIEnv* env, jclass type, jlong body, jfloatArray points, jlongArray otherShapes,
-									   jintArray triangleIndices )
+									   jintArray cells )
 {
 	(void)type;
-	if ( points == NULL || otherShapes == NULL || triangleIndices == NULL )
+	if ( points == NULL || otherShapes == NULL || cells == NULL )
 	{
 		mb3_throw_illegal_argument( env, "output arrays must not be null" );
 		return 0;
@@ -34,10 +35,10 @@ MB3_JNI( jint, bodyGetContactPoints )( JNIEnv* env, jclass type, jlong body, jfl
 	int contactCount = b3Body_GetContactData( id, contacts, contactCapacity );
 
 	jsize capacity = ( *env )->GetArrayLength( env, otherShapes );
-	if ( ( *env )->GetArrayLength( env, triangleIndices ) < capacity )
-		capacity = ( *env )->GetArrayLength( env, triangleIndices );
-	if ( ( *env )->GetArrayLength( env, points ) / 8 < capacity )
-		capacity = ( *env )->GetArrayLength( env, points ) / 8;
+	if ( ( *env )->GetArrayLength( env, cells ) / 4 < capacity )
+		capacity = ( *env )->GetArrayLength( env, cells ) / 4;
+	if ( ( *env )->GetArrayLength( env, points ) / MB3_CONTACT_FLOATS < capacity )
+		capacity = ( *env )->GetArrayLength( env, points ) / MB3_CONTACT_FLOATS;
 
 	int count = 0;
 	for ( int i = 0; i < contactCount; ++i )
@@ -58,13 +59,23 @@ MB3_JNI( jint, bodyGetContactPoints )( JNIEnv* env, jclass type, jlong body, jfl
 				}
 				const b3ManifoldPoint* mp = manifold->points + p;
 				b3Vec3 anchor = isA ? mp->anchorA : mp->anchorB;
-				float values[8] = { sign * manifold->normal.x, sign * manifold->normal.y, sign * manifold->normal.z,
-									mp->separation, mp->normalImpulse, anchor.x, anchor.y, anchor.z };
+				float values[MB3_CONTACT_FLOATS] = { sign * manifold->normal.x,
+													 sign * manifold->normal.y,
+													 sign * manifold->normal.z,
+													 mp->separation,
+													 mp->normalImpulse,
+													 mp->totalNormalImpulse,
+													 mp->normalVelocity,
+													 anchor.x,
+													 anchor.y,
+													 anchor.z };
 				jlong otherId = mb3_pack_shape( other );
-				jint triangle = mp->triangleIndex;
-				( *env )->SetFloatArrayRegion( env, points, 8 * count, 8, values );
+				int cell[4];
+				mb3_cell( other, mp->triangleIndex, cell );
+				jint cellOut[4] = { cell[0], cell[1], cell[2], cell[3] };
+				( *env )->SetFloatArrayRegion( env, points, MB3_CONTACT_FLOATS * count, MB3_CONTACT_FLOATS, values );
 				( *env )->SetLongArrayRegion( env, otherShapes, count, 1, &otherId );
-				( *env )->SetIntArrayRegion( env, triangleIndices, count, 1, &triangle );
+				( *env )->SetIntArrayRegion( env, cells, 4 * count, 4, cellOut );
 			}
 		}
 	}
@@ -126,7 +137,6 @@ MB3_JNI( void, bodyGetTransform )( JNIEnv* env, jclass type, jlong body, jdouble
 	}
 }
 
-// Reads `count` bodies in one crossing: out receives 7 doubles per body, in the order of `bodies`.
 MB3_JNI( void, bodiesGetTransforms )( JNIEnv* env, jclass type, jlongArray bodies, jint count, jdoubleArray out )
 {
 	(void)type;
@@ -249,14 +259,50 @@ MB3_JNI( void, bodySetType )( JNIEnv* env, jclass type, jlong body, jint bodyTyp
 	mb3_check( env );
 }
 
-// Moves a kinematic body to `target` over `timeStep` by giving it the velocity that gets it there,
-// so what it hits on the way is pushed rather than overlapped.
 MB3_JNI( void, bodySetTargetTransform )( JNIEnv* env, jclass type, jlong body, jdouble px, jdouble py, jdouble pz,
 										 jfloat qx, jfloat qy, jfloat qz, jfloat qw, jfloat timeStep, jboolean wake )
 {
 	(void)type;
 	b3WorldTransform target = { mb3_pos( px, py, pz ), mb3_quat( qx, qy, qz, qw ) };
 	b3Body_SetTargetTransform( mb3_body( body ), target, timeStep, wake );
+	mb3_check( env );
+}
+
+// bodySetTargetTransform for count bodies, 7 doubles each as bodiesGetTransforms
+MB3_JNI( void, bodiesSetTargetTransforms )( JNIEnv* env, jclass type, jlongArray bodies, jint count, jdoubleArray transforms,
+										   jfloat timeStep, jboolean wake )
+{
+	(void)type;
+	if ( bodies == NULL || count < 0 || ( *env )->GetArrayLength( env, bodies ) < count )
+	{
+		mb3_throw_illegal_argument( env, "body id array is null or shorter than count" );
+		return;
+	}
+	if ( transforms == NULL || ( *env )->GetArrayLength( env, transforms ) < 7 * count )
+	{
+		mb3_throw_illegal_argument( env, "transform double[] is null or shorter than 7 * count" );
+		return;
+	}
+	jlong* ids = ( *env )->GetLongArrayElements( env, bodies, NULL );
+	jdouble* values = ids == NULL ? NULL : ( *env )->GetDoubleArrayElements( env, transforms, NULL );
+	if ( values != NULL )
+	{
+		for ( int i = 0; i < count; ++i )
+		{
+			const jdouble* v = values + 7 * i;
+			// Java checked it has a direction; unit as Body.setTargetTransform makes it
+			b3WorldTransform target = {
+				mb3_pos( v[0], v[1], v[2] ),
+				b3NormalizeQuat( mb3_quat( (float)v[3], (float)v[4], (float)v[5], (float)v[6] ) ),
+			};
+			b3Body_SetTargetTransform( mb3_body( ids[i] ), target, timeStep, wake );
+		}
+		( *env )->ReleaseDoubleArrayElements( env, transforms, values, JNI_ABORT );
+	}
+	if ( ids != NULL )
+	{
+		( *env )->ReleaseLongArrayElements( env, bodies, ids, JNI_ABORT );
+	}
 	mb3_check( env );
 }
 
@@ -289,14 +335,6 @@ MB3_JNI( void, bodySetAwake )( JNIEnv* env, jclass type, jlong body, jboolean aw
 	mb3_check( env );
 }
 
-MB3_JNI( void, bodyEnableSleep )( JNIEnv* env, jclass type, jlong body, jboolean enableSleep )
-{
-	(void)type;
-	b3Body_EnableSleep( mb3_body( body ), enableSleep );
-	mb3_check( env );
-}
-
-// [minX, minY, minZ, maxX, maxY, maxZ] in world space (float: this is the broad phase's own box).
 MB3_JNI( void, bodyComputeAABB )( JNIEnv* env, jclass type, jlong body, jfloatArray out )
 {
 	(void)type;
@@ -354,24 +392,299 @@ MB3_JNI( void, bodyApplyTorque )( JNIEnv* env, jclass type, jlong body, jfloat t
 	mb3_check( env );
 }
 
-MB3_JNI( void, bodySetGravityScale )( JNIEnv* env, jclass type, jlong body, jfloat scale )
+// ---- settings -------------------------------------------------------------------------------------------------------
+// ⚠️ The numbers are Body's in Java.
+
+enum mb3_body_param
+{
+	MB3_BP_LINEAR_DAMPING = 0,
+	MB3_BP_ANGULAR_DAMPING = 1,
+	MB3_BP_GRAVITY_SCALE = 2,
+	MB3_BP_SLEEP_THRESHOLD = 3,
+	MB3_BP_SAFETY_FACTOR = 4,
+};
+
+enum mb3_body_flag
+{
+	MB3_BF_BULLET = 0,
+	MB3_BF_SLEEP_ENABLED = 1,
+	MB3_BF_FAST_ROTATION = 2,
+	MB3_BF_CONTACT_RECYCLING = 3,
+};
+
+MB3_JNI( void, bodySetFloat )( JNIEnv* env, jclass type, jlong body, jint param, jfloat value )
 {
 	(void)type;
-	b3Body_SetGravityScale( mb3_body( body ), scale );
+	b3BodyId id = mb3_body( body );
+	switch ( param )
+	{
+		case MB3_BP_LINEAR_DAMPING: b3Body_SetLinearDamping( id, value ); break;
+		case MB3_BP_ANGULAR_DAMPING: b3Body_SetAngularDamping( id, value ); break;
+		case MB3_BP_GRAVITY_SCALE: b3Body_SetGravityScale( id, value ); break;
+		case MB3_BP_SLEEP_THRESHOLD: b3Body_SetSleepThreshold( id, value ); break;
+		case MB3_BP_SAFETY_FACTOR: b3Body_SetSafetyFactor( id, value ); break;
+		default: mb3_throw_illegal_argument( env, "not a body setting" ); return;
+	}
 	mb3_check( env );
 }
 
-MB3_JNI( void, bodySetDamping )( JNIEnv* env, jclass type, jlong body, jfloat linear, jfloat angular )
+MB3_JNI( jfloat, bodyGetFloat )( JNIEnv* env, jclass type, jlong body, jint param )
 {
 	(void)type;
-	b3Body_SetLinearDamping( mb3_body( body ), linear );
-	b3Body_SetAngularDamping( mb3_body( body ), angular );
+	b3BodyId id = mb3_body( body );
+	float value;
+	switch ( param )
+	{
+		case MB3_BP_LINEAR_DAMPING: value = b3Body_GetLinearDamping( id ); break;
+		case MB3_BP_ANGULAR_DAMPING: value = b3Body_GetAngularDamping( id ); break;
+		case MB3_BP_GRAVITY_SCALE: value = b3Body_GetGravityScale( id ); break;
+		case MB3_BP_SLEEP_THRESHOLD: value = b3Body_GetSleepThreshold( id ); break;
+		case MB3_BP_SAFETY_FACTOR: value = b3Body_GetSafetyFactor( id ); break;
+		default: mb3_throw_illegal_argument( env, "not a body setting" ); return 0;
+	}
+	mb3_check( env );
+	return value;
+}
+
+MB3_JNI( void, bodySetFlag )( JNIEnv* env, jclass type, jlong body, jint flag, jboolean value )
+{
+	(void)type;
+	b3BodyId id = mb3_body( body );
+	switch ( flag )
+	{
+		case MB3_BF_BULLET: b3Body_SetBullet( id, value ); break;
+		case MB3_BF_SLEEP_ENABLED: b3Body_EnableSleep( id, value ); break;
+		case MB3_BF_FAST_ROTATION: b3Body_AllowFastRotation( id, value ); break;
+		case MB3_BF_CONTACT_RECYCLING: b3Body_EnableContactRecycling( id, value ); break;
+		default: mb3_throw_illegal_argument( env, "not a body switch" ); return;
+	}
 	mb3_check( env );
 }
 
-MB3_JNI( void, bodySetBullet )( JNIEnv* env, jclass type, jlong body, jboolean bullet )
+MB3_JNI( jboolean, bodyGetFlag )( JNIEnv* env, jclass type, jlong body, jint flag )
 {
 	(void)type;
-	b3Body_SetBullet( mb3_body( body ), bullet );
+	b3BodyId id = mb3_body( body );
+	bool value;
+	switch ( flag )
+	{
+		case MB3_BF_BULLET: value = b3Body_IsBullet( id ); break;
+		case MB3_BF_SLEEP_ENABLED: value = b3Body_IsSleepEnabled( id ); break;
+		case MB3_BF_FAST_ROTATION: value = b3Body_IsFastRotationAllowed( id ); break;
+		case MB3_BF_CONTACT_RECYCLING: value = b3Body_IsContactRecyclingEnabled( id ); break;
+		default: mb3_throw_illegal_argument( env, "not a body switch" ); return JNI_FALSE;
+	}
 	mb3_check( env );
+	return value ? JNI_TRUE : JNI_FALSE;
+}
+
+// Hit events for every shape of the body; Box3D keeps no body-wide switch to read back.
+MB3_JNI( void, bodyEnableHitEvents )( JNIEnv* env, jclass type, jlong body, jboolean enable )
+{
+	(void)type;
+	b3Body_EnableHitEvents( mb3_body( body ), enable );
+	mb3_check( env );
+}
+
+MB3_JNI( void, bodySetMotionLocks )( JNIEnv* env, jclass type, jlong body, jint bits )
+{
+	(void)type;
+	b3MotionLocks locks = { ( bits & 1 ) != 0, ( bits & 2 ) != 0, ( bits & 4 ) != 0,
+							( bits & 8 ) != 0, ( bits & 16 ) != 0, ( bits & 32 ) != 0 };
+	b3Body_SetMotionLocks( mb3_body( body ), locks );
+	mb3_check( env );
+}
+
+MB3_JNI( jint, bodyGetMotionLocks )( JNIEnv* env, jclass type, jlong body )
+{
+	(void)type;
+	b3MotionLocks locks = b3Body_GetMotionLocks( mb3_body( body ) );
+	if ( mb3_check( env ) )
+	{
+		return 0;
+	}
+	return ( locks.linearX ? 1 : 0 ) | ( locks.linearY ? 2 : 0 ) | ( locks.linearZ ? 4 : 0 ) | ( locks.angularX ? 8 : 0 ) |
+		   ( locks.angularY ? 16 : 0 ) | ( locks.angularZ ? 32 : 0 );
+}
+
+// ---- mass -----------------------------------------------------------------------------------------------------------
+
+MB3_JNI( void, bodyGetMassData )( JNIEnv* env, jclass type, jlong body, jfloatArray out )
+{
+	(void)type;
+	b3MassData data = b3Body_GetMassData( mb3_body( body ) );
+	if ( mb3_check( env ) == false )
+	{
+		const b3Matrix3* m = &data.inertia;
+		float values[13] = { data.mass,	 data.center.x, data.center.y, data.center.z, m->cx.x, m->cx.y, m->cx.z,
+							 m->cy.x,	 m->cy.y,		m->cy.z,	   m->cz.x,		  m->cz.y, m->cz.z };
+		mb3_put_floats( env, out, 0, values, 13 );
+	}
+}
+
+MB3_JNI( void, bodySetMassData )( JNIEnv* env, jclass type, jlong body, jfloatArray values )
+{
+	(void)type;
+	if ( values == NULL || ( *env )->GetArrayLength( env, values ) < 13 )
+	{
+		mb3_throw_illegal_argument( env, "mass data takes 13 floats" );
+		return;
+	}
+	float v[13];
+	( *env )->GetFloatArrayRegion( env, values, 0, 13, v );
+	b3MassData data;
+	data.mass = v[0];
+	data.center = mb3_vec3( v[1], v[2], v[3] );
+	data.inertia.cx = mb3_vec3( v[4], v[5], v[6] );
+	data.inertia.cy = mb3_vec3( v[7], v[8], v[9] );
+	data.inertia.cz = mb3_vec3( v[10], v[11], v[12] );
+	b3Body_SetMassData( mb3_body( body ), data );
+	mb3_check( env );
+}
+
+MB3_JNI( void, bodyApplyMassFromShapes )( JNIEnv* env, jclass type, jlong body )
+{
+	(void)type;
+	b3Body_ApplyMassFromShapes( mb3_body( body ) );
+	mb3_check( env );
+}
+
+MB3_JNI( void, bodyGetWorldCenter )( JNIEnv* env, jclass type, jlong body, jdoubleArray out )
+{
+	(void)type;
+	b3Pos center = b3Body_GetWorldCenter( mb3_body( body ) );
+	if ( mb3_check( env ) == false )
+	{
+		mb3_put_pos( env, out, 0, center );
+	}
+}
+
+MB3_JNI( void, bodyGetWorldPointVelocity )( JNIEnv* env, jclass type, jlong body, jdouble x, jdouble y, jdouble z,
+											jfloatArray out )
+{
+	(void)type;
+	b3Vec3 v = b3Body_GetWorldPointVelocity( mb3_body( body ), mb3_pos( x, y, z ) );
+	if ( mb3_check( env ) == false )
+	{
+		mb3_put_vec3( env, out, 0, v );
+	}
+}
+
+// ---- queries against this one body ----------------------------------------------------------------------------------
+
+static bool mb3_body_hit( JNIEnv* env, b3BodyCastResult result, jdoubleArray doubles, jlongArray longs )
+{
+	if ( mb3_check( env ) || result.hit == false )
+	{
+		return false;
+	}
+	double d[MB3_HIT_DOUBLES];
+	jlong l[MB3_HIT_LONGS];
+	mb3_hit( result.shapeId, result.point, result.normal, result.fraction, result.userMaterialId, result.triangleIndex, d, l );
+	mb3_put_hit( env, doubles, longs, 0, d, l );
+	return mb3_check( env ) == false;
+}
+
+MB3_JNI( jboolean, bodyCastRay )( JNIEnv* env, jclass type, jlong body, jdouble ox, jdouble oy, jdouble oz, jfloat tx, jfloat ty,
+								  jfloat tz, jlong categoryBits, jlong maskBits, jdoubleArray doubles, jlongArray longs )
+{
+	(void)type;
+	if ( mb3_hit_arrays( env, doubles, longs ) == false )
+	{
+		return JNI_FALSE;
+	}
+	b3BodyId id = mb3_body( body );
+	b3WorldTransform transform = b3Body_GetTransform( id );
+	if ( mb3_check( env ) )
+	{
+		return JNI_FALSE;
+	}
+	b3BodyCastResult result = b3Body_CastRay( id, mb3_pos( ox, oy, oz ), mb3_vec3( tx, ty, tz ),
+											  mb3_query_filter( categoryBits, maskBits ), 1.0f, transform );
+	return mb3_body_hit( env, result, doubles, longs ) ? JNI_TRUE : JNI_FALSE;
+}
+
+// The closest hit of a query shape swept against this body; touching at the start hits at fraction 0, as the world's.
+MB3_JNI( jboolean, bodyCastShape )( JNIEnv* env, jclass type, jlong body, jdouble ox, jdouble oy, jdouble oz, jfloatArray points,
+									jint count, jfloat radius, jfloat tx, jfloat ty, jfloat tz, jlong categoryBits, jlong maskBits,
+									jdoubleArray doubles, jlongArray longs )
+{
+	(void)type;
+	b3Vec3 storage[B3_MAX_SHAPE_CAST_POINTS];
+	b3ShapeProxy proxy;
+	if ( mb3_proxy( env, points, count, radius, storage, &proxy ) == false || mb3_hit_arrays( env, doubles, longs ) == false )
+	{
+		return JNI_FALSE;
+	}
+	b3BodyId id = mb3_body( body );
+	b3WorldTransform transform = b3Body_GetTransform( id );
+	if ( mb3_check( env ) )
+	{
+		return JNI_FALSE;
+	}
+	b3BodyCastResult result = b3Body_CastShape( id, mb3_pos( ox, oy, oz ), &proxy, mb3_vec3( tx, ty, tz ),
+												mb3_query_filter( categoryBits, maskBits ), 1.0f, false, transform );
+	return mb3_body_hit( env, result, doubles, longs ) ? JNI_TRUE : JNI_FALSE;
+}
+
+MB3_JNI( jboolean, bodyOverlapShape )( JNIEnv* env, jclass type, jlong body, jdouble ox, jdouble oy, jdouble oz,
+									   jfloatArray points, jint count, jfloat radius, jlong categoryBits, jlong maskBits )
+{
+	(void)type;
+	b3Vec3 storage[B3_MAX_SHAPE_CAST_POINTS];
+	b3ShapeProxy proxy;
+	if ( mb3_proxy( env, points, count, radius, storage, &proxy ) == false )
+	{
+		return JNI_FALSE;
+	}
+	b3BodyId id = mb3_body( body );
+	b3WorldTransform transform = b3Body_GetTransform( id );
+	if ( mb3_check( env ) )
+	{
+		return JNI_FALSE;
+	}
+	bool overlaps = b3Body_OverlapShape( id, mb3_pos( ox, oy, oz ), &proxy, mb3_query_filter( categoryBits, maskBits ), transform );
+	return mb3_check( env ) == false && overlaps ? JNI_TRUE : JNI_FALSE;
+}
+
+MB3_JNI( jfloat, bodyGetClosestPoint )( JNIEnv* env, jclass type, jlong body, jdouble x, jdouble y, jdouble z, jdoubleArray out )
+{
+	(void)type;
+	b3BodyId id = mb3_body( body );
+	int shapeCount = b3Body_GetShapeCount( id );
+	b3WorldTransform transform = b3Body_GetTransform( id );
+	if ( mb3_check( env ) )
+	{
+		return FLT_MAX;
+	}
+	b3ShapeId small[16];
+	b3ShapeId* shapes = shapeCount <= 16 ? small : malloc( shapeCount * sizeof( b3ShapeId ) );
+	if ( shapes == NULL )
+	{
+		mb3_throw( env, "out of memory" );
+		return FLT_MAX;
+	}
+	shapeCount = b3Body_GetShapes( id, shapes, shapeCount );
+	b3Pos target = mb3_pos( x, y, z );
+	b3Pos best = target;
+	float bestDistance = FLT_MAX;
+	for ( int i = 0; i < shapeCount; ++i )
+	{
+		b3Pos closest;
+		float distance = mb3_closest_point( shapes[i], transform, target, &closest );
+		if ( distance < bestDistance )
+		{
+			bestDistance = distance;
+			best = closest;
+		}
+	}
+	if ( shapes != small )
+	{
+		free( shapes );
+	}
+	if ( mb3_check( env ) == false )
+	{
+		mb3_put_pos( env, out, 0, best );
+	}
+	return bestDistance;
 }

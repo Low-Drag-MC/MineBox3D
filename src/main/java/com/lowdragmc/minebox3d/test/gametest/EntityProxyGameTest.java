@@ -1,6 +1,7 @@
 package com.lowdragmc.minebox3d.test.gametest;
 
 import com.lowdragmc.minebox3d.MineBox3D;
+import com.lowdragmc.minebox3d.mc.LevelBodies;
 import com.lowdragmc.minebox3d.mc.LevelPhysics;
 import com.lowdragmc.minebox3d.mc.entity.EntityProxies;
 import com.lowdragmc.minebox3d.mc.entity.EntityShapes;
@@ -11,12 +12,15 @@ import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.animal.Pig;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.entity.PartEntity;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.jetbrains.annotations.Nullable;
@@ -27,8 +31,10 @@ import java.util.List;
 
 /**
  * <b>Entities as kinematic proxies in the level's own physics</b> (design doc {@code 00-overview.md} §5): a proxy comes
- * and goes with its entity, is made again when the entity changes size, jumps instead of sweeping when the entity is
- * teleported, holds up what rests on it, and listens to exclusions and shape providers.
+ * and goes with its entity, keeps its body when the entity changes size (made again only when another provider answers,
+ * or after another mod destroys it), jumps instead of sweeping when the entity is teleported, and holds up what rests
+ * on it; a body that asks not to be pushed brings no proxies; exclusions and shape providers decide who gets which, a
+ * part entity getting one only from a provider.
  */
 @GameTestHolder(MineBox3D.MOD_ID)
 public final class EntityProxyGameTest {
@@ -90,7 +96,7 @@ public final class EntityProxyGameTest {
         Pig pig = helper.spawn(EntityType.PIG, new Vec3(3, 0, 1.5));
         pig.setNoAi(true);
         pig.setBaby(true);
-        Body[] proxy = new Body[3];
+        Body[] proxy = new Body[4];
         helper.startSequence()
                 .thenExecuteAfter(3, () -> {
                     proxy[0] = physics(helper).entities().proxyOf(pig);
@@ -100,20 +106,32 @@ public final class EntityProxyGameTest {
                 })
                 .thenExecuteAfter(3, () -> {
                     proxy[1] = physics(helper).entities().proxyOf(pig);
-                    helper.assertTrue(proxy[1] != null && proxy[1] != proxy[0] && !proxy[0].isValid(), "a new proxy for the grown pig");
+                    // the same body, its shape made over in place: whoever holds it (a joint, a mod) still has it
+                    helper.assertTrue(proxy[1] == proxy[0] && proxy[1].isValid(), "the grown pig keeps its proxy");
+                    helper.assertTrue(proxy[1].shapes().size() == 1, "one shape still: " + proxy[1].shapes().size());
                     helper.assertTrue(asTallAs(proxy[1], pig), "as tall as the pig now");
                     helper.assertTrue(EntityProxies.entityOf(proxy[1]) == pig, "and it says whose it is");
+                    // another provider answers for it from now on: its shapes cannot be made over in place
+                    pig.addTag(BALL);
+                    pig.setBaby(true);
+                })
+                .thenExecuteAfter(3, () -> {
+                    proxy[2] = physics(helper).entities().proxyOf(pig);
+                    helper.assertTrue(proxy[2] != null && proxy[2] != proxy[1] && !proxy[1].isValid(),
+                            "a new proxy once another provider answers");
+                    helper.assertTrue(proxy[2].shapes().size() == 1
+                            && proxy[2].shapes().getFirst().geometry() instanceof Geometry.Sphere, "the provider's ball");
                     // another mod destroying a proxy it does not own
-                    proxy[1].destroy();
+                    proxy[2].destroy();
                 })
                 .thenExecuteAfter(3, () -> {
                     helper.assertFalse(physics(helper).isStopped(), "the level's physics carried on");
-                    proxy[2] = physics(helper).entities().proxyOf(pig);
-                    helper.assertTrue(proxy[2] != null && proxy[2].isValid(), "the pig got a proxy again");
+                    proxy[3] = physics(helper).entities().proxyOf(pig);
+                    helper.assertTrue(proxy[3] != null && proxy[3].isValid(), "the pig got a proxy again");
                     pig.discard();
                 })
                 .thenExecuteAfter(3, () -> {
-                    helper.assertTrue(physics(helper).entities().proxyOf(pig) == null && !proxy[2].isValid(),
+                    helper.assertTrue(physics(helper).entities().proxyOf(pig) == null && !proxy[3].isValid(),
                             "the discarded pig's proxy is gone");
                     box.destroy();
                 })
@@ -159,6 +177,90 @@ public final class EntityProxyGameTest {
             box.destroy();
             stand.discard();
         });
+    }
+
+    @GameTest(template = "empty", batch = "minebox3d_proxy_flag", timeoutTicks = 60)
+    @PrefixGameTestTemplate(false)
+    public static void aBodyThatAsksNotToBePushedBringsNoProxies(GameTestHelper helper) {
+        TestArea.clear(helper, -1, 0, -1, 6, 8, 5);
+        Body box = box(helper, 2.5, 0.25, 2.5, 0.25f);
+        LevelBodies.setPushedByEntities(box, false);
+        ArmorStand stand = helper.spawn(EntityType.ARMOR_STAND, new Vec3(1, 0, 2.5));
+        helper.startSequence()
+                .thenExecuteAfter(3, () -> {
+                    helper.assertTrue(physics(helper).entities().proxyOf(stand) == null, "no proxy for a body that does not want them");
+                    LevelBodies.setPushedByEntities(box, null);
+                })
+                .thenExecuteAfter(3, () -> {
+                    helper.assertTrue(physics(helper).entities().proxyOf(stand) != null, "back to the default: a proxy");
+                    box.destroy();
+                    stand.discard();
+                })
+                .thenSucceed();
+    }
+
+    /** A part of a multipart entity: EntityStudio's hit volumes are these (docs/design/04 §8.2 #1). */
+    private static final class Part extends PartEntity<Entity> {
+        Part(Entity parent) {
+            super(parent);
+        }
+
+        @Override
+        protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        }
+
+        @Override
+        protected void readAdditionalSaveData(CompoundTag tag) {
+        }
+
+        @Override
+        protected void addAdditionalSaveData(CompoundTag tag) {
+        }
+    }
+
+    @GameTest(template = "empty", batch = "minebox3d_proxy_parts", timeoutTicks = 60)
+    @PrefixGameTestTemplate(false)
+    public static void aPartEntityPushesBodiesOnlyWhenAProviderGivesItAShape(GameTestHelper helper) {
+        TestArea.clear(helper, -1, 0, -1, 6, 8, 6);
+        Body box = box(helper, 2.5, 0.25, 2.5, 0.25f);
+        Part[] parts = new Part[2];
+        ArmorStand owner = new ArmorStand(EntityType.ARMOR_STAND, helper.getLevel()) {
+            @Override
+            public boolean isMultipartEntity() {
+                return true;
+            }
+
+            @Override
+            public PartEntity<?>[] getParts() {
+                return parts;
+            }
+        };
+        parts[0] = new Part(owner);
+        parts[1] = new Part(owner);
+        Vec3 at = helper.absoluteVec(new Vec3(2.5, 0, 4));
+        owner.setPos(at.x, at.y, at.z);
+        owner.setNoGravity(true);
+        Vec3 plain = helper.absoluteVec(new Vec3(1.5, 0, 2.5));
+        parts[0].setPos(plain.x, plain.y, plain.z);
+        Vec3 ball = helper.absoluteVec(new Vec3(3.5, 0, 2.5));
+        parts[1].setPos(ball.x, ball.y, ball.z);
+        parts[1].addTag(BALL);
+        // the level lists the parts once the owner is in it, and hands them out with every other entity
+        helper.getLevel().addFreshEntity(owner);
+        helper.startSequence()
+                .thenExecuteAfter(3, () -> {
+                    EntityProxies entities = physics(helper).entities();
+                    helper.assertTrue(helper.getLevel().getEntities((Entity) null, parts[0].getBoundingBox()).contains(parts[0]),
+                            "the level hands the part out (else this proves nothing)");
+                    helper.assertTrue(entities.proxyOf(owner) != null, "the owner has a proxy");
+                    helper.assertTrue(entities.proxyOf(parts[0]) == null, "a part: none by default");
+                    Body given = entities.proxyOf(parts[1]);
+                    helper.assertTrue(given != null && given.shapes().getFirst().geometry() instanceof Geometry.Sphere,
+                            "unless a provider gives it one");
+                    box.destroy();
+                    owner.discard();
+                })
+                .thenSucceed();
     }
 
     @GameTest(template = "empty", batch = "minebox3d_proxy_providers", timeoutTicks = 60)

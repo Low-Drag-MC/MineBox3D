@@ -93,7 +93,7 @@ public final class TerrainGameTest {
         });
         helper.succeedWhen(() -> {
             helper.assertTrue(removed[0], "the upper block was taken away");
-            // the box only falls if the block change reached the section's mesh
+            // the box only falls if the block change reached Box3D's voxel grid
             near(helper, 2.25, relative(helper, body).y, 0.02, "fell onto the lower block");
             helper.assertTrue(!body.isAwake(), "settled again");
             body.destroy();

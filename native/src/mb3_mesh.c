@@ -28,17 +28,16 @@ MB3_JNI( jlong, createMesh )( JNIEnv* env, jclass type, jfloatArray vertices, ji
 
 	// Box3D reads everything during b3CreateMesh and keeps none of it ("No pointers are held to this
 	// data", types.h b3MeshDef), so the arrays are only pinned for the call.
+	// each pinned only once the one before it was: a failed pin leaves an exception pending, and no JNI call may follow
 	jfloat* v = ( *env )->GetFloatArrayElements( env, vertices, NULL );
-	jint* i = ( *env )->GetIntArrayElements( env, indices, NULL );
-	jbyte* m = materialIndices != NULL ? ( *env )->GetByteArrayElements( env, materialIndices, NULL ) : NULL;
+	jint* i = v != NULL ? ( *env )->GetIntArrayElements( env, indices, NULL ) : NULL;
+	jbyte* m = i != NULL && materialIndices != NULL ? ( *env )->GetByteArrayElements( env, materialIndices, NULL ) : NULL;
 	if ( v == NULL || i == NULL || ( materialIndices != NULL && m == NULL ) )
 	{
-		if ( v != NULL )
-			( *env )->ReleaseFloatArrayElements( env, vertices, v, JNI_ABORT );
 		if ( i != NULL )
 			( *env )->ReleaseIntArrayElements( env, indices, i, JNI_ABORT );
-		if ( m != NULL )
-			( *env )->ReleaseByteArrayElements( env, materialIndices, m, JNI_ABORT );
+		if ( v != NULL )
+			( *env )->ReleaseFloatArrayElements( env, vertices, v, JNI_ABORT );
 		return 0;
 	}
 

@@ -1,6 +1,6 @@
 package com.lowdragmc.minebox3d.client;
 
-import com.lowdragmc.minebox3d.jni.B3;
+import com.lowdragmc.minebox3d.internal.B3;
 import com.lowdragmc.minebox3d.mc.LevelPhysics;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 import net.minecraft.client.Minecraft;

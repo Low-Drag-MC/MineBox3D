@@ -3,6 +3,7 @@ package com.lowdragmc.minebox3d.test.gametest;
 import com.lowdragmc.minebox3d.MineBox3D;
 import com.lowdragmc.minebox3d.mc.CollisionCategories;
 import com.lowdragmc.minebox3d.physics.CastHit;
+import com.lowdragmc.minebox3d.physics.QueryFilter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -211,8 +212,8 @@ public final class BlockCatalogueGameTest {
     private static String compare(PrivatePhysics physics, VoxelShape shape, BlockPos pos, Vec3 from, Vec3 to) {
         BlockHitResult expected = shape.isEmpty() ? null : shape.clip(from, to, pos);
         Vec3 d = to.subtract(from);
-        CastHit actual = physics.world.castRayClosest(from.x, from.y, from.z, (float) d.x, (float) d.y, (float) d.z, -1L,
-                CollisionCategories.TERRAIN);
+        CastHit actual = physics.world.castRayClosest(from.x, from.y, from.z, (float) d.x, (float) d.y, (float) d.z,
+                QueryFilter.only(CollisionCategories.TERRAIN));
         if (expected == null && actual == null) {
             return null;
         }

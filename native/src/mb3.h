@@ -11,6 +11,7 @@
 #pragma once
 
 #include <jni.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -19,7 +20,7 @@
 #include "box3d/math_functions.h"
 
 // MB3_JNI( jint, createWorld )( JNIEnv* env, jclass type, ... ) declares B3.createWorld
-#define MB3_JNI( type, name ) JNIEXPORT type JNICALL Java_com_lowdragmc_minebox3d_jni_B3_##name
+#define MB3_JNI( type, name ) JNIEXPORT type JNICALL Java_com_lowdragmc_minebox3d_internal_B3_##name
 
 #if defined( _MSC_VER )
 #define MB3_THREAD_LOCAL __declspec( thread )
@@ -92,9 +93,27 @@ static inline b3Pos mb3_pos( jdouble x, jdouble y, jdouble z )
 	return ( b3Pos ){ x, y, z };
 }
 
+// Normalised: Box3D asserts unit length to 20 float epsilons, far tighter than a rotation typed in or composed in Java
+// stays (0.7071 for √½ is already out), and stores the value before the assertion is reported. Java refuses what is not
+// near unit length; this takes the rest the last bit of the way.
 static inline b3Quat mb3_quat( jfloat x, jfloat y, jfloat z, jfloat w )
 {
+	float lengthSquared = x * x + y * y + z * z + w * w;
+	if ( lengthSquared > 0.0f )
+	{
+		float inverse = 1.0f / sqrtf( lengthSquared );
+		x *= inverse;
+		y *= inverse;
+		z *= inverse;
+		w *= inverse;
+	}
 	return ( b3Quat ){ { x, y, z }, w };
+}
+
+// The same for a rotation read straight into a Box3D struct.
+static inline b3Quat mb3_normalized( b3Quat q )
+{
+	return mb3_quat( q.v.x, q.v.y, q.v.z, q.s );
 }
 
 // Writes into a caller-owned array. Returns false (with an exception pending) when it is too short.
@@ -106,6 +125,19 @@ bool mb3_put_pos( JNIEnv* env, jdoubleArray out, int offset, b3Pos p );
 bool mb3_put_vec3( JNIEnv* env, jfloatArray out, int offset, b3Vec3 v );
 // [x, y, z, w]
 bool mb3_put_quat( JNIEnv* env, jfloatArray out, int offset, b3Quat q );
+
+// ---- results ------------------------------------------------------------------------------------
+
+// The terrain cell a query hit, contact point or event on a shape names: [1, x, y, z] on voxel terrain, else zeros.
+// Only for shapes of the world the call is about (b3Shape_GetVoxelCell reads that world).
+void mb3_cell( b3ShapeId shape, int triangleIndex, int out[4] );
+
+// One hit as the Java result classes read it: 11 doubles [px, py, pz, fraction, nx, ny, nz, terrain, cx, cy, cz] and
+// 2 longs [shape, userMaterialId].
+#define MB3_HIT_DOUBLES 11
+#define MB3_HIT_LONGS 2
+void mb3_hit( b3ShapeId shape, b3Pos point, b3Vec3 normal, float fraction, uint64_t userMaterialId, int triangleIndex,
+			  double* doubles, jlong* longs );
 
 // ---- definitions --------------------------------------------------------------------------------
 // The Java definition classes are plain objects with public fields; the bridge reads and writes them
@@ -133,6 +165,20 @@ bool mb3_filter_from_java( JNIEnv* env, jobject source, b3Filter* filter );
 void mb3_material_to_java( JNIEnv* env, jobject target, const b3SurfaceMaterial* material );
 bool mb3_material_from_java( JNIEnv* env, jobject source, b3SurfaceMaterial* material );
 
+// ---- material combine modes (mb3_materials.c) -----------------------------------------------------------------------
+// Box3D's friction and restitution callbacks take no context, so a surface's combine modes ride in the top byte of its
+// userMaterialId: bits 56–58 friction, 59–61 restitution, each SurfaceMaterial.Combine's ordinal + 1, 0 for Box3D's own.
+// Java never sees the byte: the bridge packs it on the way in and masks it off every userMaterialId on the way out.
+#define MB3_USER_MATERIAL_BITS 0x00FFFFFFFFFFFFFFull
+
+uint64_t mb3_material_pack( uint64_t userMaterialId, int frictionCombine, int restitutionCombine );
+int mb3_material_friction_combine( uint64_t userMaterialId );
+int mb3_material_restitution_combine( uint64_t userMaterialId );
+
+// The callbacks every world gets
+float mb3_mix_friction( float frictionA, uint64_t userMaterialIdA, float frictionB, uint64_t userMaterialIdB );
+float mb3_mix_restitution( float restitutionA, uint64_t userMaterialIdA, float restitutionB, uint64_t userMaterialIdB );
+
 #define MB3_NAME_CAPACITY 128
 
 // ---- locking ------------------------------------------------------------------------------------
@@ -151,5 +197,48 @@ enum mb3_class
 	MB3_CLASS_SHAPE_DEF,
 	MB3_CLASS_FILTER,
 	MB3_CLASS_SURFACE_MATERIAL,
+	MB3_CLASS_JOINT_DEF,
+	MB3_CLASS_DISTANCE_JOINT_DEF,
+	MB3_CLASS_MOTOR_JOINT_DEF,
+	MB3_CLASS_PARALLEL_JOINT_DEF,
+	MB3_CLASS_PRISMATIC_JOINT_DEF,
+	MB3_CLASS_REVOLUTE_JOINT_DEF,
+	MB3_CLASS_SPHERICAL_JOINT_DEF,
+	MB3_CLASS_WELD_JOINT_DEF,
+	MB3_CLASS_WHEEL_JOINT_DEF,
+	MB3_CLASS_CONSTRAINT_JOINT_DEF,
+	MB3_CLASS_CONSTRAINT_JOINT_SETTINGS,
+	MB3_CLASS_CONSTRAINT_DRIVE,
+	MB3_CLASS_CONSTRAINT_LIMIT_RESPONSE,
+	MB3_CLASS_CONSTRAINT_MOTION,
+	MB3_CLASS_SWING_LIMIT_SHAPE,
+	MB3_CLASS_ANGULAR_DRIVE_MODE,
+	MB3_CLASS_SURFACE_COMBINE,
 	MB3_CLASS_COUNT
 };
+
+// The ordinal of a Java enum value, -1 for null
+int mb3_enum_ordinal( JNIEnv* env, jobject value );
+
+// Frees the body pair tables of a world about to be destroyed (mb3_pairs.c)
+void mb3_pairs_world_destroyed( b3WorldId world );
+
+// Whether the body never meets the bodies tagged tag (mb3_pairs.c); false for 0
+bool mb3_pairs_ignores( b3WorldId world, b3BodyId body, uint64_t tag );
+
+// The joint definition classes' fields (mb3_joint.c); called by mb3_defs_init.
+bool mb3_joint_defs_init( JNIEnv* env, jobjectArray classes );
+
+// ---- queries --------------------------------------------------------------------------------------------------------
+
+b3QueryFilter mb3_query_filter( jlong categoryBits, jlong maskBits );
+// The hit arrays a closest query writes: at least MB3_HIT_DOUBLES doubles and MB3_HIT_LONGS longs, else throws.
+bool mb3_hit_arrays( JNIEnv* env, jdoubleArray doubles, jlongArray longs );
+void mb3_put_hit( JNIEnv* env, jdoubleArray doubles, jlongArray longs, int index, const double* d, const jlong* l );
+// A query shape: 1 to B3_MAX_SHAPE_CAST_POINTS points [x, y, z, ...] relative to the query origin and a radius, copied
+// into storage (B3_MAX_SHAPE_CAST_POINTS long).
+bool mb3_proxy( JNIEnv* env, jfloatArray points, jint count, jfloat radius, b3Vec3* storage, b3ShapeProxy* proxy );
+// The closest point on a convex shape to a world point, measured in the point's own frame so it stays exact far from
+// the origin (Box3D's own closest point queries are float in world space). Returns the distance, FLT_MAX for a shape
+// that is not convex (mesh, height field, voxel terrain); *closest is the world point.
+float mb3_closest_point( b3ShapeId shape, b3WorldTransform bodyTransform, b3Pos target, b3Pos* closest );

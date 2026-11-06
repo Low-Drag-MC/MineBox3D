@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 class MeshSeamTest {
 
-    /** A flat floor of unit squares, {@code width × depth}. */
     private static MeshData floor(int width, int depth) {
         float[] vertices = new float[(width + 1) * (depth + 1) * 3];
         int k = 0;

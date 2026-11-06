@@ -1,6 +1,6 @@
 package com.lowdragmc.minebox3d.physics;
 
-import com.lowdragmc.minebox3d.jni.B3;
+import com.lowdragmc.minebox3d.internal.B3;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,10 +13,14 @@ public final class ShapeDef {
     @Nullable
     public String name;
     public long userData;
-    /** Per-triangle materials for mesh and height-field shapes, indexed by the triangle's material index. */
+    /**
+     * Per-triangle materials for mesh and height-field shapes, indexed by the triangle's material index (an index past
+     * the end reads the last). ⚠️ When set, {@link #baseMaterial} is ignored and {@code materials[0]} is the shape's own
+     * material.
+     */
     @Nullable
     public SurfaceMaterial[] materials;
-    /** The material of every other shape, and of triangles without one. */
+    /** The shape's material when {@link #materials} is null. */
     public SurfaceMaterial baseMaterial = new SurfaceMaterial();
     /** kg/m³ */
     public float density;

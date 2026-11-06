@@ -1,11 +1,20 @@
 package com.lowdragmc.minebox3d.test.gametest;
 
 import com.lowdragmc.minebox3d.MineBox3D;
+import com.lowdragmc.minebox3d.mc.LevelBodies;
+import com.lowdragmc.minebox3d.mc.LevelPhysics;
 import com.lowdragmc.minebox3d.mc.terrain.TerrainMaterials;
+import com.lowdragmc.minebox3d.mc.terrain.TerrainStreamer;
 import com.lowdragmc.minebox3d.physics.Body;
+import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;
+import com.lowdragmc.minebox3d.physics.DistanceJointDef;
 import com.lowdragmc.minebox3d.physics.Geometry;
+import com.lowdragmc.minebox3d.physics.Joint;
+import com.lowdragmc.minebox3d.physics.PhysicsWorld;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
+import com.lowdragmc.minebox3d.physics.ThreadMode;
+import com.lowdragmc.minebox3d.physics.WorldDef;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.gametest.framework.GameTest;
@@ -15,17 +24,27 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.SlabBlock;
 import net.minecraft.world.level.block.state.properties.SlabType;
+import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
 /**
  * <b>The terrain streamer's own work</b> (design doc {@code 01-voxel-terrain.md} §8): what reaches the grid when a taller
- * block changes, fast and falling bodies finding ground they were not near, sections coming and going, bodies parked
- * over a chunk that goes, and the surfaces Minecraft's blocks give. Each test runs a world of its own for seconds in
- * one tick ({@link PrivatePhysics}).
+ * block changes or a block changes on another thread, fast and falling bodies finding ground they were not near,
+ * sections coming and going, bodies parked over a chunk that goes, private worlds stepped on a pool, the surfaces
+ * Minecraft's blocks give, and a physics that stops when its tick throws. Each test runs a world of its own for
+ * seconds in one tick ({@link PrivatePhysics}).
  */
 @GameTestHolder(MineBox3D.MOD_ID)
 public final class TerrainStreamingGameTest {
@@ -45,6 +64,51 @@ public final class TerrainStreamingGameTest {
             physics.ticks(60);
             // only the fence's own cell worked out again would leave the post's top half in the cell above
             physics.near(0.1, physics.relative(box).y, 0.02, "fell to the ground");
+        }
+        helper.succeed();
+    }
+
+    /** A block changed on another thread reaches the grid at the next update, on the level's thread. */
+    @GameTest(template = "empty", batch = "minebox3d_off_thread_change", timeoutTicks = 20)
+    @PrefixGameTestTemplate(false)
+    public static void aBlockChangedOnAnotherThreadIsTakenInAtTheNextUpdate(GameTestHelper helper) throws Exception {
+        TestArea.clear(helper, -1, 0, -1, 6, 8, 5);
+        BlockPos stone = new BlockPos(1, 1, 1);
+        helper.setBlock(stone, Blocks.STONE);
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try (PrivatePhysics physics = new PrivatePhysics(helper)) {
+            Body box = physics.box(1.5, 4, 1.5, 0.25f);
+            physics.ticks(40);
+            physics.near(2.25, physics.relative(box).y, 0.02, "on the stone");
+            // taken out of the chunk's section behind the level's back, then told from another thread
+            BlockPos at = helper.absolutePos(stone);
+            LevelChunk chunk = helper.getLevel().getChunkAt(at);
+            chunk.getSection(chunk.getSectionIndex(at.getY()))
+                    .setBlockState(at.getX() & 15, at.getY() & 15, at.getZ() & 15, Blocks.AIR.defaultBlockState());
+            pool.submit(() -> physics.terrain.onBlockChanged(at, Blocks.STONE.defaultBlockState(),
+                    Blocks.AIR.defaultBlockState())).get(10, TimeUnit.SECONDS);
+            box.setAwake(true);
+            physics.ticks(40);
+            physics.near(0.25, physics.relative(box).y, 0.02, "the stone gone from the grid: down on the floor");
+        } finally {
+            pool.shutdown();
+            helper.setBlock(stone, Blocks.AIR);
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "minebox3d_stop_on_error", timeoutTicks = 20)
+    @PrefixGameTestTemplate(false)
+    public static void aPhysicsWhoseTickThrowsStopsThere(GameTestHelper helper) {
+        TestArea.clear(helper, -1, 0, -1, 6, 8, 5);
+        try (PrivatePhysics physics = new PrivatePhysics(helper)) {
+            physics.box(1.5, 4, 1.5, 0.25f);
+            physics.terrain.grid().close(); // the next section it reads into the grid throws
+            physics.physics.tick();
+            helper.assertTrue(physics.physics.isStopped(), "stopped");
+            long ticks = physics.physics.ticks();
+            physics.physics.tick();
+            helper.assertTrue(physics.physics.ticks() == ticks, "and not ticked again");
         }
         helper.succeed();
     }
@@ -117,17 +181,17 @@ public final class TerrainStreamingGameTest {
         TestArea.clear(helper, -1, 0, -1, 6, 8, 5);
         BlockPos high = new BlockPos(1, 40, 1);
         try (PrivatePhysics physics = new PrivatePhysics(helper)) {
-            physics.terrain.keepTicks = 5;
+            physics.terrain.settings().keepTicks(5);
             long under = SectionPos.asLong(helper.absolutePos(new BlockPos(1, 0, 1)));
 
-            // a body the streamer is told not to serve gets no terrain
-            physics.terrain.setConsumers(body -> false);
+            // a body that says it needs no terrain gets none
             Body box = physics.box(1.5, 0.5, 1.5, 0.25f);
+            LevelBodies.setNeedsTerrain(box, false);
             physics.terrain.update();
-            helper.assertFalse(physics.terrain.isLoaded(under), "no consumer, no terrain");
-            physics.terrain.setConsumers(body -> body.type() == BodyType.DYNAMIC);
+            helper.assertFalse(physics.terrain.isLoaded(under), "no terrain wanted, none loaded");
+            LevelBodies.setNeedsTerrain(box, null);
             physics.terrain.update();
-            helper.assertTrue(physics.terrain.isLoaded(under), "the section under the body");
+            helper.assertTrue(physics.terrain.isLoaded(under), "back to the default for a dynamic body: the section under it");
 
             // gone keepTicks updates after the last body that wanted it
             box.destroy();
@@ -184,6 +248,169 @@ public final class TerrainStreamingGameTest {
             physics.ticks(20);
             helper.assertTrue(!physics.terrain.isParked(box) && box.isEnabled(), "back in the simulation");
             physics.near(2.25, physics.relative(box).y, 0.02, "on the stone again");
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A body over a chunk that is not there takes what is jointed to it out with it (half a cart left simulating would fall
+     * away from the other half); one that stops needing terrain is let back; and one its maker turned off is still off
+     * when let back.
+     */
+    @GameTest(template = "empty", batch = "minebox3d_parking_group", timeoutTicks = 20)
+    @PrefixGameTestTemplate(false)
+    public static void whatIsJointedToAParkedBodyWaitsWithItAndAMakersSwitchIsKept(GameTestHelper helper) {
+        TestArea.clear(helper, -1, 0, -1, 6, 8, 5);
+        helper.setBlock(new BlockPos(1, 1, 1), Blocks.STONE);
+        try (PrivatePhysics physics = new PrivatePhysics(helper)) {
+            Body near = physics.box(1.5, 2.5, 1.5, 0.25f);
+            Body far = physics.box(3000.5, 80, 1.5, 0.25f); // over a chunk nobody loaded
+            Joint rope = physics.world.createJoint(new DistanceJointDef().bodies(near, far).length(2999));
+            physics.ticks(10);
+            helper.assertTrue(physics.terrain.isParked(far) && physics.terrain.isParked(near) && !near.isEnabled(),
+                    "the pair waits for the far one's chunk");
+            physics.near(2.5, physics.relative(near).y, 1e-9, "the near one did not fall");
+
+            rope.destroy(false);
+            physics.ticks(20);
+            helper.assertTrue(!physics.terrain.isParked(near) && near.isEnabled(), "let go of, the near one goes on");
+            physics.near(2.25, physics.relative(near).y, 0.02, "onto the stone");
+            helper.assertTrue(physics.terrain.isParked(far), "the far one still waits");
+
+            LevelBodies.setNeedsTerrain(far, false);
+            physics.ticks(1);
+            helper.assertTrue(!physics.terrain.isParked(far) && far.isEnabled(), "needing no terrain, it is let back");
+            far.destroy();
+
+            near.setEnabled(false);
+            physics.terrain.onChunkUnloaded(new ChunkPos(helper.absolutePos(new BlockPos(1, 1, 1))));
+            helper.assertTrue(physics.terrain.isParked(near), "parked as its chunk goes");
+            physics.ticks(2);
+            helper.assertTrue(!physics.terrain.isParked(near) && !near.isEnabled(), "let back, and off as its maker left it");
+        }
+        helper.succeed();
+    }
+
+    /**
+     * A private world in {@link ThreadMode#EXCLUSIVE} mode, the way a Rigid Body node runs one: terrain prepared on the
+     * level's thread, stepped on a pool. A chunk event while the pool holds the world waits for the next prepare.
+     */
+    @GameTest(template = "empty", batch = "minebox3d_exclusive", timeoutTicks = 20)
+    @PrefixGameTestTemplate(false)
+    public static void aPrivateWorldSteppedOnAPoolTakesChunkEventsAtItsNextPrepare(GameTestHelper helper) throws Exception {
+        TestArea.clear(helper, -1, 0, -1, 6, 8, 5);
+        helper.setBlock(new BlockPos(1, 1, 1), Blocks.STONE);
+        BlockPos stone = helper.absolutePos(new BlockPos(1, 1, 1));
+        LevelPhysics physics = LevelPhysics.create(helper.getLevel(),
+                new WorldDef().gravity(0, LevelPhysics.GRAVITY, 0).threadMode(ThreadMode.EXCLUSIVE));
+        helper.assertTrue(physics != null, "Box3D is available");
+        PhysicsWorld world = physics.world();
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        try {
+            Body box;
+            try (PhysicsWorld.Use use = world.use()) {
+                Vec3 at = helper.absoluteVec(new Vec3(1.5, 4, 1.5));
+                box = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(at.x, at.y, at.z));
+                box.createShape(new ShapeDef(), Geometry.Box.of(0.25f, 0.25f, 0.25f));
+            }
+            for (int frame = 0; frame < 40; frame++) {
+                try (PhysicsWorld.Use use = world.use()) {
+                    physics.prepare();
+                }
+                pool.submit(() -> {
+                    try (PhysicsWorld.Use use = world.use()) {
+                        physics.step();
+                    }
+                }).get(10, TimeUnit.SECONDS);
+            }
+            try (PhysicsWorld.Use use = world.use()) {
+                double y = box.position(new Vector3d()).y - helper.absolutePos(BlockPos.ZERO).getY();
+                helper.assertTrue(Math.abs(y - 2.25) < 0.02, "stepped on the pool onto the stone: y = " + y);
+            }
+
+            // the world is free and the chunk goes: the event does not take it (a worker could be about to), it waits
+            long section = SectionPos.asLong(stone);
+            physics.terrain().onChunkUnloaded(new ChunkPos(stone));
+            helper.assertTrue(physics.terrain().isLoaded(section), "a free exclusive world is not taken by a chunk event");
+            helper.assertTrue(world.owner() == null, "and nobody holds it");
+
+            // the terrain is read on the level's thread only, holding the world or not
+            Future<?> offThread = pool.submit(() -> {
+                try (PhysicsWorld.Use use = world.use()) {
+                    physics.terrain().update();
+                }
+            });
+            try {
+                offThread.get(10, TimeUnit.SECONDS);
+                helper.fail("the terrain updated off the level's thread");
+            } catch (ExecutionException e) {
+                helper.assertTrue(e.getCause() instanceof WrongThreadException, "refused: " + e.getCause());
+            }
+
+            // the pool holds the world while the chunk goes: nothing is touched now, it waits
+            CountDownLatch holding = new CountDownLatch(1), release = new CountDownLatch(1);
+            Future<?> holder = pool.submit(() -> {
+                try (PhysicsWorld.Use use = world.use()) {
+                    holding.countDown();
+                    release.await(10, TimeUnit.SECONDS);
+                }
+                return null;
+            });
+            holding.await(10, TimeUnit.SECONDS);
+            physics.terrain().onChunkUnloaded(new ChunkPos(stone));
+            helper.assertTrue(physics.terrain().isLoaded(section), "not taken out while another thread steps");
+            release.countDown();
+            holder.get(10, TimeUnit.SECONDS);
+
+            // taken in at the next prepare: out, and (the chunk never really went) straight back in
+            try (PhysicsWorld.Use use = world.use()) {
+                physics.prepare();
+            }
+            helper.assertTrue(physics.terrain().loadedLastTick() >= 1, "the section was read again");
+        } finally {
+            pool.shutdown();
+            physics.close();
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Closing a private physics whose world another thread holds fails — and leaves nothing of it listening to the level:
+     * its terrain hears no more chunks. Closed again once the world is free, it closes.
+     */
+    @GameTest(template = "empty", batch = "minebox3d_close_held", timeoutTicks = 20)
+    @PrefixGameTestTemplate(false)
+    public static void aPhysicsClosedWhileAnotherThreadHoldsItStopsListeningAnyway(GameTestHelper helper) throws Exception {
+        LevelPhysics physics = LevelPhysics.create(helper.getLevel(),
+                new WorldDef().gravity(0, LevelPhysics.GRAVITY, 0).threadMode(ThreadMode.EXCLUSIVE));
+        helper.assertTrue(physics != null, "Box3D is available");
+        ExecutorService pool = Executors.newSingleThreadExecutor();
+        CountDownLatch holding = new CountDownLatch(1), release = new CountDownLatch(1);
+        try {
+            Future<?> holder = pool.submit(() -> {
+                try (PhysicsWorld.Use use = physics.world().use()) {
+                    holding.countDown();
+                    release.await(10, TimeUnit.SECONDS);
+                }
+                return null;
+            });
+            holding.await(10, TimeUnit.SECONDS);
+            try {
+                physics.close();
+                helper.fail("closed a world another thread holds");
+            } catch (WrongThreadException expected) {
+                // the world is the other thread's
+            }
+            boolean[] listening = {false};
+            TerrainStreamer.forLevel(helper.getLevel(), streamer -> listening[0] |= streamer == physics.terrain());
+            helper.assertFalse(listening[0], "its terrain no longer hears the level");
+            release.countDown();
+            holder.get(10, TimeUnit.SECONDS);
+            physics.close();
+            helper.assertFalse(physics.world().isOpen(), "closed the second time");
+        } finally {
+            release.countDown();
+            pool.shutdown();
         }
         helper.succeed();
     }

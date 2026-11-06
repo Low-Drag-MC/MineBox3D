@@ -35,6 +35,11 @@ static int mb3_ordinal( JNIEnv* env, jobject value )
 	return value == NULL ? -1 : ( *env )->CallIntMethod( env, value, s_enumOrdinal );
 }
 
+int mb3_enum_ordinal( JNIEnv* env, jobject value )
+{
+	return mb3_ordinal( env, value );
+}
+
 // Copies a Java string into buffer; returns NULL for a null or empty string.
 static const char* mb3_copy_name( JNIEnv* env, jstring value, char* buffer, int capacity )
 {
@@ -85,7 +90,17 @@ bool mb3_filter_from_java( JNIEnv* env, jobject source, b3Filter* filter )
 // ---- SurfaceMaterial ----------------------------------------------------------------------------
 
 static jfieldID f_matFriction, f_matRestitution, f_matRollingResistance, f_matTangentX, f_matTangentY, f_matTangentZ,
-	f_matUserMaterialId, f_matCustomColor;
+	f_matUserMaterialId, f_matCustomColor, f_matFrictionCombine, f_matRestitutionCombine;
+
+// SurfaceMaterial.Combine's values, to write a mode back
+static jobjectArray s_combineModes;
+
+static jobject mb3_combine_mode( JNIEnv* env, int ordinal )
+{
+	return ordinal < 0 || ordinal >= ( *env )->GetArrayLength( env, s_combineModes )
+			   ? NULL
+			   : ( *env )->GetObjectArrayElement( env, s_combineModes, ordinal );
+}
 
 void mb3_material_to_java( JNIEnv* env, jobject target, const b3SurfaceMaterial* m )
 {
@@ -95,8 +110,20 @@ void mb3_material_to_java( JNIEnv* env, jobject target, const b3SurfaceMaterial*
 	( *env )->SetFloatField( env, target, f_matTangentX, m->tangentVelocity.x );
 	( *env )->SetFloatField( env, target, f_matTangentY, m->tangentVelocity.y );
 	( *env )->SetFloatField( env, target, f_matTangentZ, m->tangentVelocity.z );
-	( *env )->SetLongField( env, target, f_matUserMaterialId, (jlong)m->userMaterialId );
+	( *env )->SetLongField( env, target, f_matUserMaterialId, (jlong)( m->userMaterialId & MB3_USER_MATERIAL_BITS ) );
 	( *env )->SetIntField( env, target, f_matCustomColor, (jint)m->customColor );
+	jobject friction = mb3_combine_mode( env, mb3_material_friction_combine( m->userMaterialId ) );
+	jobject restitution = mb3_combine_mode( env, mb3_material_restitution_combine( m->userMaterialId ) );
+	( *env )->SetObjectField( env, target, f_matFrictionCombine, friction );
+	( *env )->SetObjectField( env, target, f_matRestitutionCombine, restitution );
+	if ( friction != NULL )
+	{
+		( *env )->DeleteLocalRef( env, friction );
+	}
+	if ( restitution != NULL )
+	{
+		( *env )->DeleteLocalRef( env, restitution );
+	}
 }
 
 bool mb3_material_from_java( JNIEnv* env, jobject source, b3SurfaceMaterial* m )
@@ -113,8 +140,19 @@ bool mb3_material_from_java( JNIEnv* env, jobject source, b3SurfaceMaterial* m )
 	m->tangentVelocity.x = ( *env )->GetFloatField( env, source, f_matTangentX );
 	m->tangentVelocity.y = ( *env )->GetFloatField( env, source, f_matTangentY );
 	m->tangentVelocity.z = ( *env )->GetFloatField( env, source, f_matTangentZ );
-	m->userMaterialId = (uint64_t)( *env )->GetLongField( env, source, f_matUserMaterialId );
 	m->customColor = (uint32_t)( *env )->GetIntField( env, source, f_matCustomColor );
+	jobject friction = ( *env )->GetObjectField( env, source, f_matFrictionCombine );
+	jobject restitution = ( *env )->GetObjectField( env, source, f_matRestitutionCombine );
+	m->userMaterialId = mb3_material_pack( (uint64_t)( *env )->GetLongField( env, source, f_matUserMaterialId ),
+										   mb3_enum_ordinal( env, friction ), mb3_enum_ordinal( env, restitution ) );
+	if ( friction != NULL )
+	{
+		( *env )->DeleteLocalRef( env, friction );
+	}
+	if ( restitution != NULL )
+	{
+		( *env )->DeleteLocalRef( env, restitution );
+	}
 	return true;
 }
 
@@ -377,6 +415,16 @@ bool mb3_defs_init( JNIEnv* env, jobjectArray classes )
 		return false;
 	}
 	s_enumOrdinal = ( *env )->GetMethodID( env, enumClass, "ordinal", "()I" );
+	jclass combineClass = (jclass)( *env )->GetObjectArrayElement( env, classes, MB3_CLASS_SURFACE_COMBINE );
+	jclass classClass = ( *env )->FindClass( env, "java/lang/Class" );
+	jmethodID constants = classClass == NULL ? NULL
+						 : ( *env )->GetMethodID( env, classClass, "getEnumConstants", "()[Ljava/lang/Object;" );
+	jobject modes = combineClass == NULL || constants == NULL ? NULL : ( *env )->CallObjectMethod( env, combineClass, constants );
+	if ( modes == NULL || ( *env )->ExceptionCheck( env ) )
+	{
+		return false;
+	}
+	s_combineModes = (jobjectArray)( *env )->NewGlobalRef( env, modes );
 	if ( s_enumOrdinal == NULL )
 	{
 		return false;
@@ -396,6 +444,8 @@ bool mb3_defs_init( JNIEnv* env, jobjectArray classes )
 		MB3_FIELD( f_matTangentZ, "tangentVelocityZ", "F" ),
 		MB3_FIELD( f_matUserMaterialId, "userMaterialId", "J" ),
 		MB3_FIELD( f_matCustomColor, "customColor", "I" ),
+		MB3_FIELD( f_matFrictionCombine, "frictionCombine", "Lcom/lowdragmc/minebox3d/physics/SurfaceMaterial$Combine;" ),
+		MB3_FIELD( f_matRestitutionCombine, "restitutionCombine", "Lcom/lowdragmc/minebox3d/physics/SurfaceMaterial$Combine;" ),
 	};
 	const mb3_field world[] = {
 		MB3_FIELD( f_wGravityX, "gravityX", "F" ),
@@ -482,7 +532,7 @@ bool mb3_defs_init( JNIEnv* env, jobjectArray classes )
 	return mb3_lookup( env, filterClass, filter, MB3_COUNT( filter ) ) &&
 		   mb3_lookup( env, materialClass, material, MB3_COUNT( material ) ) &&
 		   mb3_lookup( env, worldClass, world, MB3_COUNT( world ) ) && mb3_lookup( env, bodyClass, body, MB3_COUNT( body ) ) &&
-		   mb3_lookup( env, shapeClass, shape, MB3_COUNT( shape ) );
+		   mb3_lookup( env, shapeClass, shape, MB3_COUNT( shape ) ) && mb3_joint_defs_init( env, classes );
 }
 
 // ---- defaults -----------------------------------------------------------------------------------

@@ -1,6 +1,8 @@
 package com.lowdragmc.minebox3d;
 
-import com.lowdragmc.minebox3d.jni.B3;
+import com.lowdragmc.minebox3d.internal.B3;
+import com.lowdragmc.minebox3d.mc.entity.EntityShapes;
+import com.lowdragmc.minebox3d.mc.sync.SyncedBodies;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
@@ -21,5 +23,7 @@ public final class MineBox3D {
         } else {
             LOGGER.error("Box3D is unavailable on {}: physics is disabled", NativeLibrary.platform(), NativeLibrary.failure());
         }
+        modBus.addListener(SyncedBodies::registerPayloads);
+        EntityShapes.registerAttachments(modBus);
     }
 }

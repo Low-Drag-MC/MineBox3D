@@ -1,4 +1,4 @@
-package com.lowdragmc.minebox3d.jni;
+package com.lowdragmc.minebox3d.physics;
 
 /**
  * <b>Box3D refused a call</b>: one of its assertions failed while the call ran.

@@ -1,13 +1,13 @@
 # MineBox3D · 总体设计（2026-10-26）
 
-状态：**第一版设计，M1 已做完（`ee657d8`），MC 接入做完（地形换成了方案 B，见 `01-voxel-terrain.md`）；2026-10-28 整体 review + 补测试一轮做完（01 §12.6）**。§2 的线程规矩是现行的；§6 列的 Java 面只做了一部分（关节、接触 / 传感器事件、Hull / HeightField 还没有），多线程和 API 的下一步另写设计稿讨论。
+状态：**第一版设计，M1 已做完（`ee657d8`），MC 接入做完（地形换成了方案 B，见 `01-voxel-terrain.md`）；2026-10-28 整体 review + 补测试一轮做完（01 §12.6）**。§2 的线程规矩是现行的；§6 列的 Java 面只做了一部分（事件、结果对象做了，关节、Hull / HeightField 还没有）。多线程和 API 见 `03-threading-and-api.md`：第 1 批（地基）做完，接着是关节那一批。
 来由：EntityStudio doc 56 §12.5——用户裁决「走 Box3D + 自己的 JNI，开一个全新的 project，专门为 MC 服务，要能支持世界地形和实体体积动态进出我们的 Box3D 引擎；功能增强等稳定后再做」，2026-10-26「你先把 mc 做好了」。
 
 ## 1. 分层
 
 ```
 com.lowdragmc.minebox3d
-├─ jni        B3：一个 native 一个桥函数，id 是打包的整数；Box3DException
+├─ internal   B3：一个 native 一个桥函数，id 是打包的整数（不是 API，什么都不查）
 ├─ natives    NativeLibrary：找库、拷出来、加载、B3.init
 ├─ physics    纯 Java 面：PhysicsWorld / Body / Shape / 几何 / 定义对象 / 查询 / 事件。不认识 MC
 └─ mc         MC 接入：每个 Level 一个 LevelPhysics；地形进出（TerrainStreamer）；实体体积进出
@@ -24,8 +24,8 @@ native/
 - **一个 world 同一时刻只能有一个线程在用**（Box3D 本身的要求：step 期间不能读写，step 之外的只读查询才可以并发）。
 - **不同 world 可以在不同线程上同时用**。建 / 删 world 在 C 里有一把锁（Box3D 扫全局槽不加锁）。
 - 桥本身没有共享缓冲、不缓存 JNIEnv ⇒ 上面两条之外没有别的限制。
-- `PhysicsWorld` **绑定拥有者线程**（2026-10-28 review 改的，原来是「两个线程同时进入才抛」的占用检查）：建它的线程是拥有者，别的线程任何时候调都抛 `WrongThreadException`——出错是确定的，不会偶尔在服务端 tick 里炸。要换线程用 `transferTo(thread)`（只有拥有者能交出去）。
-- 传进 native 之前 Java 先查参数（非有限值、半径 ≤ 0、非单位四元数…，`IllegalArgumentException`）：Box3D 断言之后照样往下跑，坏值进了世界就会一直扩散。仍然漏过去的断言 ⇒ `Box3DException`；`step` 里出的 ⇒ 世界进入 `isFaulted()`，之后不再 step。断言了却已经建出来的刚体 / 形状由桥当场删掉，不留没有句柄的孤儿。
+- `PhysicsWorld` 两种线程模式（`03-threading-and-api.md` §4.2、§9.1）：**绑定线程**（默认）= 建它的线程是拥有者，别的线程任何时候调都抛 `WrongThreadException`，要换线程用 `transferTo(thread)`；**独占使用** = 任何线程，`try (var use = world.use())` 占住期间才能用，别人占着就立刻抛（给在线程池上 step 的私有世界）。两种都是出错就确定地抛，不会偶尔在服务端 tick 里炸。
+- 传进 native 之前 Java 先查参数（非有限值、半径 ≤ 0、非单位四元数…，`IllegalArgumentException`）：Box3D 断言之后照样往下跑，坏值进了世界就会一直扩散。仍然漏过去的断言 ⇒ `Box3DException`；`step` 里出的 ⇒ 世界进入 `isFaulted()`，之后不再 step。断言了却已经建出来的刚体 / 形状由桥当场删掉，不留没有句柄的孤儿。faulted 的世界里删刚体 / 关节 / 形状 / 碰撞对表只在 Java 这边放手、不进 Box3D，`close()` 连世界一起释放（0.3.1，2026-11-01）：被解算器甩成 NaN 的刚体把 NaN 包围盒留在 broadphase 里，删东西（尤其碰撞对表删除时刷新过滤 = 重插代理）会走这些节点，ES 物理资产编辑器里实测整个 JVM 崩在 `pairTableDestroy`。review 补的两处：放手的形状用的网格 / 高度场数据留到世界关掉再释放（Box3D 的形状还在、查询还会读，原来会 use-after-free）；关 faulted 关卡时地形不解除停放、不单独删网格（世界一起释放）；垃圾回收清理器先删世界再删网格，和 `close()` 同序。还能进 Box3D 的：查询、改形状 / 变换 / 过滤（含碰撞对表 `apply()`）——faulted 了就尽快关掉。
 - `workerCount > 1` 时 Box3D 给这个世界单开一套自旋等待的工作线程，工作线程上的断言只进日志、不抛异常（`WorldDef.workerCount` 的文档里写了）。共享线程池在多线程设计稿里讨论。
 - `LevelPhysics` 的 world 归该 Level 的线程（服务端 = 服务端主线程，客户端 = 客户端主线程，`LevelThreads` 从 NeoForge 的 `LogicalSidedProvider.WORKQUEUE` 判断）；别的线程调 `LevelPhysics.of` 直接抛。别的线程上的方块变化排进队列，下一次地形更新时在 Level 线程上取。
 
@@ -119,7 +119,7 @@ Box3D 只在**同一个 mesh 内部**识别内棱；两个段的网格在 16 格
 
 ## 9. 测试
 
-现状（2026-10-28，JUnit 66 + GameTest 23，全绿；GameTest 在随机位置连跑 7 次）：
+现状（2026-10-28，JUnit 82 + GameTest 25，全绿；GameTest 在随机位置连跑多次）。下面是体素那一轮的列表，`03-threading-and-api.md` §9.1 / §9.2 又加了 `ThreadModeTest`、`WorldEventsTest` 等：
 
 - JUnit（`physics` 层，不依赖 MC）：`B3SmokeTest`（每个桥函数至少调一次、看得见效果）、`PhysicsWorldTest`（插值、拥有者线程、交出线程、遍历中建删、多世界多线程、mesh 引用计数）、`PhysicsApiTest`（参数校验、断言后的孤儿、关了的世界、三种关闭顺序不漏内存、8 线程 × 100 世界、200 个刚体的事件、睡着事件跨步累计）、`VoxelTerrainTest` + `VoxelDetailTest`（体素地形，见 01 §12）、`MeshSeamTest`。
 - GameTest：`TerrainGameTest`（落地、拆方块、半砖、立方体表面、栅栏、实体推刚体）、`TerrainSeamGameTest`（7 种真实地面 × 4 形状 × 3 速度）、`TerrainStreamingGameTest`（拆栅栏 / 开栅栏门、高速和高空、段的来去、区块卸载停放、冰 / 史莱姆 / 传送带材质）、`EntityProxyGameTest`（代理随实体变大小 / 消失、传送不扫过、托住刚体、排除和提供者）、`BlockCatalogueGameTest`（89 种方块状态 × 550 条射线对 `VoxelShape.clip`）、`NativeLoadGameTest`。

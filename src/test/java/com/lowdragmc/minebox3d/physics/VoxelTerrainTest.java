@@ -1,7 +1,9 @@
 package com.lowdragmc.minebox3d.physics;
 
+import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+import org.joml.Vector3i;
 import org.junit.jupiter.api.Test;
 
 import java.util.Locale;
@@ -30,10 +32,13 @@ class VoxelTerrainTest {
     /** A glass pane across x: 2/16 thick. */
     static final float[] PANE = {7 / 16f, 0, 0, 9 / 16f, 1, 1};
 
-    /** A world with a grid and the usual colliders; ids in the order added, 1 = full block. Shared with the other voxel tests. */
-    static final class Terrain implements AutoCloseable {
+    /**
+     * A world with a grid and the usual colliders; ids in the order added, 1 = full block. Shared with the other voxel
+     * tests.
+     */
+    static class Terrain implements AutoCloseable {
         final PhysicsWorld world = PhysicsWorld.create(new WorldDef().gravity(0, GRAVITY, 0));
-        final VoxelGrid grid = world.createVoxelGrid(new ShapeDef());
+        final VoxelGrid grid = world.createVoxelGrid(template());
         final int material = grid.addMaterial(new SurfaceMaterial().friction(0));
         final int full = collider(FULL);
         final int bottomSlab = collider(BOTTOM_SLAB);
@@ -41,6 +46,11 @@ class VoxelTerrainTest {
         final int stairs = collider(STAIRS);
         final int pane = collider(PANE);
         final int stairsNorth = collider(STAIRS_NORTH);
+
+        /** The sections' shape definition; called while the fields are being set, so only from constants. */
+        ShapeDef template() {
+            return new ShapeDef();
+        }
 
         int collider(float[] boxes) {
             return grid.addCollider(boxes, boxes.length / 6, material);
@@ -253,7 +263,7 @@ class VoxelTerrainTest {
     private record Kick(float vertical, float angular) {
     }
 
-    /** Slides a body along +x from x = 8 to past x = 24 over the floor, across cell borders and the section border at 16. */
+    /** From x = 8 to past x = 24 along +x, across cell borders and the section border at 16. */
     private static Kick slide(Terrain t, Geometry geometry, double restY, double z, float speed) {
         Body slider = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(8, restY, z).enableSleep(false));
         slider.createShape(new ShapeDef().friction(0), geometry);
@@ -500,23 +510,23 @@ class VoxelTerrainTest {
         try (Terrain t = new Terrain()) {
             t.floor(14, 18, 14, 18, 0, (x, z) -> t.full);
             t.set(16, 1, 16, t.bottomSlab);
-            CastHit hit = t.world.castRayClosest(16.5, 10, 16.5, 0, -20, 0, -1L, -1L);
+            CastHit hit = t.world.castRayClosest(16.5, 10, 16.5, 0, -20, 0, QueryFilter.ALL);
             assertNotNull(hit);
             assertNull(hit.shape(), "terrain has no Shape object");
             assertEquals(1.5, hit.y(), 1e-4, "the slab's top");
             assertEquals(1, hit.normalY(), 1e-4);
-            int[] cell = new int[3];
-            assertTrue(t.grid.featureCell(hit.shapeId(), hit.triangleIndex(), cell));
-            assertEquals(16, cell[0]);
-            assertEquals(1, cell[1]);
-            assertEquals(16, cell[2]);
+            assertTrue(hit.terrain());
+            assertEquals(16, hit.cellX());
+            assertEquals(1, hit.cellY());
+            assertEquals(16, hit.cellZ());
 
-            CastHit side = t.world.castRayClosest(10, 0.5, 15.5, 10, 0, 0, -1L, -1L);
+            CastHit side = t.world.castRayClosest(10, 0.5, 15.5, 10, 0, 0, QueryFilter.ALL);
             assertNotNull(side);
             assertEquals(14, side.x(), 1e-4, "the floor's west face");
             assertEquals(-1, side.normalX(), 1e-4);
+            assertEquals(14, side.cellX());
 
-            assertNull(t.world.castRayClosest(10, 5, 10, 0, 1, 0, -1L, -1L), "nothing up there");
+            assertNull(t.world.castRayClosest(10, 5, 10, 0, 1, 0, QueryFilter.ALL), "nothing up there");
         }
     }
 
@@ -528,46 +538,45 @@ class VoxelTerrainTest {
             t.floor(0, 4, 0, 4, 3, (x, z) -> t.full);
 
             // standing exactly on the upper layer's top, looking down: through it, onto the lower layer
-            CastHit fromTop = t.world.castRayClosest(1.5, 4, 1.5, 0, -10, 0, -1L, -1L);
+            CastHit fromTop = t.world.castRayClosest(1.5, 4, 1.5, 0, -10, 0, QueryFilter.ALL);
             assertNotNull(fromTop, "the rest of the section is still seen");
             assertEquals(1, fromTop.y(), 1e-4);
 
             // from inside the upper layer
-            CastHit fromInside = t.world.castRayClosest(1.5, 3.5, 1.5, 0, -10, 0, -1L, -1L);
+            CastHit fromInside = t.world.castRayClosest(1.5, 3.5, 1.5, 0, -10, 0, QueryFilter.ALL);
             assertNotNull(fromInside);
             assertEquals(1, fromInside.y(), 1e-4);
         }
         try (Terrain t = new Terrain()) {
-            // skimming along faces where the walk visits the very cells whose faces it runs along: the top of a floor that is
-            // a section border (the walk clamps into the floor's own cells), its underside and its west side
+            // skimming along faces where the walk visits the very cells whose faces it runs along: the top of a floor
+            // that is a section border (the walk clamps into the floor's own cells), its underside and its west side
             t.floor(0, 4, 0, 4, 15, (x, z) -> t.full);
-            assertNull(t.world.castRayClosest(-1, 16, 1.5, 10, 0, 0, -1L, -1L), "along the top at a section border");
-            assertNull(t.world.castRayClosest(-1, 15, 1.5, 10, 0, 0, -1L, -1L), "along the underside");
-            assertNull(t.world.castRayClosest(0, 15.5, -1, 0, 0, 10, -1L, -1L), "along the west side");
-            CastHit inside = t.world.castRayClosest(-1, 15.5, 1.5, 10, 0, 0, -1L, -1L);
+            assertNull(t.world.castRayClosest(-1, 16, 1.5, 10, 0, 0, QueryFilter.ALL), "along the top at a section border");
+            assertNull(t.world.castRayClosest(-1, 15, 1.5, 10, 0, 0, QueryFilter.ALL), "along the underside");
+            assertNull(t.world.castRayClosest(0, 15.5, -1, 0, 0, 10, QueryFilter.ALL), "along the west side");
+            CastHit inside = t.world.castRayClosest(-1, 15.5, 1.5, 10, 0, 0, QueryFilter.ALL);
             assertNotNull(inside, "a hair inside the same block is a hit");
             assertEquals(0, inside.x(), 1e-4);
         }
     }
 
     @Test
-    void aHitOnASectionThatIsGoneNamesNoCell() {
+    void aHitKeepsTheCellItNamedAfterTheSectionIsGone() {
         try (Terrain t = new Terrain()) {
             t.set(1, 0, 1, t.full);
-            CastHit hit = t.world.castRayClosest(1.5, 5, 1.5, 0, -10, 0, -1L, -1L);
-            assertNotNull(hit);
+            CastResult result = new CastResult();
+            assertTrue(t.world.castRayClosest(1.5, 5, 1.5, 0, -10, 0, QueryFilter.ALL, result));
+            CastHit hit = result.toHit();
             t.set(1, 0, 1, 0);
             assertEquals(0, t.grid.sectionCount());
-            assertFalse(t.grid.featureCell(hit.shapeId(), hit.triangleIndex(), new int[3]));
-
-            VoxelGrid grid = t.grid;
-            t.world.close();
-            assertThrows(IllegalStateException.class, () -> grid.featureCell(hit.shapeId(), hit.triangleIndex(), new int[3]));
+            // worked out inside the query, while the section was there: nothing to look up later
+            assertNotNull(hit);
+            assertTrue(hit.terrain());
+            assertEquals(1, hit.cellX());
+            assertEquals(0, hit.cellY());
+            assertEquals(1, result.cellZ());
+            assertNull(result.shape(), "the result object still reads, the shape id names nothing now");
         }
-    }
-
-    private static float[] boxPoints(float h) {
-        return new float[]{-h, -h, -h, h, -h, -h, -h, h, -h, h, h, -h, -h, -h, h, h, -h, h, -h, h, h, h, h, h};
     }
 
     @Test
@@ -576,7 +585,8 @@ class VoxelTerrainTest {
             t.floor(0, 32, 0, 16, 0, (x, z) -> t.full);
             t.set(20, 1, 8, t.full);
             // a box just above the floor (2 cm), swept along x across 15 seams and a section border
-            CastHit hit = t.world.castShapeClosest(4, 1.22, 8.5, boxPoints(0.2f), 8, 0, 20, 0, 0, -1L, -1L);
+            CastHit hit = t.world.castShapeClosest(Geometry.Box.of(0.2f, 0.2f, 0.2f), 4, 1.22, 8.5, new Quaternionf(), 20, 0, 0,
+                    QueryFilter.ALL);
             assertNotNull(hit);
             assertEquals(20, hit.x(), 1e-2, "the wall's west face, not a seam on the way");
             assertEquals(-1, hit.normalX(), 1e-3);
@@ -588,11 +598,12 @@ class VoxelTerrainTest {
     void anOverlapFindsTheTerrainUnderASphere() {
         try (Terrain t = new Terrain()) {
             t.floor(0, 8, 0, 8, 0, (x, z) -> t.full);
-            long[] ids = new long[4];
-            float[] center = {0, 0, 0};
-            assertEquals(1, t.world.overlapShape(5.5, 1.2, 5.5, center, 1, 0.3f, -1L, -1L, ids));
-            assertEquals(t.grid.sectionShapeId(0, 0, 0), ids[0]);
-            assertEquals(0, t.world.overlapShape(5.5, 1.5, 5.5, center, 1, 0.3f, -1L, -1L, ids));
+            Overlaps overlaps = new Overlaps();
+            Geometry sphere = new Geometry.Sphere(0, 0, 0, 0.3f);
+            assertEquals(1, t.world.overlapShape(sphere, 5.5, 1.2, 5.5, QueryFilter.ALL, overlaps));
+            assertEquals(t.grid.sectionShapeId(0, 0, 0), overlaps.shapeId(0));
+            assertNull(overlaps.shape(0), "terrain has no Shape object");
+            assertEquals(0, t.world.overlapShape(sphere, 5.5, 1.5, 5.5, QueryFilter.ALL, overlaps));
         }
     }
 
@@ -600,30 +611,30 @@ class VoxelTerrainTest {
     void aCharacterMoverGetsTheFloorAndTheWallButNoSeams() {
         try (Terrain t = new Terrain()) {
             t.floor(0, 8, 0, 8, 0, (x, z) -> t.full);
-            float[] planes = new float[7 * 16];
-            long[] shapes = new long[16];
-            int[] triangles = new int[16];
+            MoverPlanes planes = new MoverPlanes(2);
+            Vector3f normal = new Vector3f();
 
             // standing on a corner where four blocks meet
-            int count = t.world.collideMover(5, 0, 5, 0, 1.28f, 0, 0, 1.8f, 0, 0.29f, -1L, -1L, planes, shapes, triangles);
+            int count = t.world.collideMover(5, 0, 5, 0, 1.28f, 0, 0, 1.8f, 0, 0.29f, QueryFilter.ALL, planes);
             assertTrue(count > 0, "the floor");
             for (int i = 0; i < count; i++) {
-                assertEquals(1, planes[7 * i + 1], 1e-3, "only the floor's top, plane " + i);
+                assertEquals(1, planes.normal(i, normal).y, 1e-3, "only the floor's top, plane " + i);
             }
 
             // next to a block standing on the floor
             t.set(6, 1, 5, t.full);
-            count = t.world.collideMover(5.75, 0, 5.5, 0, 1.28f, 0, 0, 1.8f, 0, 0.29f, -1L, -1L, planes, shapes, triangles);
+            count = t.world.collideMover(5.75, 0, 5.5, 0, 1.28f, 0, 0, 1.8f, 0, 0.29f, QueryFilter.ALL, planes);
             boolean wall = false;
+            Vector3i cell = new Vector3i();
             for (int i = 0; i < count; i++) {
-                if (planes[7 * i] < -0.999f) {
+                if (planes.normal(i, normal).x < -0.999f) {
                     wall = true;
-                    int[] cell = new int[3];
-                    assertTrue(t.grid.featureCell(shapes[i], triangles[i], cell));
-                    assertEquals(6, cell[0]);
-                    assertEquals(1, cell[1]);
+                    assertTrue(planes.isTerrain(i));
+                    planes.cell(i, cell);
+                    assertEquals(6, cell.x);
+                    assertEquals(1, cell.y);
                 } else {
-                    assertEquals(1, planes[7 * i + 1], 1e-3, "otherwise the floor's top");
+                    assertEquals(1, normal.y, 1e-3, "otherwise the floor's top");
                 }
             }
             assertTrue(wall, "the block's west face");

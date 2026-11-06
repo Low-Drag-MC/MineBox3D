@@ -15,13 +15,14 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3d;
 
 /**
- * A world and a terrain streamer of a test's own on the test's level, stepped by the test: whole seconds of physics in
- * one game tick, nothing else in the world. The streamer hears the level's block and chunk changes like the level's
- * own one does.
+ * A private {@link LevelPhysics} of a test's own on the test's level ({@link LevelPhysics#create}), stepped by the test:
+ * whole seconds of physics in one game tick, nothing else in the world. It hears the level's block and chunk changes
+ * like the level's own one does.
  */
 final class PrivatePhysics implements AutoCloseable {
 
     final GameTestHelper helper;
+    final LevelPhysics physics;
     final PhysicsWorld world;
     final TerrainStreamer terrain;
 
@@ -31,17 +32,20 @@ final class PrivatePhysics implements AutoCloseable {
 
     PrivatePhysics(GameTestHelper helper, float gravity) {
         this.helper = helper;
-        this.world = PhysicsWorld.create(new WorldDef().gravity(0, gravity, 0));
-        this.terrain = new TerrainStreamer(helper.getLevel(), world);
+        LevelPhysics created = LevelPhysics.create(helper.getLevel(), new WorldDef().gravity(0, gravity, 0));
+        if (created == null) {
+            throw new IllegalStateException("Box3D is not available");
+        }
+        this.physics = created;
+        this.world = created.world();
+        this.terrain = created.terrain();
     }
 
-    /** {@code n} Minecraft ticks the way the level's physics runs them: the streamer, then three steps. */
+    /** {@code n} Minecraft ticks the way the level's physics runs them, failing loudly (tick() would log and stop). */
     void ticks(int n) {
         for (int i = 0; i < n; i++) {
-            terrain.update();
-            for (int s = 0; s < 3; s++) {
-                world.step(1 / 60f, 4);
-            }
+            physics.prepare();
+            physics.step();
         }
     }
 
@@ -72,10 +76,6 @@ final class PrivatePhysics implements AutoCloseable {
 
     @Override
     public void close() {
-        try {
-            terrain.close();
-        } finally {
-            world.close();
-        }
+        physics.close();
     }
 }

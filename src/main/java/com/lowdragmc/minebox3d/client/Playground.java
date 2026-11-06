@@ -21,7 +21,10 @@ import java.util.Random;
  */
 final class Playground {
 
-    private static final Object MARK = new Object();
+    private enum Mark {
+        MARK
+    }
+
     private static final Random RANDOM = new Random();
 
     private Playground() {
@@ -56,7 +59,7 @@ final class Playground {
                 case SPHERE -> new Geometry.Sphere(0, 0, 0, 0.3f);
                 case CAPSULE -> new Geometry.Capsule(0, -0.3f, 0, 0, 0.3f, 0, 0.2f);
             });
-            body.setUserObject(MARK);
+            body.attach(Mark.class, Mark.MARK);
         }
         return count;
     }
@@ -72,7 +75,7 @@ final class Playground {
         }
         List<Body> mine = new ArrayList<>();
         for (Body body : physics.world().bodies()) {
-            if (body.userObject() == MARK) {
+            if (body.attachment(Mark.class) != null) {
                 mine.add(body);
             }
         }

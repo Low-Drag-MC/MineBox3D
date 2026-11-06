@@ -1,6 +1,6 @@
 package com.lowdragmc.minebox3d.natives;
 
-import com.lowdragmc.minebox3d.jni.B3;
+import com.lowdragmc.minebox3d.internal.B3;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -24,8 +24,7 @@ import java.util.Locale;
  *       file's own hash under the system temp directory and loaded from there.</li>
  * </ol>
  *
- * <p>⚠️ Two things about Minecraft's class loading decide how this is written, both measured while the
- * collision layer of EntityStudio was being built on an earlier binding:
+ * <p>⚠️ Two things about Minecraft's class loading decide how this is written:
  * <ul>
  *   <li>Mods are named JPMS modules, and {@code Class.getResourceAsStream} does not expose a module's
  *       non-class resources. {@code ClassLoader.getResourceAsStream} does, so that is what is used.</li>
