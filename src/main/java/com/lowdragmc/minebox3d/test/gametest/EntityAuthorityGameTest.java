@@ -7,6 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.animal.Pig;
 import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -17,18 +18,35 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 public final class EntityAuthorityGameTest {
 
     private static final String SERVER_MOVES = "minebox3d_test_server_moves";
+    private static final String PUSHES_NOTHING = "minebox3d_test_pushes_nothing";
 
     static {
-        EntityAuthority.register(entity -> entity.getTags().contains(SERVER_MOVES) ? Boolean.FALSE : null);
+        EntityAuthority.register(new EntityAuthority.Provider() {
+            @Override
+            public Boolean clientMoves(Entity entity) {
+                return entity.getTags().contains(SERVER_MOVES) ? Boolean.FALSE : null;
+            }
+
+            @Override
+            public Boolean pushesBodies(Entity entity) {
+                return entity.getTags().contains(PUSHES_NOTHING) ? Boolean.FALSE : null;
+            }
+        });
     }
 
     private EntityAuthorityGameTest() {
     }
 
+    /** A mod's say that the entity's moves push no body ({@link EntityAuthority#pushesBodies}): Unreal's Mover. */
+    static <T extends Entity> T pushingNothing(T entity) {
+        entity.addTag(PUSHES_NOTHING);
+        return entity;
+    }
+
     /**
      * A player is its client's to move, and a mob the server's — until a mod says a player is the server's (a mover that
-     * runs on the server and only lets its client predict): then the server sweeps it among the bodies, keeps its base
-     * and pushes from it, as for any entity it moves.
+     * runs on the server and only lets its client predict): then the server sweeps it among the bodies and keeps its
+     * base, as for any entity it moves. The moves of both push bodies, unless a mod says they push none.
      */
     @GameTest(template = "empty")
     @PrefixGameTestTemplate(false)
@@ -45,7 +63,13 @@ public final class EntityAuthorityGameTest {
         helper.assertFalse(EntityCollisions.isClientMoved(player), "and the server moves it among the bodies");
         player.removeTag(SERVER_MOVES);
         helper.assertTrue(EntityAuthority.clientMoves(player), "with no say, Minecraft's rule again");
+
+        helper.assertTrue(EntityAuthority.pushesBodies(player) && EntityAuthority.pushesBodies(pig),
+                "the moves of a player and of a mob push bodies");
+        pushingNothing(player);
+        helper.assertFalse(EntityAuthority.pushesBodies(player), "unless a mod says its moves push none");
         player.discard();
+        pig.discard();
         helper.succeed();
     }
 }

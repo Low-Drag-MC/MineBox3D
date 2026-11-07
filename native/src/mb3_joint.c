@@ -97,6 +97,26 @@ static mb3_def_field s_motorFields[] = {
 	MB3_F( b3MotorJointDef, maxSpringTorque, "maxSpringTorque" ),
 };
 
+static mb3_def_field s_moverFields[] = {
+	MB3_F( b3MoverJointDef, linearVelocity.x, "linearVelocityX" ),
+	MB3_F( b3MoverJointDef, linearVelocity.y, "linearVelocityY" ),
+	MB3_F( b3MoverJointDef, linearVelocity.z, "linearVelocityZ" ),
+	MB3_F( b3MoverJointDef, maxForce, "maxForce" ),
+};
+
+static mb3_def_field s_pogoFields[] = {
+	MB3_F( b3PogoJointDef, normal.x, "normalX" ),
+	MB3_F( b3PogoJointDef, normal.y, "normalY" ),
+	MB3_F( b3PogoJointDef, normal.z, "normalZ" ),
+	MB3_F( b3PogoJointDef, hertz, "hertz" ),
+	MB3_F( b3PogoJointDef, dampingRatio, "dampingRatio" ),
+	MB3_F( b3PogoJointDef, restLength, "restLength" ),
+	MB3_F( b3PogoJointDef, maxTensionForce, "maxTensionForce" ),
+	MB3_F( b3PogoJointDef, maxCompressionForce, "maxCompressionForce" ),
+	MB3_F( b3PogoJointDef, impulse, "impulse" ),
+	MB3_F( b3PogoJointDef, velocity, "velocity" ),
+};
+
 static mb3_def_field s_parallelFields[] = {
 	MB3_F( b3ParallelJointDef, hertz, "hertz" ),
 	MB3_F( b3ParallelJointDef, dampingRatio, "dampingRatio" ),
@@ -265,9 +285,8 @@ static mb3_joint_kind s_kinds[] = {
 	[b3_sphericalJoint] = { MB3_TABLE( s_sphericalFields ), MB3_CLASS_SPHERICAL_JOINT_DEF },
 	[b3_weldJoint] = { MB3_TABLE( s_weldFields ), MB3_CLASS_WELD_JOINT_DEF },
 	[b3_wheelJoint] = { MB3_TABLE( s_wheelFields ), MB3_CLASS_WHEEL_JOINT_DEF },
-	// not bound yet: Java makes neither
-	[b3_moverJoint] = { NULL, 0, -1 },
-	[b3_pogoJoint] = { NULL, 0, -1 },
+	[b3_moverJoint] = { MB3_TABLE( s_moverFields ), MB3_CLASS_MOVER_JOINT_DEF },
+	[b3_pogoJoint] = { MB3_TABLE( s_pogoFields ), MB3_CLASS_POGO_JOINT_DEF },
 	[b3_constraintJoint] = { MB3_TABLE( s_constraintFields ), MB3_CLASS_CONSTRAINT_JOINT_DEF },
 };
 
@@ -446,6 +465,8 @@ typedef union mb3_any_joint_def
 	b3SphericalJointDef spherical;
 	b3WeldJointDef weld;
 	b3WheelJointDef wheel;
+	b3MoverJointDef mover;
+	b3PogoJointDef pogo;
 	b3ConstraintJointDef constraint;
 } mb3_any_joint_def;
 
@@ -479,6 +500,12 @@ static bool mb3_default_joint_def( int jointType, mb3_any_joint_def* def )
 			return true;
 		case b3_wheelJoint:
 			def->wheel = b3DefaultWheelJointDef();
+			return true;
+		case b3_moverJoint:
+			def->mover = b3DefaultMoverJointDef();
+			return true;
+		case b3_pogoJoint:
+			def->pogo = b3DefaultPogoJointDef();
 			return true;
 		case b3_constraintJoint:
 			def->constraint = b3DefaultConstraintJointDef();
@@ -560,6 +587,12 @@ MB3_JNI( jlong, createJoint )( JNIEnv* env, jclass type, jint world, jint jointT
 			break;
 		case b3_wheelJoint:
 			id = b3CreateWheelJoint( worldId, &def.wheel );
+			break;
+		case b3_moverJoint:
+			id = b3CreateMoverJoint( worldId, &def.mover );
+			break;
+		case b3_pogoJoint:
+			id = b3CreatePogoJoint( worldId, &def.pogo );
 			break;
 		case b3_constraintJoint:
 			id = b3CreateConstraintJoint( worldId, &def.constraint );
@@ -742,6 +775,19 @@ enum mb3_joint_param
 	MB3_JP_WHEEL_TARGET_STEERING_ANGLE = 136,
 	MB3_JP_WHEEL_STEERING_ANGLE = 137,
 	MB3_JP_WHEEL_STEERING_TORQUE = 138,
+
+	MB3_JP_MOVER_LINEAR_VELOCITY = 140,
+	MB3_JP_MOVER_MAX_FORCE = 141,
+
+	MB3_JP_POGO_REST_LENGTH = 150,
+	MB3_JP_POGO_HERTZ = 151,
+	MB3_JP_POGO_DAMPING = 152,
+	MB3_JP_POGO_MAX_TENSION_FORCE = 153,
+	MB3_JP_POGO_MAX_COMPRESSION_FORCE = 154,
+	MB3_JP_POGO_NORMAL = 155,
+	MB3_JP_POGO_CURRENT_LENGTH = 156,
+	MB3_JP_POGO_CURRENT_SPEED = 157,
+	MB3_JP_POGO_IMPULSE = 158,
 };
 
 // The joint type a parameter belongs to, -1 for the base ones.
@@ -763,7 +809,11 @@ static int mb3_param_joint_type( int param )
 		return b3_sphericalJoint;
 	if ( param < 120 )
 		return b3_weldJoint;
-	return b3_wheelJoint;
+	if ( param < 140 )
+		return b3_wheelJoint;
+	if ( param < 150 )
+		return b3_moverJoint;
+	return b3_pogoJoint;
 }
 
 // Box3D asserts on a property of another joint type; say which instead.
@@ -883,6 +933,16 @@ MB3_JNI( void, jointSet )( JNIEnv* env, jclass type, jlong joint, jint param, jf
 		case MB3_JP_WHEEL_STEERING_LIMIT: b3WheelJoint_EnableSteeringLimit( id, on ); break;
 		case MB3_JP_WHEEL_STEERING_LIMITS: b3WheelJoint_SetSteeringLimits( id, a, b ); break;
 		case MB3_JP_WHEEL_TARGET_STEERING_ANGLE: b3WheelJoint_SetTargetSteeringAngle( id, a ); break;
+
+		case MB3_JP_MOVER_LINEAR_VELOCITY: b3MoverJoint_SetLinearVelocity( id, v ); break;
+		case MB3_JP_MOVER_MAX_FORCE: b3MoverJoint_SetMaxVelocityForce( id, a ); break;
+
+		case MB3_JP_POGO_REST_LENGTH: b3PogoJoint_SetRestLength( id, a ); break;
+		case MB3_JP_POGO_HERTZ: b3PogoJoint_SetSpringHertz( id, a ); break;
+		case MB3_JP_POGO_DAMPING: b3PogoJoint_SetSpringDampingRatio( id, a ); break;
+		case MB3_JP_POGO_MAX_TENSION_FORCE: b3PogoJoint_SetMaxTensionForce( id, a ); break;
+		case MB3_JP_POGO_MAX_COMPRESSION_FORCE: b3PogoJoint_SetMaxCompressionForce( id, a ); break;
+		case MB3_JP_POGO_NORMAL: b3PogoJoint_SetNormal( id, v ); break;
 
 		default:
 			mb3_throw_illegal_argument( env, "not a joint property that can be set" );
@@ -1038,6 +1098,19 @@ MB3_JNI( jint, jointGet )( JNIEnv* env, jclass type, jlong joint, jint param, jf
 		case MB3_JP_WHEEL_TARGET_STEERING_ANGLE: v[0] = b3WheelJoint_GetTargetSteeringAngle( id ); break;
 		case MB3_JP_WHEEL_STEERING_ANGLE: v[0] = b3WheelJoint_GetSteeringAngle( id ); break;
 		case MB3_JP_WHEEL_STEERING_TORQUE: v[0] = b3WheelJoint_GetSteeringTorque( id ); break;
+
+		case MB3_JP_MOVER_LINEAR_VELOCITY: vector = b3MoverJoint_GetLinearVelocity( id ); goto vec3;
+		case MB3_JP_MOVER_MAX_FORCE: v[0] = b3MoverJoint_GetMaxVelocityForce( id ); break;
+
+		case MB3_JP_POGO_REST_LENGTH: v[0] = b3PogoJoint_GetRestLength( id ); break;
+		case MB3_JP_POGO_HERTZ: v[0] = b3PogoJoint_GetSpringHertz( id ); break;
+		case MB3_JP_POGO_DAMPING: v[0] = b3PogoJoint_GetSpringDampingRatio( id ); break;
+		case MB3_JP_POGO_MAX_TENSION_FORCE: v[0] = b3PogoJoint_GetMaxTensionForce( id ); break;
+		case MB3_JP_POGO_MAX_COMPRESSION_FORCE: v[0] = b3PogoJoint_GetMaxCompressionForce( id ); break;
+		case MB3_JP_POGO_NORMAL: vector = b3PogoJoint_GetNormal( id ); goto vec3;
+		case MB3_JP_POGO_CURRENT_LENGTH: v[0] = b3PogoJoint_GetCurrentLength( id ); break;
+		case MB3_JP_POGO_CURRENT_SPEED: v[0] = b3PogoJoint_GetCurrentSpeed( id ); break;
+		case MB3_JP_POGO_IMPULSE: v[0] = b3PogoJoint_GetImpulse( id ); break;
 
 		default:
 			mb3_throw_illegal_argument( env, "not a joint property that can be read" );

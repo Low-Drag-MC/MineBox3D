@@ -7,13 +7,16 @@ public record MotionLocks(boolean linearX, boolean linearY, boolean linearZ, boo
     public static final MotionLocks NONE = new MotionLocks(false, false, false, false, false, false);
     /** Turns only about the world's up axis: a body that must not tip over. */
     public static final MotionLocks UPRIGHT = new MotionLocks(false, false, false, true, false, true);
+    /** Every bit {@link #bits} can set. */
+    public static final int ALL_BITS = 63;
 
-    int bits() {
+    /** The six as bits, linear X Y Z then angular X Y Z from the lowest: how they travel. */
+    public int bits() {
         return (linearX ? 1 : 0) | (linearY ? 2 : 0) | (linearZ ? 4 : 0) | (angularX ? 8 : 0) | (angularY ? 16 : 0)
                 | (angularZ ? 32 : 0);
     }
 
-    static MotionLocks of(int bits) {
+    public static MotionLocks of(int bits) {
         return new MotionLocks((bits & 1) != 0, (bits & 2) != 0, (bits & 4) != 0, (bits & 8) != 0, (bits & 16) != 0,
                 (bits & 32) != 0);
     }

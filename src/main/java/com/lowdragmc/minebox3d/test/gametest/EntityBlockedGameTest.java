@@ -23,6 +23,7 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
+import org.joml.Vector3f;
 
 /**
  * <b>Bodies stop entities as blocks do</b> (design doc {@code 04-entities-and-bodies.md} §11, batch 4c-1): an armor stand
@@ -201,6 +202,71 @@ public final class EntityBlockedGameTest {
                     light.discard();
                     heavy.discard();
                     done(helper, 10, 6);
+                });
+    }
+
+    /**
+     * The same light crate in the way of a stand whose moves a mod says push no body ({@code EntityAuthority.pushesBodies},
+     * Unreal's Mover): stopped at its face as at a wall, and the crate stays — while the same stand without the say pushes
+     * its own along.
+     */
+    @GameTest(template = "empty", batch = "minebox3d_blocked_no_push", timeoutTicks = 1200)
+    @PrefixGameTestTemplate(false)
+    public static void aStandWhoseMovesPushNothingStopsAtALightCrate(GameTestHelper helper) {
+        area(helper, 10, 6);
+        Body pushed = box(helper, BodyType.DYNAMIC, 4, 0.3, 1.5, 0.3f, 0.3f, 0.3f, new ShapeDef().density(23));
+        Body left = box(helper, BodyType.DYNAMIC, 4, 0.3, 4.5, 0.3f, 0.3f, 0.3f, new ShapeDef().density(23));
+        ArmorStand pusher = stand(helper, 3.2, 0, 1.5);
+        ArmorStand walled = EntityAuthorityGameTest.pushingNothing(stand(helper, 3.2, 0, 4.5));
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(ticking(helper, pusher, walled), "the stands tick"))
+                .thenExecute(() -> {
+                    pusher.setDeltaMovement(0.6, 0, 0);
+                    walled.setDeltaMovement(0.6, 0, 0);
+                })
+                .thenExecuteAfter(30, () -> {
+                    double pushedMoved = relative(helper, pushed).x - 4, leftMoved = relative(helper, left).x - 4;
+                    helper.assertTrue(pushedMoved > 0.4, "the stand without the say pushed its crate: " + pushedMoved);
+                    helper.assertTrue(Math.abs(leftMoved) < 0.01, "the other's crate stayed: " + leftMoved);
+                    double in = relative(helper, walled).x + 0.25 - (relative(helper, left).x - 0.3);
+                    helper.assertTrue(in < 0.01 && in > -0.05, "stopped at its face as at a wall: " + in + " in");
+                    pushed.destroy();
+                    left.destroy();
+                    pusher.discard();
+                    walled.discard();
+                    done(helper, 10, 6);
+                });
+    }
+
+    /**
+     * A stand whose moves push nothing stepping up onto a light crate: it goes up onto it and the crate stays. (Its proxy
+     * driven along the straight line from before the step to after it would cut the crate's top corner and fling it.)
+     */
+    @GameTest(template = "empty", batch = "minebox3d_blocked_no_push_step", timeoutTicks = 1200)
+    @PrefixGameTestTemplate(false)
+    public static void aStandWhoseMovesPushNothingStepsOntoALightCrateAndLeavesItBe(GameTestHelper helper) {
+        area(helper, 8, 4);
+        // 0.4 high, 5 kg; its face at x = 4
+        Body crate = box(helper, BodyType.DYNAMIC, 4.5, 0.2, 1.5, 0.5f, 0.2f, 0.5f, new ShapeDef().density(25));
+        ArmorStand stand = EntityAuthorityGameTest.pushingNothing(stand(helper, 3.2, 0, 1.5));
+        stand.getAttribute(Attributes.STEP_HEIGHT).setBaseValue(0.6);
+        float[] fastest = new float[1];
+        helper.onEachTick(() -> fastest[0] = Math.max(fastest[0], crate.linearVelocity(new Vector3f()).length()));
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(ticking(helper, stand), "the stand ticks"))
+                .thenExecute(() -> {
+                    fastest[0] = 0;
+                    stand.setDeltaMovement(0.5, 0, 0);
+                })
+                .thenExecuteAfter(20, () -> {
+                    Vec3 at = relative(helper, stand);
+                    helper.assertTrue(at.y > 0.39 && at.y < 0.42, "up on the crate: y = " + at.y);
+                    helper.assertTrue(fastest[0] < 1, "the crate stayed: fastest " + fastest[0] + " m/s");
+                    helper.assertTrue(relative(helper, crate).distance(4.5, 0.2, 1.5) < 0.05, "where it was: "
+                            + relative(helper, crate));
+                    crate.destroy();
+                    stand.discard();
+                    done(helper, 8, 4);
                 });
     }
 

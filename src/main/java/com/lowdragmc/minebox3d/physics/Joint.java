@@ -17,7 +17,7 @@ import org.joml.Vector3f;
  */
 public abstract sealed class Joint
         permits DistanceJoint, FilterJoint, MotorJoint, ParallelJoint, PrismaticJoint, RevoluteJoint, SphericalJoint,
-        WeldJoint, WheelJoint, ConstraintJoint {
+        WeldJoint, WheelJoint, MoverJoint, PogoJoint, ConstraintJoint {
 
     final PhysicsWorld world;
     final long id;

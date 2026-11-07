@@ -12,7 +12,9 @@ import com.lowdragmc.minebox3d.physics.DistanceJointDef;
 import com.lowdragmc.minebox3d.physics.Filter;
 import com.lowdragmc.minebox3d.physics.JointDef;
 import com.lowdragmc.minebox3d.physics.MotorJointDef;
+import com.lowdragmc.minebox3d.physics.MoverJointDef;
 import com.lowdragmc.minebox3d.physics.ParallelJointDef;
+import com.lowdragmc.minebox3d.physics.PogoJointDef;
 import com.lowdragmc.minebox3d.physics.PrismaticJointDef;
 import com.lowdragmc.minebox3d.physics.RevoluteJointDef;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
@@ -63,6 +65,8 @@ public final class B3 {
                 SphericalJointDef.class,
                 WeldJointDef.class,
                 WheelJointDef.class,
+                MoverJointDef.class,
+                PogoJointDef.class,
                 ConstraintJointDef.class,
                 ConstraintJointSettings.class,
                 ConstraintDrive.class,

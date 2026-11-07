@@ -12,6 +12,7 @@ import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.Joint;
 import com.lowdragmc.minebox3d.physics.MassData;
 import com.lowdragmc.minebox3d.physics.MotorJointDef;
+import com.lowdragmc.minebox3d.physics.Overlaps;
 import com.lowdragmc.minebox3d.physics.PhysicsWorld;
 import com.lowdragmc.minebox3d.physics.Shape;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
@@ -23,6 +24,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
+import org.joml.Quaternionfc;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
@@ -63,9 +65,10 @@ import java.util.Map;
  * <p>A kinematic proxy is immovable: driven into a body that cannot get away — a crate against a wall, a crate tipped under
  * a landing player — it squeezes it, and Box3D lets it out at tens of metres a second. So the tick a proxy is about to
  * sweep near a dynamic body it is made dynamic, of its entity's mass, and pulled after a kinematic target by a motor joint
- * of at most the strength: a body that cannot give stops it. Back to kinematic a few ticks after it last touched one, once
- * it has caught up with its entity (or is held off it by what it does not push, for a second). Touching nothing it is
- * kinematic, and costs what it did.
+ * of at most the strength: a body that cannot give stops it. Back to kinematic a few ticks after it last touched one —
+ * put where its entity is if it has not caught up and no body it pushes is there; at once if left a quarter block behind.
+ * Touching nothing it is kinematic, and costs what it did. Never for an entity whose moves push no body
+ * ({@link EntityAuthority#pushesBodies}): its proxy is put where it is each update, not driven.
  *
  * <p>⚠️ Proxy shapes have hit events on: Box3D measures how fast a pair came together only for pairs that report hits
  * ({@code ContactPoints.normalVelocity}). So {@code events().contactHits()} also lists bodies hitting entities above
@@ -79,14 +82,17 @@ public final class EntityProxies implements AutoCloseable {
     private static final int UNECHOED_TICKS = 6;
     /** Ticks a proxy stays force-capped after it last came onto a body: not made and unmade at every graze. */
     private static final int CAPPED_TICKS = 5;
-    /** Ticks after that a force-capped proxy that has not caught up with its entity is put where it is. */
-    private static final int HELD_TICKS = 20;
     /** How stiffly a force-capped proxy is pulled after its entity: Hz, critically damped. */
     private static final float PULL_HERTZ = 20;
     /** Metres from where its entity was driven to that a force-capped proxy counts as having caught up. */
     private static final double CAUGHT_UP = 0.05;
     /** Metres round a proxy's sweep a body caps it from: Box3D's speculative reach and some. */
     private static final double LOOK_MARGIN = 0.1;
+    /** Metres a force-capped proxy may lag behind before it is put where its entity is, if no body it pushes is there. */
+    private static final double LAGS = 0.25;
+    /** Metres in from an entity's faces it is asked what it is in: touching is not being in. */
+    private static final float SKIN = 0.02f;
+    private static final Quaternionfc UPRIGHT = new Quaternionf();
 
     private final Level level;
     private final PhysicsWorld world;
@@ -96,6 +102,7 @@ public final class EntityProxies implements AutoCloseable {
     private final float[] bounds = new float[6];
     private final Quaternionf rotation = new Quaternionf();
     private final ContactPoints contacts = new ContactPoints();
+    private final Overlaps overlaps = new Overlaps(4);
     private final Vector3f normal = new Vector3f();
     private final Vector3f anchor = new Vector3f();
     private final Vector3d center = new Vector3d();
@@ -300,19 +307,17 @@ public final class EntityProxies implements AutoCloseable {
             proxy.pushesShowLate = EntityAuthority.pushesShowLate(entity);
             readFreedom(proxy, entity, dx, dy, dz);
             double tx = x, ty = y, tz = z;
-            // the server moving it, or a client predicting what the server moves (§16: the replicas it pushes are
-            // simulated there, and go as the server's only if the proxy pushing them does)
-            boolean movedHere = !level.isClientSide || entity.isControlledByLocalInstance();
-            if (movedHere && !proxy.clientMoved && proxy.mass != Float.POSITIVE_INFINITY) {
+            if (!level.isClientSide && !proxy.clientMoved && proxy.mass != Float.POSITIVE_INFINITY) {
                 // where the entity will be when the coming steps end, not where it is: a body that has just pushed it
                 // would otherwise meet the proxy standing still for a tick and be stopped dead. Its motion cut as
                 // Minecraft's collision will cut it (the ground, a wall): a proxy driven past either springs back the
                 // tick after, flinging whatever rests on it. Not for a client-moved entity (its motion is not on the
-                // server), a client's remote mobs (stale) or an immovable one (a no-AI mob's piles up unused)
+                // server), a client's entities (a remote mob's is stale) or an immovable one (a no-AI mob's piles up
+                // unused)
                 Vec3 motion = entity.getDeltaMovement();
                 if (motion.lengthSqr() > 1.0e-10) {
                     // and as the bodies will: into a crate it pushes by the share its mass gives (EntityCollisions), so
-                    // the proxy pushes the crate by as much
+                    // the proxy pushes the crate by as much — up to it, for one whose moves push no body
                     Vec3 allowed = EntityCollisions.predict(entity, motion);
                     tx += allowed.x;
                     ty += allowed.y;
@@ -328,9 +333,14 @@ public final class EntityProxies implements AutoCloseable {
                 ty += baseVelocity.y * timeStep;
                 tz += baseVelocity.z * timeStep;
             }
-            weigh(proxy, entity);
+            boolean pushes = EntityAuthority.pushesBodies(entity);
+            weigh(proxy, entity, pushes);
             ignoreBase(proxy, base != null && base.world() == world && base.type() == BodyType.DYNAMIC ? base : null);
-            boolean teleported = dx * dx + dy * dy + dz * dz > teleport * teleport;
+            // one whose moves push no body is put where its entity is, not driven there: driven, its straight path cuts
+            // the corner its entity steps up around (onto a crate) and flings what it cuts; made dynamic, it carries its
+            // speed into a crate it walks up to. Put, it only stands in the way, and Box3D lets out what it overlaps no
+            // faster than its contact speed
+            boolean teleported = !pushes || dx * dx + dy * dy + dz * dz > teleport * teleport;
             boolean capping = settings.strength > 0 && proxy.mass < Float.POSITIVE_INFINITY && !teleported;
             if (capping && tick - proxy.pressedTick > CAPPED_TICKS && comesOntoABody(proxy, entity, tx, ty, tz)) {
                 proxy.pressedTick = tick;
@@ -340,16 +350,22 @@ public final class EntityProxies implements AutoCloseable {
                 uncap(proxy);
                 cap(proxy);
             }
+            if (proxy.capped && !teleported && lagsBehind(proxy) && !intoABody(proxy, entity, tx, ty, tz)) {
+                // its entity went where it could not follow — off the edge it is perched on (its own collision a hair
+                // apart from Box3D's), through what it does not push (a static or kinematic body) — and nothing it
+                // pushes is there: held, it would press on what holds it for good
+                proxy.pressedTick = Long.MIN_VALUE / 2;
+                uncap(proxy);
+                teleported = true;
+            }
             boolean capped = capping && tick - proxy.pressedTick <= CAPPED_TICKS;
             if (capped && !proxy.capped) {
                 cap(proxy);
             } else if (!capped && proxy.capped) {
                 if (!capping || caughtUp(proxy)) {
                     uncap(proxy);
-                } else if (tick - proxy.pressedTick > HELD_TICKS && !nearABody(proxy, entity.getBoundingBox(),
-                        tx - x, ty - y, tz - z, 0, 0, 0)) {
-                    // held off its entity by what it does not push (a static body; on a client, a replica it does not
-                    // predict): put where its entity is, there being nothing there to squeeze
+                } else if (!intoABody(proxy, entity, tx, ty, tz)) {
+                    // touching no dynamic body for a while and still off its entity: held off by a static one
                     uncap(proxy);
                     teleported = true;
                 }
@@ -383,11 +399,12 @@ public final class EntityProxies implements AutoCloseable {
     /**
      * An entity standing on a body it can push presses on it with its weight over the coming steps ({@link #beforeStep}):
      * a plank on a pivot tips under whoever stands on its end. (Box3D meets the proxy as a wall it can lean on, not as a
-     * weight.) Where its feet meet the body: the body's centre as near as the feet reach.
+     * weight.) Where its feet meet the body: the body's centre as near as the feet reach. Not one whose moves push no
+     * body ({@link EntityAuthority#pushesBodies}).
      */
-    private void weigh(Proxy proxy, Entity entity) {
+    private void weigh(Proxy proxy, Entity entity, boolean pushes) {
         proxy.weighs = null;
-        Body base = entity.onGround() ? EntityBases.baseOf(entity) : null;
+        Body base = pushes && entity.onGround() ? EntityBases.baseOf(entity) : null;
         if (base == null || base.world() != world || !EntityCollisions.pushable(base)
                 || !(proxy.mass < Float.POSITIVE_INFINITY)) {
             return;
@@ -851,6 +868,37 @@ public final class EntityProxies implements AutoCloseable {
     private boolean caughtUp(Proxy proxy) {
         proxy.body.position(center);
         return center.distanceSquared(proxy.targetX, proxy.targetY, proxy.targetZ) <= CAUGHT_UP * CAUGHT_UP;
+    }
+
+    /** Whether a force-capped proxy is further than {@link #LAGS} from where it was driven to last. */
+    private boolean lagsBehind(Proxy proxy) {
+        proxy.body.position(center);
+        return center.distanceSquared(proxy.targetX, proxy.targetY, proxy.targetZ) > LAGS * LAGS;
+    }
+
+    /**
+     * Whether the entity's box at {@code (tx, ty, tz)}, a {@link #SKIN} in from its faces, is in a dynamic body its proxy
+     * meets — the squeeze capping is for. Exact, so only asked of a proxy that lags behind.
+     */
+    private boolean intoABody(Proxy proxy, Entity entity, double tx, double ty, double tz) {
+        AABB box = entity.getBoundingBox();
+        float hx = (float) box.getXsize() / 2 - SKIN, hy = (float) box.getYsize() / 2 - SKIN, hz = (float) box.getZsize() / 2 - SKIN;
+        if (!(hx > 0 && hy > 0 && hz > 0)) {
+            return false;
+        }
+        int count = world.overlapShape(Geometry.Box.of(hx, hy, hz), (box.minX + box.maxX) / 2 + tx - entity.getX(),
+                (box.minY + box.maxY) / 2 + ty - entity.getY(), (box.minZ + box.maxZ) / 2 + tz - entity.getZ(),
+                UPRIGHT, EntityCollisions.FILTER, overlaps);
+        long tag = proxy.body.tag();
+        for (int i = 0; i < count; i++) {
+            Shape shape = overlaps.shape(i);
+            Body body = shape == null || shape.isSensor() ? null : shape.body();
+            if (body != null && body.type() == BodyType.DYNAMIC && body.attachment(Proxy.class) == null
+                    && body != proxy.ignoredBase && body.ignoredTag() != tag) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

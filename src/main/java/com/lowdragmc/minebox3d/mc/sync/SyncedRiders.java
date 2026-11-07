@@ -168,6 +168,10 @@ public final class SyncedRiders {
         if (++count[1] > MAX_PUSHES || player.isSpectator() || player.isDeadOrDying()) {
             return;
         }
+        Entity mover = player.getControlledVehicle() != null ? player.getControlledVehicle() : player;
+        if (!EntityAuthority.clientMoves(mover) || !EntityAuthority.pushesBodies(mover)) {
+            return; // a client that should not have pushed: the server moves it, or its moves push nothing
+        }
         LevelPhysics physics = LevelPhysics.existing(player.serverLevel());
         if (physics == null || physics.isStopped() || !player.serverLevel().tickRateManager().runsNormally()) {
             return; // frozen pushes would pile up into one launch on the next step

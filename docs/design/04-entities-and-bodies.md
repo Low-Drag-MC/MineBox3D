@@ -423,7 +423,7 @@ EntityStudio 58-3b review（两个只读 opus 并行）里原生扫掠的一高�
 - **低（记下不修）**：推进到 40 步上限没收敛时当成碰到（报的是还差一点的位置）；流形给的深度不一定是最短推出；半尺寸 inf / 四元数全 0 没校验；`tryUse` 拿不到世界和「没碰到」分不出来；没有刚体在附近时没有提前返回（宽相为空本身就快）。
 - 版本 0.2.2 → 0.2.3，已发 mavenLocal。主仓库仍未提交。
 
-## 16. 客户端预测被本机推的副本（2026-10-31，0.2.5，为 EntityStudio doc 58 §19）
+## 16. 客户端预测被本机推的副本（2026-10-31，0.2.5，为 EntityStudio doc 58 §19）——⚠️ 2026-11-07 整个删掉，现状见 §19
 
 - 起因：副本一 tick 跟一次服务端状态、比服务端晚一个来回。EntityStudio 的玩家（服务端重算、客户端预测）推箱子时，每隔几 tick 撞上还没让开的副本、和服务端对不上，推 1.5 秒被纠正 8 次。
 - **只给「服务端移动、客户端预测」的实体**（`!EntityAuthority.clientMoves` 且 `isControlledByLocalInstance`，即 EntityStudio 的玩家）：推到副本时（`EntityCollisions.settle`），副本**在客户端本地模拟**——变动态，用服务端的质量 / 重心 / 惯量 / 阻尼 / 重力倍数（`BodySyncPayload.Dynamics`，所有动态刚体都发）和形状的摩擦 / 弹性 / 滚动阻力（`SyncedShape`），要地形、本地实体代理推得到它；冲量照服务端那一套给。
@@ -473,3 +473,30 @@ EntityStudio 58-3b review（两个只读 opus 并行）里原生扫掠的一高�
   - 测试自己抓到的真问题：刚体包围盒是 float，GameTest 的坐标在几百万格外（float 间隔 0.5–1 m）⇒ 判断时有时无（同一个测试两次跑一红一绿；原来的生命周期测试其实根本没碰到箱子，靠误差绿的）⇒ 余量加上坐标的 float 间隔，远处宁可早限力。
   - 低，记下不修：限力期间箱子撞上来，motor 吃得下就当墙，箱子停死、动量丢（站着不动的实体不会被扫进限力，只在推的时候发生）；只看刚体的 `ignoredTag` / base，没看形状的 mask（不碰实体的刚体照样会让附近代理限力，只多开销）。
 - **测试**（`EntitySqueezeGameTest`，7 条）：墙前挤（关限力 171 m/s / 开 0.03）、往地上压（390 / 0.19）、碰上限力离开后回运动学 + 实体没了目标体也没了、穿过忽略它的箱子和在脚下的动态石板上走都不限力、限力中变大小仍限力且按新质量、目标被外部销毁后重新限力 + 代理被销毁后目标也没了、被静态墙挡住 20 tick 后放回实体位置、一 tick 挪 5 格不拖箱子；两条挤压测试改了全关卡的 `strength`，失败也由 `@AfterBatch` 改回来。JUnit 加 `ConstraintJointTest.javasJointTypesAreBox3DsNumbers`（合并上游后 `JointType` 的序号 = Box3D 的枚举）。全量 JUnit 211、GameTest 82（连跑两遍）、MP 3/3。
+
+## 19. 「移动不推刚体」开关 + 删掉 §16 的客户端预测（2026-11-07，0.3.7，为 EntityStudio doc 56 §21.11.7 闪回）
+
+- **为什么**：§16 让「服务端说了算、客户端预测」的实体（EntityStudio 的玩家）推箱子时，客户端临时自己模拟那个箱子、推完交还、按阈值对账。两台机器各自模拟同一个箱子，翻滚时一点差别就放大（录到客户端还在滚、服务端已停，差 1.5 m）；先试了软拉 + 画面平滑 + 静止箱子也对账，箱子画面跳 ≥ 30 cm 36 → 2，但玩家 ≥ 30 cm 的纠正 24 → 21 没降——缝两份模拟的阈值只会越加越多。用户：「我很担心你是在不停的打补丁 让系统变得很臃肿」⇒ 定了 UE 的结构（UE 5.8 源码）：默认后端的 Mover 不推物理体（`MoverComponent.cpp:1048` `TODO: Handle physics impacts here - ie when player runs into box, impart force onto box`，Mover 里没有一处给刚体施力）；要推就换 ChaosMover 后端（`MoverComponent.h:206` `BackendClass` 每个角色自己选；`ChaosMoverBackend.cpp:56-58` 把角色改成 Resimulation 复制 = 回滚重算），那条是 EntityStudio 后面单独的设计。
+- **开关**：`EntityAuthority.Provider.pushesBodies(entity)` → `EntityAuthority.pushesBodies`，默认推（原版玩家、生物照旧）。说不推的实体：自己的移动把所有刚体当墙（`EntityCollisions` 的 `Mover.pushes`）；站着不给脚下刚体压重量（`weigh`）；**代理每次 update 直接放到实体那里**（`setTransform`，速度 0，= 瞬移那条路），不开、也不限力——开的话直线路径会切过它绕上去的角（压力场景录到：从半砖台阶迈上桶顶，代理一刀切过桶角，桶 66 m/s 飞出、人被弹飞 60 格），限力的话动态代理把速度带进它走到面前的箱子（测试里 5 kg 箱子被带走 12 cm）；放过去的只是挡在那里，和它重叠的东西 Box3D 最多按 `contactSpeed` 推出去。刚体推它照旧（`EntityPushedByBodyEvent`；算刚体速度时代理速度当 0）。EntityStudio 的移动组件对被驱动的实体都说不推（玩家、AI 一样）。
+- **删掉的**：`SyncedBodies.predict / isPredicting / setRoundTrip`、对账 / 交还 / 带邻居一起模拟 / 轨迹；状态里的 `whole`（服务端每 tick 每个同步刚体读一次接触点算它，也省了）；`Dynamics` 里的阻尼和重力倍数（只给预测用）；`EntityAuthority.isResimulating`（只给预测时的推用）；`isPinned` 里「服务端动态的副本不算墙」；客户端代理的「提前到下一 tick」（只为 §16）。副本现在一律只跟服务端状态走 = UE 默认复制。
+- **留下的**：原版玩家推副本照旧报给服务端（`PushPayload`）；`serverMass / serverVelocity / isDynamicOnServer` 等照旧答服务端的；§18 的限力只剩「推刚体的实体」用；§18 review 轮的「被挡 20 tick 再放回」换成：限力的代理落后 > ¼ 格、目标处（实体的盒子往里缩 2 cm）又不在它会推的动态刚体里（一次 `overlapShape`，只问落后的）⇒ 立刻放到实体那里（录到的：玩家从箱子边走下去，代理被箱子托着一直压着它）。试过又撤掉的：`Body.setTransformSmoothed`（画面平滑，只给预测对账用）。
+- **review 轮**（opus 只读；它读的是「代理放过去」之前的版本）：
+  - 高：不推的实体代理仍按速度开、又不限力 ⇒ 迈上 / 跳上箱子时直线切角把箱子甩出——和压力场景录到的是同一件，已经用「每 tick 直接放过去」修了（上一条），并补了迈上箱子的 GameTest。
+  - 中，修了：服务端收原版客户端报的推（`SyncedRiders.receive`）没问 `pushesBodies` / `clientMoves`（握手前、改过的客户端会推）⇒ 加了。
+  - 低，顺手修了（都是这批自己带进来的或一行的）：去掉 20 tick 兜底后，限力代理被静态刚体挡在 5–25 cm 外、又不碰会动的刚体时会一直限力 ⇒ 不再被压着、没追上、目标处又没有会推的刚体就放过去；`intoABody` 把感应器也算进去 ⇒ 跳过；网络版本号 `"2"` → `"3"`（格式变了，老客户端会解码错断线）；`EntityAuthority` 的 javadoc 放错位置；ES 里只剩死代码的 `MovementComponent.isResimulating()` 删了；`bentPost` 注释、`es_physics_props` 的日志和距离判断（`< 1.5` → `< 0.6`）。
+  - 低，记下不修：代理被「放过去」后速度 0，限力 / 放回在极快的移动下可能每 tick 来回切；贴墙走的 ES 身体代理仍是脚下直立的默认盒子（和 ES 的转向盒不一致，放过去时可能和刚体重叠，Box3D 按 `contactSpeed` 慢慢推开）；别的模组的「服务端移动」实体不说就照旧推、也没了 §16；删 `Provider.isResimulating` 对别的模组是源码不兼容（未发布，不做兼容）；ES 角色和 AI 现在把世界里的布娃娃当墙 / 台阶。
+- **测试**：GameTest 85——`EntityAuthorityGameTest` 加 `pushesBodies` 的默认和 mod 的话、`EntityBlockedGameTest.aStandWhoseMovesPushNothingStopsAtALightCrate`（同样的 5 kg 箱子，说不推的停在面上 < 1 cm、箱子不动；没说的推走 > 0.4）、`aStandWhoseMovesPushNothingStepsOntoALightCrateAndLeavesItBe`（迈上 0.4 高的 5 kg 箱子，箱子最快 < 1 m/s、不挪窝）、`EntityBaseGameTest.aStandWhoseMovesPushNothingLeavesThePlankLevel`（落地后把跷跷板摆平，10 tick 后仍平 < 0.01）、`EntitySqueezeGameTest.aCappedProxyLeftBehindIsPutWhereItsEntityIs`；JUnit 211（`BodySyncPayloadTest` 跟着新格式）；MP 3/3。EntityStudio 联机 `es_mp_push_crate` 改成：驾驶者走进同步箱子停在面前 1.3 mm、箱子动了 1.2 mm（落定）、纠正 0 次、两端位置一致。
+
+## 20. 回滚重算 + 预测者（2026-11-07，0.3.7，为 EntityStudio doc 61 第 2–3 批 = UE ChaosMover 的 Resimulation）
+
+完整设计和记录在 EntityStudio `docs/design/61-physics-mover-resimulation.md` §3.8–3.9.2，这里只记 MineBox3D 这边有什么。
+
+- **历史与重算**（`physics/RewindHistory`、`mc/LevelRewind` = `LevelPhysics.rewind()`）：
+  - 有人 `watch` 时，每 tick 记下中心 8 格内（按包围盒，不按原点）的非静态刚体，存 20 tick；
+  - `know(tick, body, 服务端状态)`：和那一 tick 的记录比，差 > 10 cm / 4° 就记成「已知」，从下一 tick 起重算；没记录（刚进范围、比历史还旧）就不比也不动；
+  - `resimulate(from)`：范围外的先停用、跑完放回；范围内的还原到 from − 1，逐 tick 告诉监听者（`TickListener.beforeResimTick / afterResimTick`）、运动学的照记录开、只走世界的步、已知的对齐；事件丢掉；前后的差记成画面误差 6 帧消掉（超过 2.5 格直接跳）；
+  - `requestResimulation` / `resimulateIfAsked`（public：预测者在自己这一帧前先跑）/ `canResimulateFrom`。
+- **同步协议**（版本 5）：状态包带服务端 tick 和那个玩家这一 tick 跑的帧（`SyncedBodies.Prediction` 由 ES 注册）；有帧的玩家，周围 10 格的刚体每 tick 都发。每个状态带 `whole`（碰着的都是客户端也有的）和 `joints`（关节数，**按客户端分别扣掉它自己预测的那个身体拉着这个刚体的关节**——`Prediction.ownBodyOf`；它踩上踩下时客户端那两个关节立刻有、立刻没，服务端的话晚一个来回）；`Dynamics` 带阻尼、重力倍数、轴锁定，这几样变了用 `Tuning` 原地改复制体（不重发 Spawn——物理角色每次离地落地都会开关自己的重力）。
+- **客户端预测者**（`SyncedBodies.Predictor`，ES 注册）：周围 8 格内、客户端能照样模拟的复制体（`whole`、关节数够、`simulates` 说要）变动态、按服务端的质量 / 阻尼 / 重力 / 锁定在本地模拟，状态到了走 `know`；自己的刚体按标签 + 名字认出，不建复制体（换了预测者也从「发过来的都有谁」里重新认出）；别的客户端预测的角色只跟随。
+- 和 §16 的区别：§16 是「推的时候临时模拟、推完交还」两份模拟靠阈值缝；这里是 UE 的整套：客户端一直按服务端说的帧预测，对不上就整个范围倒回去重跑。
+- 测试：`RewindHistoryTest`（JUnit 6）、`RewindGameTest`（7）、`PredictedReplicaGameTest`（9）；全量 GameTest 101。

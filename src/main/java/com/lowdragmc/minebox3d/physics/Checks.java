@@ -46,6 +46,14 @@ final class Checks {
         }
     }
 
+    /** A direction: finite and of unit length, give or take what normalising would not notice. */
+    static void unitVector(float x, float y, float z, String what) {
+        float lengthSquared = x * x + y * y + z * z;
+        if (!Float.isFinite(lengthSquared) || Math.abs(lengthSquared - 1) > 1e-3f) {
+            throw new IllegalArgumentException(what + " is not a unit vector: (" + x + ", " + y + ", " + z + ")");
+        }
+    }
+
     /** A rotation: finite, and not so far from unit length that normalising it is guesswork. */
     static void rotation(float x, float y, float z, float w, String what) {
         float lengthSquared = x * x + y * y + z * z + w * w;

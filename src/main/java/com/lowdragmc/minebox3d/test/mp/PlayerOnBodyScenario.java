@@ -303,8 +303,8 @@ public class PlayerOnBodyScenario implements MPScenario {
                     })
                     .waitUntil("walked", ctx -> MpClient.gameTime() - since[0] >= 30)
                     .step("stop", ctx -> MpClient.walk(false))
-                    // past the prediction's wait: the replica the server's again
-                    .waitUntil("the crate handed back", ctx -> MpClient.gameTime() - since[0] >= 70)
+                    // the last push on the server, and its result back here
+                    .waitUntil("the crate come to rest", ctx -> MpClient.gameTime() - since[0] >= 70)
                     .step("how the walk went", ctx -> {
                         MpClient.track(null);
                         List<double[]> ticks = MpClient.tracked();
@@ -313,7 +313,7 @@ public class PlayerOnBodyScenario implements MPScenario {
                             back = Math.max(back, ticks.get(i - 1)[1] - ticks.get(i)[1]);
                         }
                         // the client's word on where B is, the push told to the server: the replica gives as the
-                        // server's body moves, a round trip on (§16 — not simulated here for a player its client moves)
+                        // server's body moves, a round trip on
                         ctx.log("pushing the crate: B held up " + heldUp(ticks) + " tick(s), its replica back by at most "
                                 + back);
                         ctx.check("the replica never went back", back < 0.02, "< 0.02", back);

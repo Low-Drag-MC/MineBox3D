@@ -4,6 +4,7 @@ import com.lowdragmc.minebox3d.MineBox3D;
 import com.lowdragmc.minebox3d.mc.CollisionCategories;
 import com.lowdragmc.minebox3d.mc.LevelBodies;
 import com.lowdragmc.minebox3d.mc.LevelPhysics;
+import com.lowdragmc.minebox3d.mc.LevelRewind;
 import com.lowdragmc.minebox3d.mc.entity.EntityCollisions;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 import com.lowdragmc.minebox3d.physics.Body;
@@ -12,9 +13,7 @@ import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.ContactPoints;
 import com.lowdragmc.minebox3d.physics.Filter;
 import com.lowdragmc.minebox3d.physics.MassData;
-import com.lowdragmc.minebox3d.physics.Overlaps;
 import com.lowdragmc.minebox3d.physics.PhysicsWorld;
-import com.lowdragmc.minebox3d.physics.QueryFilter;
 import com.lowdragmc.minebox3d.physics.Shape;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import com.lowdragmc.minebox3d.physics.SurfaceMaterial;
@@ -28,6 +27,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.Event;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -60,10 +60,10 @@ import java.util.Map;
  *
  * <p>On the client: each body arrives as a <b>replica</b>, a kinematic body in the client level's physics, driven a
  * tick at a time to where the server said ({@link #beforeSteps}) and drawn between ticks like any other body. It does
- * not simulate — save one this client pushes ({@link #predict}), simulated here until the server has the push. States
- * wait in a short queue, one taken a tick, so a tick with two states and a tick with none (the two sides' ticks are not
- * in step, and the network jitters) do not make it stop and lunge; with none left it carries on at the server's velocity
- * for a tick or two. {@link SyncedBodyEvent} says when one comes and goes.
+ * not simulate: Unreal's default physics replication, where a client only shows the server's bodies. States wait in a
+ * short queue, one taken a tick, so a tick with two states and a tick with none (the two sides' ticks are not in step,
+ * and the network jitters) do not make it stop and lunge; with none left it carries on at the server's velocity for a
+ * tick or two. {@link SyncedBodyEvent} says when one comes and goes.
  *
  * <p>Private physics ({@link LevelPhysics#create}) is not synced. A client without MineBox3D, or without Box3D, is sent
  * nothing.
@@ -77,6 +77,72 @@ public final class SyncedBodies {
     /** Ticks a replica with no new state carries on at the server's velocity before it holds still. */
     private static final int MAX_COAST = 2;
 
+    /**
+     * Round a predicting player's body, bodies are sent every tick whether they moved or not: its client holds each against
+     * where it ran it to (EntityStudio doc 61 §3.9). A little past the bubble its client runs again.
+     */
+    private static final double PREDICTED_RADIUS = LevelRewind.BUBBLE_RADIUS + 2;
+
+    /**
+     * What a mod whose players' clients predict their bodies says of each player, on the server (EntityStudio's physics
+     * characters, doc 61 §3.9). One mod at a time; set from common setup.
+     */
+    public interface Prediction {
+        /** The player's own frame the server ran this tick — its client's number for it — or {@link BodySyncPayload#NO_FRAME}. */
+        int frameOf(ServerPlayer player);
+
+        /** Where round its client predicts bodies now; {@code null} for nowhere. */
+        @Nullable
+        Vec3 centreOf(ServerPlayer player);
+
+        /**
+         * The body its client predicts as its own, or {@code null}: the joints it makes with what it stands on are its
+         * client's own as well, and are not counted among what holds those bodies ({@link BodySyncPayload.State#joints}) —
+         * its client loses them the moment it steps off, the server's word a round trip later.
+         */
+        @Nullable
+        default Body ownBodyOf(ServerPlayer player) {
+            return null;
+        }
+    }
+
+    /**
+     * What predicts this client's own body and the bodies round it, on a client (doc 61 §3.9): set while it does. Round it
+     * the replicas of bodies the server simulates are simulated here, their server states held against where they were run
+     * to ({@link LevelRewind#know}); its own body arrives synced as any, and is that body here.
+     */
+    public interface Predictor {
+        /** Where round it bodies are simulated here; {@code null} for nowhere now. */
+        @Nullable
+        Vec3 centre();
+
+        /** The tick of this client's physics its frame {@code frame} ran in; {@link Long#MIN_VALUE} where it does not know. */
+        long localTickOf(int frame);
+
+        /** Whether the synced body so tagged and named is its own: no replica is made of it. */
+        boolean isOwn(long tag, @Nullable String name);
+
+        /**
+         * Whether a replica so tagged and named is simulated here round it; false for one it only follows — another
+         * client's predicted body, which is not in this one's run again (Unreal's remote characters).
+         */
+        default boolean simulates(long tag, @Nullable String name) {
+            return true;
+        }
+
+        /** Its own body here, to hold the server's word of its own against; {@code null} for none now. */
+        @Nullable
+        Body ownBody();
+    }
+
+    @Nullable
+    private static volatile Prediction prediction;
+
+    /** Sets what says which of its players' frames each tick runs — see {@link Prediction}. */
+    public static void setPrediction(@Nullable Prediction prediction) {
+        SyncedBodies.prediction = prediction;
+    }
+
     private final LevelPhysics physics;
     private final SyncedRiders riders;
 
@@ -89,6 +155,71 @@ public final class SyncedBodies {
 
     // ---- the client ----
     private final Int2ObjectOpenHashMap<Body> replicas = new Int2ObjectOpenHashMap<>();
+    /** What each body the server sent here is, by its number — replicas and a predictor's own alike */
+    private final Int2ObjectOpenHashMap<Sent> sent = new Int2ObjectOpenHashMap<>();
+    @Nullable
+    private Predictor predictor;
+    /** The network number of the predictor's own body, which has no replica; -1 for none */
+    private int ownId = -1;
+
+    /** How a body the server sent is told apart: what a predictor's {@link Predictor#isOwn} is asked of. */
+    private record Sent(long tag, @Nullable String name) {
+    }
+
+    /**
+     * Sets what predicts this client's body — see {@link Predictor}; {@code null} when nothing does. Client only. Its own
+     * body is looked for among all the server sent, so one that comes after another (its tree made again) finds it too.
+     */
+    public void setPredictor(@Nullable Predictor predictor) {
+        if (this.predictor == predictor) {
+            return;
+        }
+        if (this.predictor != null) {
+            physics.rewind().unwatch(this.predictor);
+        }
+        this.predictor = predictor;
+        ownId = -1;
+        if (predictor != null) {
+            physics.rewind().watch(predictor, predictor::centre);
+            for (var entry : sent.int2ObjectEntrySet()) {
+                if (predictor.isOwn(entry.getValue().tag(), entry.getValue().name())) {
+                    ownId = entry.getIntKey();
+                    break;
+                }
+            }
+            if (ownId >= 0) {
+                dropOwnReplica(ownId);
+            }
+        }
+    }
+
+    /** Its own body come before it did, as a replica: gone, its own the body here from now on (two would push apart). */
+    private void dropOwnReplica(int own) {
+        if (!replicas.containsKey(own)) {
+            return;
+        }
+        List<Event> events = new ArrayList<>();
+        List<Body> gone = new ArrayList<>();
+        try (PhysicsWorld.Use use = physics.world().use()) {
+            remove(physics.level(), own, events, gone);
+            try {
+                for (Event event : events) {
+                    NeoForge.EVENT_BUS.post(event);
+                }
+            } finally {
+                for (Body body : gone) {
+                    if (body.isValid()) {
+                        body.destroy();
+                    }
+                }
+            }
+        }
+    }
+
+    @Nullable
+    public Predictor predictor() {
+        return predictor;
+    }
 
     @ApiStatus.Internal
     public SyncedBodies(LevelPhysics physics) {
@@ -105,7 +236,7 @@ public final class SyncedBodies {
         if (!NativeLibrary.isLoaded()) {
             return;
         }
-        var registrar = event.registrar("2").optional();
+        var registrar = event.registrar("5").optional();
         registrar.playToClient(BodySyncPayload.TYPE, BodySyncPayload.CODEC,
                 (payload, context) -> context.enqueueWork(() -> receive(payload, context.player().level())));
         registrar.playToClient(RiderPayload.TYPE, RiderPayload.CODEC,
@@ -146,33 +277,17 @@ public final class SyncedBodies {
     }
 
     /**
-     * Whether this client is simulating the replica itself for now ({@link #predict}): a dynamic body here, not driven by
-     * the server's states.
-     */
-    public static boolean isPredicting(Body body) {
-        Replica r = body.attachment(Replica.class);
-        return r != null && r.predicting;
-    }
-
-    /**
      * How fast the server's body was moving as of the state the replica was last driven by, m/s, world space (the
-     * replica's own velocity is how it is driven, which lags by the network); for one this client predicts, how fast it
-     * simulates it moving. Zero for anything that is not a replica.
+     * replica's own velocity is how it is driven, which lags by the network). Zero for anything that is not a replica.
      */
     public static Vector3f serverVelocity(Body replica, Vector3f out) {
         Replica r = replica.attachment(Replica.class);
-        if (r != null && r.predicting) {
-            return replica.linearVelocity(out);
-        }
         return r == null ? out.zero() : out.set(r.vx, r.vy, r.vz);
     }
 
     /** The same for the turn, rad/s. */
     public static Vector3f serverAngularVelocity(Body replica, Vector3f out) {
         Replica r = replica.attachment(Replica.class);
-        if (r != null && r.predicting) {
-            return replica.angularVelocity(out);
-        }
         return r == null ? out.zero() : out.set(r.wx, r.wy, r.wz);
     }
 
@@ -180,16 +295,12 @@ public final class SyncedBodies {
      * How fast the server's body moves at a world point, as the replica last heard — what the server's
      * {@link Body#pointVelocity} answers there: the velocity of the centre of mass plus the turn's about it, m/s. The
      * centre is the server body's for a dynamic one (sent with it, and again when its type or mass is set), the body's
-     * origin otherwise — which a kinematic or static body's is. For one this client predicts, its own. Zero for anything
-     * that is not a replica.
+     * origin otherwise — which a kinematic or static body's is. Zero for anything that is not a replica.
      */
     public static Vector3f serverPointVelocity(Body replica, double x, double y, double z, Vector3f out) {
         Replica r = replica.attachment(Replica.class);
         if (r == null) {
             return out.zero();
-        }
-        if (r.predicting) {
-            return replica.pointVelocity(x, y, z, out);
         }
         Vector3d center = replica.position(new Vector3d());
         if (r.centre != null) {
@@ -202,8 +313,7 @@ public final class SyncedBodies {
 
     /**
      * The server body's mass, into {@code out}, if entities push it (doc 04 §11.2 #1): what an entity walking into the
-     * replica pushes against, whether it is driven or simulated here. False for any other body, and a replica of one
-     * entities do not push.
+     * replica pushes against. False for any other body, and a replica of one entities do not push.
      */
     public static boolean serverMass(Body replica, MassData out) {
         Replica r = replica.attachment(Replica.class);
@@ -214,84 +324,10 @@ public final class SyncedBodies {
         return true;
     }
 
-    /** Whether the body is a replica of one the server simulates: one this client may simulate too ({@link #predict}). */
+    /** Whether the body is a replica of one the server simulates. */
     public static boolean isDynamicOnServer(Body body) {
         Replica r = body.attachment(Replica.class);
         return r != null && r.dynamics != null;
-    }
-
-    /**
-     * <b>Simulates the replica on this client</b> (doc 04 §16) from now until the server's states have had time to show
-     * what this client did to it: what moves here pushed it — its own player, what that steers, or a mod's interaction —
-     * and waiting a round trip for the server to move it out of the way would stop that against where it was. A dynamic
-     * body here meanwhile, with the server body's mass, surface, damping and gravity scale, in terrain, pushed by the
-     * entity proxies, the bodies it runs into simulated with it; the server's states reconciled with it as they come; then
-     * driven to the server's states again ({@link #beforeSteps}). Asked again, the wait starts over. Client only.
-     *
-     * @return false for a replica of a body the server does not simulate, and while the server has it touch what this
-     *         client lacks ({@link BodySyncPayload.State#whole}) — it stays as the server has it
-     */
-    public boolean predict(Body replica) {
-        return predict(replica, physics.ticks() + predictionTicks());
-    }
-
-    /**
-     * {@link #predict}, the wait lasting till {@code until} at the least: a body run into by one simulated here lasts as
-     * long as that one does — not a wait of its own, which two touching would hand each other for ever.
-     */
-    private boolean predict(Body replica, long until) {
-        Replica r = replica.attachment(Replica.class);
-        if (r == null || r.dynamics == null || r.last == null || !r.last.whole() || !replica.isValid()) {
-            return false;
-        }
-        r.predictUntil = Math.max(r.predicting ? r.predictUntil : 0, until);
-        if (!r.predicting) {
-            r.predicting = true;
-            r.forgetTrail();
-            Vector3f v = replica.linearVelocity(new Vector3f());
-            Vector3f w = replica.angularVelocity(new Vector3f());
-            replica.setType(BodyType.DYNAMIC);
-            replica.setMassData(r.dynamics.into(new MassData()));
-            replica.setLinearDamping(r.dynamics.linearDamping());
-            replica.setAngularDamping(r.dynamics.angularDamping());
-            replica.setGravityScale(r.dynamics.gravityScale());
-            replica.setLinearVelocity(v.x, v.y, v.z);
-            replica.setAngularVelocity(w.x, w.y, w.z);
-            LevelBodies.setNeedsTerrain(replica, true);
-            LevelBodies.setPushedByEntities(replica, r.dynamics.pushedByEntities());
-        }
-        return true;
-    }
-
-    /**
-     * Ticks a prediction lasts past the last push: the round trip, the replica's queue of states, and the server's wait
-     * for the moves that pushed it — after that the states coming in have the push in them. Handed back only once they
-     * agree, too ({@link #stepPrediction}): this is the least.
-     */
-    private static int predictionTicks() {
-        return roundTripTicks + MAX_QUEUED + 3;
-    }
-
-    /** Ticks past {@link #predictionTicks} a replica the server's states never agree with is handed back at anyway. */
-    private static final int HAND_BACK_LATEST = 60;
-    /** Metres, m/s: the server's newest state this near where a replica simulated here is, and as fast, agrees with it. */
-    private static final double AGREES = 0.05, AGREES_SPEED = 0.1;
-    /**
-     * Metres a replica simulated here may be from the server's word on it before it is moved to agree — beyond what three
-     * ticks at its speed make of the round trip being an estimate.
-     */
-    private static final double RECONCILE = 0.25;
-    /** Ticks the server holds a client's moves before running them (EntityStudio's queue aims at two), at the least. */
-    private static final int SERVER_WAIT = 1;
-    /** Ticks of where a replica simulated here was, kept to put the server's word beside. */
-    private static final int TRAIL = 64;
-
-    /** This client's round trip to the server, in ticks: set each tick by the client. */
-    private static volatile int roundTripTicks = 2;
-
-    @ApiStatus.Internal
-    public static void setRoundTrip(int milliseconds) {
-        roundTripTicks = Math.max(1, Math.min(40, (milliseconds + 49) / 50));
     }
 
     // ---- the client --------------------------------------------------------------------------
@@ -334,23 +370,62 @@ public final class SyncedBodies {
         try (PhysicsWorld.Use use = world.use()) {
             for (int id : payload.removals()) {
                 remove(level, id, events, gone);
+                sent.remove(id);
+                if (id == ownId) {
+                    ownId = -1;
+                }
             }
             for (BodySyncPayload.Spawn spawn : payload.spawns()) {
                 remove(level, spawn.id(), events, gone);
+                sent.put(spawn.id(), new Sent(spawn.tag(), spawn.name()));
+                if (predictor != null && predictor.isOwn(spawn.tag(), spawn.name())) {
+                    ownId = spawn.id();   // its own: the body here is it
+                    continue;
+                }
                 Body body = build(world, spawn);
                 if (body != null) {
                     replicas.put(spawn.id(), body);
                     events.add(new SyncedBodyEvent.Added(level, body, spawn.id()));
                 }
             }
+            // how a body moves besides its mass, changed: on the replica as it is, simulated here from now on by it
+            for (BodySyncPayload.Tuning tuning : payload.tunings()) {
+                Body body = replicas.get(tuning.id());
+                Replica replica = body == null ? null : body.attachment(Replica.class);
+                if (replica != null && tuning.dynamics().isUsable()) {
+                    replica.dynamics = tuning.dynamics();
+                    if (replica.simulated) {
+                        tuning.dynamics().moveAs(body);
+                    }
+                }
+            }
+            // the predictor's tick for what the server's tick ran of its frames: what the states are held against
+            long local = predictor == null || payload.frame() == BodySyncPayload.NO_FRAME ? Long.MIN_VALUE
+                    : predictor.localTickOf(payload.frame());
             for (BodySyncPayload.State state : payload.states()) {
+                if (!state.isUsable()) {
+                    continue;
+                }
+                if (state.id() == ownId) {
+                    Body own = predictor == null ? null : predictor.ownBody();
+                    if (own != null && own.isValid() && local != Long.MIN_VALUE) {
+                        know(local, own, state);
+                    }
+                    continue;
+                }
                 Body body = replicas.get(state.id());
                 Replica replica = body == null ? null : body.attachment(Replica.class);
-                if (replica != null && state.isUsable()) {
-                    replica.queue.add(state);
-                    while (replica.queue.size() > MAX_QUEUED) {
-                        replica.queue.poll();
-                    }
+                if (replica == null) {
+                    continue;
+                }
+                if (replica.simulated && local != Long.MIN_VALUE) {
+                    replica.take(state);
+                    know(local, body, state);
+                    continue;
+                }
+                replica.queue.add(state);
+                while (replica.queue.size() > MAX_QUEUED) {
+                    replica.queue.poll();
                 }
             }
             try {
@@ -365,6 +440,12 @@ public final class SyncedBodies {
                 }
             }
         }
+    }
+
+    private void know(long tick, Body body, BodySyncPayload.State s) {
+        Quaternionf q = new Quaternionf(s.qx(), s.qy(), s.qz(), s.qw()).normalize();
+        physics.rewind().know(tick, body, s.x(), s.y(), s.z(), q.x, q.y, q.z, q.w, s.vx(), s.vy(), s.vz(), s.wx(), s.wy(),
+                s.wz());
     }
 
     /** A replica, whole, or {@code null} (and nothing left behind) if it could not be built. */
@@ -418,30 +499,34 @@ public final class SyncedBodies {
 
     /**
      * On the client, before the tick's steps, holding the world: each replica driven over the tick to the next state the
-     * server sent; with none, on along the server's velocity for a tick or two (the state is late), then held still. One
-     * this client predicts ({@link #predict}) simulates instead ({@link #stepPrediction}); handed back, it is driven from
-     * where it got to toward the server's newest state.
+     * server sent; with none, on along the server's velocity for a tick or two (the state is late), then held still.
      */
     @ApiStatus.Internal
     public void beforeSteps(float timeStep) {
         Vector3d position = new Vector3d();
         Quaternionf rotation = new Quaternionf();
+        Vec3 centre = predictor == null ? null : predictor.centre();
+        Body own = predictor == null ? null : predictor.ownBody();
         for (Body body : replicas.values()) {
             Replica r = body.isValid() ? body.attachment(Replica.class) : null;
             if (r == null) {
                 continue;
             }
-            BodySyncPayload.State next;
-            if (r.predicting) {
-                if (stepPrediction(body, r)) {
-                    continue;
-                }
-                next = r.last; // handed back: a resting server body sends nothing more, so its last word
-            } else {
-                next = r.queue.poll();
-                if (next != null) {
-                    r.take(next);
-                }
+            body.position(position);
+            // round what predicts here, a body the server simulates is simulated here too (doc 61 §3.9)
+            boolean simulate = centre != null && r.reproducible(body, own) && position.distanceSquared(centre.x, centre.y,
+                    centre.z) <= LevelRewind.BUBBLE_RADIUS * LevelRewind.BUBBLE_RADIUS
+                    && predictor.simulates(body.tag(), body.name());
+            if (simulate != r.simulated) {
+                simulate(body, r, simulate);
+            }
+            if (r.simulated) {
+                r.queue.clear();
+                continue;
+            }
+            BodySyncPayload.State next = r.queue.poll();
+            if (next != null) {
+                r.take(next);
             }
             body.position(position);
             if (next != null) {
@@ -466,93 +551,27 @@ public final class SyncedBodies {
     }
 
     /**
-     * One tick of a replica simulated here: the server's states reconciled with where it had the body as they come
-     * ({@link #reconcile}); the bodies it is about to run into simulated with it, as the server's run into each other; past
-     * the wait, handed back once the server's newest word agrees with where it is — a resting body, its push shown — or
-     * {@link #HAND_BACK_LATEST} on regardless; at once if the server has it touch what this client lacks.
-     *
-     * @return whether it is still simulated here
+     * A replica simulated here — dynamic, as heavy as the server's body, going at the server's last velocity — or driven
+     * to the server's states again.
      */
-    private boolean stepPrediction(Body body, Replica r) {
-        long now = physics.ticks();
-        r.remember(now, body);
-        for (BodySyncPayload.State s; (s = r.queue.poll()) != null; ) {
-            r.take(s);
-            reconcile(body, r, s, now);
-        }
-        if (r.last == null || !r.last.whole()
-                || now >= r.predictUntil && (agrees(body, r.last) || now >= r.predictUntil + HAND_BACK_LATEST)) {
-            handBack(body, r);
-            return false;
-        }
-        if (now < r.predictUntil) {
-            predictWhatItMeets(body, r.predictUntil); // past its wait it only waits to agree: it drags none in
-        }
-        return true;
-    }
-
-    /**
-     * The server's word on a body simulated here beside where this client had it as many ticks ago as the word takes to
-     * show what this client did. Further apart than {@link #RECONCILE}, and than three ticks at its speed (the round trip is
-     * an estimate), the server's body met what this one did not — another player, a push the server refused — and this one
-     * is moved by the difference, at the server's speed.
-     */
-    private static void reconcile(Body body, Replica r, BodySyncPayload.State s, long now) {
-        double[] then = r.at(now - roundTripTicks - SERVER_WAIT);
-        if (then == null) {
-            return;
-        }
-        double dx = s.x() - then[0], dy = s.y() - then[1], dz = s.z() - then[2];
-        double allowed = RECONCILE + 3 * body.linearVelocity(new Vector3f()).length() / 20;
-        if (dx * dx + dy * dy + dz * dz <= allowed * allowed) {
-            return;
-        }
-        Vector3d at = body.position(new Vector3d());
-        // the turn put right the same way: the server's, and what this one turned since
-        Quaternionf turned = new Quaternionf((float) then[3], (float) then[4], (float) then[5], (float) then[6]).conjugate()
-                .premul(body.rotation(new Quaternionf()));
-        Quaternionf rotation = new Quaternionf(s.qx(), s.qy(), s.qz(), s.qw()).normalize().premul(turned).normalize();
-        body.setTransform(at.x + dx, at.y + dy, at.z + dz, rotation);
-        body.setLinearVelocity(s.vx(), s.vy(), s.vz());
-        body.setAngularVelocity(s.wx(), s.wy(), s.wz());
-        r.forgetTrail();
-    }
-
-    private static boolean agrees(Body body, BodySyncPayload.State s) {
-        Vector3d at = body.position(new Vector3d());
-        Vector3f v = body.linearVelocity(new Vector3f());
-        return at.distanceSquared(s.x(), s.y(), s.z()) <= AGREES * AGREES
-                && v.distanceSquared(s.vx(), s.vy(), s.vz()) <= AGREES_SPEED * AGREES_SPEED;
-    }
-
-    /**
-     * The replicas of bodies the server simulates within a tick's travel of a body simulated here: simulated too, as long
-     * as it is ({@code until}), so it runs into them as the server's run into each other, rather than into one held where
-     * the server last had it.
-     */
-    private void predictWhatItMeets(Body body, long until) {
-        float[] bounds = body.bounds(new float[6]);
-        float reach = body.linearVelocity(new Vector3f()).length() / 20 + MEETS;
-        int count = physics.world().overlapAABB(bounds[0] - reach, bounds[1] - reach, bounds[2] - reach,
-                bounds[3] + reach, bounds[4] + reach, bounds[5] + reach, QueryFilter.ALL, overlaps);
-        for (int i = 0; i < count; i++) {
-            Shape shape = overlaps.shape(i);
-            if (shape != null && shape.isValid() && shape.body() != body && isDynamicOnServer(shape.body())) {
-                predict(shape.body(), until);
-            }
+    private static void simulate(Body body, Replica r, boolean simulated) {
+        r.simulated = simulated;
+        if (simulated) {
+            body.setType(BodyType.DYNAMIC);
+            body.setMassData(r.dynamics.into(new MassData()));
+            r.dynamics.moveAs(body);
+            body.setLinearVelocity(r.vx, r.vy, r.vz);
+            body.setAngularVelocity(r.wx, r.wy, r.wz);
+        } else {
+            body.setType(BodyType.KINEMATIC);
+            r.coasting = 0;
         }
     }
 
-    /** Metres beyond a tick's travel a body simulated here looks for others to simulate with it. */
-    private static final float MEETS = 0.05f;
-    private final Overlaps overlaps = new Overlaps(8);
-
-    /** A replica simulated here the server's again: kinematic, out of the terrain and the proxies' way, as it was built. */
-    private static void handBack(Body body, Replica r) {
-        r.predicting = false;
-        body.setType(BodyType.KINEMATIC);
-        LevelBodies.setNeedsTerrain(body, false);
-        LevelBodies.setPushedByEntities(body, false);
+    /** Whether a replica is simulated here, round what predicts (doc 61 §3.9). Client only. */
+    public static boolean isSimulated(Body replica) {
+        Replica r = replica.attachment(Replica.class);
+        return r != null && r.simulated;
     }
 
     // ---- the server --------------------------------------------------------------------------
@@ -654,9 +673,14 @@ public final class SyncedBodies {
         // a player gone, or now elsewhere, has a client that dropped everything of this level (forget() does it at once,
         // from the player events; this is for a level that missed one)
         views.values().removeIf(view -> view.connection.player.isRemoved() || view.connection.player.serverLevel() != level);
+        Prediction predicting = prediction;
         for (var it = views.values().iterator(); it.hasNext(); ) {
             View view = it.next();
-            BodySyncPayload payload = view.update();
+            ServerPlayer player = view.connection.player;
+            int frame = predicting == null ? BodySyncPayload.NO_FRAME : predicting.frameOf(player);
+            Vec3 centre = frame == BodySyncPayload.NO_FRAME ? null : predicting.centreOf(player);
+            Body own = predicting == null ? null : predicting.ownBodyOf(player);
+            BodySyncPayload payload = view.update(physics.ticks(), frame, centre, own);
             if (payload != null) {
                 PacketDistributor.sendToPlayer(view.connection.player, payload);
             }
@@ -685,6 +709,8 @@ public final class SyncedBodies {
         final ServerGamePacketListenerImpl connection;
         /** network id → the shapes revision it was sent */
         final Int2IntOpenHashMap known = new Int2IntOpenHashMap();
+        /** network id → the damping, gravity and locks it was sent ({@link Synced#motion}) */
+        final Int2IntOpenHashMap knownMotion = new Int2IntOpenHashMap();
         /** what it should see this tick */
         final Int2ObjectOpenHashMap<Body> visible = new Int2ObjectOpenHashMap<>();
 
@@ -692,16 +718,23 @@ public final class SyncedBodies {
             this.connection = connection;
         }
 
+        /**
+         * What changed for this client this tick; round {@code centre} (its predicted body), every body, moved or not, its
+         * client holding each against where it ran it to; {@code own}, the body its client predicts as its own.
+         */
         @Nullable
-        BodySyncPayload update() {
+        BodySyncPayload update(long tick, int frame, @Nullable Vec3 centre, @Nullable Body own) {
             IntArrayList removals = null;
             List<BodySyncPayload.Spawn> spawns = null;
             List<BodySyncPayload.State> states = null;
+            List<BodySyncPayload.Tuning> tunings = null;
+            Vector3d at = new Vector3d();
             for (var it = known.int2IntEntrySet().fastIterator(); it.hasNext(); ) {
                 var entry = it.next();
                 Body body = visible.get(entry.getIntKey());
                 if (body == null || revision(body) != entry.getIntValue()) {
                     (removals == null ? removals = new IntArrayList() : removals).add(entry.getIntKey());
+                    knownMotion.remove(entry.getIntKey());
                     it.remove();
                 }
             }
@@ -710,21 +743,43 @@ public final class SyncedBodies {
                 Body body = entry.getValue();
                 Synced s = body.attachment(Synced.class);
                 if (!known.containsKey(id)) {
-                    (spawns == null ? spawns = new ArrayList<>() : spawns).add(spawn(id, body, s));
+                    (spawns == null ? spawns = new ArrayList<>() : spawns).add(spawn(id, body, s, own));
                     known.put(id, revision(body));
-                } else if (s.changed) {
-                    (states == null ? states = new ArrayList<>() : states).add(s.state);
+                    knownMotion.put(id, s.motion);
+                    continue;
+                }
+                if (s.motion != knownMotion.get(id) && body.type() == BodyType.DYNAMIC) {
+                    knownMotion.put(id, s.motion);
+                    (tunings == null ? tunings = new ArrayList<>() : tunings).add(new BodySyncPayload.Tuning(id,
+                            BodySyncPayload.Dynamics.of(body.massData(new MassData()), body,
+                                    EntityCollisions.pushable(body))));
+                }
+                if (s.changed || centre != null && body.position(at).distanceSquared(centre.x, centre.y, centre.z)
+                        <= PREDICTED_RADIUS * PREDICTED_RADIUS) {
+                    (states == null ? states = new ArrayList<>() : states).add(seenBy(s.state, body, own));
                 }
             }
             visible.clear();
-            if (removals == null && spawns == null && states == null) {
+            if (removals == null && spawns == null && states == null && tunings == null) {
                 return null;
             }
             return new BodySyncPayload(spawns == null ? List.of() : spawns, states == null ? List.of() : states,
-                    removals == null ? new int[0] : removals.toIntArray());
+                    removals == null ? new int[0] : removals.toIntArray(), false, tick, frame,
+                    tunings == null ? List.of() : tunings);
         }
 
-        private static BodySyncPayload.Spawn spawn(int id, Body body, Synced s) {
+        /**
+         * {@code state} as told to the client predicting {@code own}: the joints its own body holds this one by are not
+         * counted — they are that client's as well, and go there the moment it steps off.
+         */
+        private static BodySyncPayload.State seenBy(BodySyncPayload.State state, Body body, @Nullable Body own) {
+            int theirs = own == null || own == body || state.joints() == 0 ? 0 : jointsBetween(body, own);
+            return theirs == 0 ? state : new BodySyncPayload.State(state.id(), state.x(), state.y(), state.z(), state.qx(),
+                    state.qy(), state.qz(), state.qw(), state.vx(), state.vy(), state.vz(), state.wx(), state.wy(),
+                    state.wz(), state.whole(), Math.max(0, state.joints() - theirs));
+        }
+
+        private static BodySyncPayload.Spawn spawn(int id, Body body, Synced s, @Nullable Body own) {
             List<BodySyncPayload.SyncedShape> shapes = new ArrayList<>();
             Filter filter = new Filter();
             SurfaceMaterial surface = new SurfaceMaterial();
@@ -741,21 +796,35 @@ public final class SyncedBodies {
                 }
             }
             MassData data = body.type() == BodyType.DYNAMIC ? body.massData(new MassData()) : null;
-            BodySyncPayload.Dynamics dynamics = data == null ? null : BodySyncPayload.Dynamics.of(data,
-                    body.linearDamping(), body.angularDamping(), body.gravityScale(), EntityCollisions.pushable(body));
+            BodySyncPayload.Dynamics dynamics = data == null ? null
+                    : BodySyncPayload.Dynamics.of(data, body, EntityCollisions.pushable(body));
             Vector3f centre = data == null ? null : new Vector3f(data.centerX, data.centerY, data.centerZ);
             return new BodySyncPayload.Spawn(id, body.name(), body.userData(), body.tag(), body.ignoredTag(), shapes,
-                    s.state, dynamics, centre);
+                    seenBy(s.state, body, own), dynamics, centre);
         }
 
         /**
          * What a replica is made from changes with: its shapes, and its type and mass — the centre of mass a point's speed
-         * turns about. A change sends it again.
+         * turns about. A change sends it again; how it moves besides goes as a {@link BodySyncPayload.Tuning}.
          */
         private static int revision(Body body) {
             return 31 * body.shapesRevision() + body.massRevision();
         }
     }
+
+    /** How many of {@code body}'s joints hold it to {@code other}. */
+    private static int jointsBetween(Body body, Body other) {
+        int count = 0;
+        for (var joint : body.joints()) {
+            if (joint.bodyA() == other || joint.bodyB() == other) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /** Apart by more than this, metres, a contact is not touching: Box3D keeps contacts a little way out. */
+    private static final float TOUCHING = 0.01f;
 
     /** On a synced server body: its number and what was last sent of it. */
     private static final class Synced {
@@ -763,43 +832,43 @@ public final class SyncedBodies {
         boolean changed, warned;
         @Nullable
         BodySyncPayload.State state;
-        /** every shape is one a replica is made with (no mesh, no height field), as of {@link #shapesRevision} */
+        /** Whether all its shapes are sent, as of {@link #shapesRevision} */
         boolean complete;
-        int shapesRevision = -1;
+        int shapesRevision = Integer.MIN_VALUE;
+        /** Its damping, gravity scale and locks, hashed: a change goes out as a {@link BodySyncPayload.Tuning} */
+        int motion;
 
         Synced(int id) {
             this.id = id;
         }
 
-        /**
-         * Reads the body; whether it moved, changed speed or came to touch what a client lacks since the last tick (a body
-         * that stops is said to).
-         */
+        /** Reads the body; whether it moved, changed speed or what a client needs to simulate it (a body that stops is said to). */
         boolean update(Body body, ContactPoints contacts, Filter filter) {
             if (shapesRevision != body.shapesRevision()) {
                 shapesRevision = body.shapesRevision();
                 complete = body.shapes().stream().allMatch(shape -> BodySyncPayload.SyncedShape.isSent(shape.geometry()));
             }
+            boolean dynamic = body.type() == BodyType.DYNAMIC;
+            motion = !dynamic ? 0 : 31 * (31 * (31 * Float.floatToIntBits(body.linearDamping())
+                    + Float.floatToIntBits(body.angularDamping())) + Float.floatToIntBits(body.gravityScale()))
+                    + body.motionLocks().bits();
             Vector3d p = body.position(new Vector3d());
             Quaternionf q = body.rotation(new Quaternionf());
             Vector3f v = body.linearVelocity(new Vector3f());
             Vector3f w = body.angularVelocity(new Vector3f());
-            boolean whole = body.type() != BodyType.DYNAMIC || touchesOnlyWhatClientsHave(body, contacts, filter);
+            boolean whole = !dynamic || touchesOnlyWhatClientsHave(body, contacts, filter);
             BodySyncPayload.State now = new BodySyncPayload.State(id, p.x, p.y, p.z, q.x, q.y, q.z, q.w, v.x, v.y, v.z,
-                    w.x, w.y, w.z, whole);
+                    w.x, w.y, w.z, whole, dynamic ? body.joints().size() : 0);
             boolean moved = !now.equals(state);
             state = now;
             return moved;
         }
 
         /**
-         * Whether a client simulating the body has everything holding it: what it touches is terrain, an entity's proxy or
-         * a synced body sent whole — a client has those — and no joint holds it (joints are not sent).
+         * Whether a client simulating the body has all it touches: terrain, an entity's proxy or a synced body sent whole.
+         * A body resting on one the server keeps to itself would fall through on the client.
          */
         private static boolean touchesOnlyWhatClientsHave(Body body, ContactPoints contacts, Filter filter) {
-            if (!body.joints().isEmpty()) {
-                return false;
-            }
             int count = body.contactPoints(contacts);
             for (int i = 0; i < count; i++) {
                 if (contacts.separation(i) > TOUCHING || contacts.isTerrain(i)) {
@@ -810,7 +879,7 @@ public final class SyncedBodies {
                     return false;
                 }
                 if ((other.filter(filter).categoryBits & CollisionCategories.ENTITY) != 0) {
-                    continue; // an entity's proxy: a client has the entity, and its own proxy of it
+                    continue;   // an entity's proxy: a client has the entity, and its own proxy of it
                 }
                 Synced synced = other.body().attachment(Synced.class);
                 if (synced == null || !synced.complete) {
@@ -821,73 +890,51 @@ public final class SyncedBodies {
         }
     }
 
-    /** Apart by more than this, metres, a contact is not touching: Box3D keeps contacts a little way out. */
-    private static final float TOUCHING = 0.01f;
-
     /**
-     * On a client replica: its number, the states waiting, the last one taken and the server's velocity as of it, how the
-     * server body moves if it is dynamic, its centre of mass if so; and while simulated here, till when and where it was.
+     * On a client replica: its number, the states waiting, the server's velocity as of the last one taken, its mass if the
+     * server body is dynamic, and its centre of mass if so.
      */
     private static final class Replica {
         final int id;
         final ArrayDeque<BodySyncPayload.State> queue = new ArrayDeque<>(MAX_QUEUED + 1);
         int coasting;
+        /** Simulated here, round what predicts, rather than driven to the server's states */
+        boolean simulated;
         float vx, vy, vz, wx, wy, wz;
-        @Nullable
-        BodySyncPayload.State last;
+        /** As of the last state taken: whether all it touches is here too, and how many joints hold it there */
+        boolean whole = true;
+        int joints;
         @Nullable
         BodySyncPayload.Dynamics dynamics;
-        /** simulated here ({@link #predict}), till the level's physics reaches {@link #predictUntil} ticks at the least */
-        boolean predicting;
-        long predictUntil;
         @Nullable
         Vector3f centre;
-        /** where it was simulated to, a tick a row (x, y, z, qx, qy, qz, qw), by the tick's number */
-        final double[] trail = new double[TRAIL * 7];
-        final long[] trailTicks = new long[TRAIL];
 
         Replica(int id) {
             this.id = id;
-            forgetTrail();
         }
 
         void take(BodySyncPayload.State s) {
-            last = s;
             vx = s.vx();
             vy = s.vy();
             vz = s.vz();
             wx = s.wx();
             wy = s.wy();
             wz = s.wz();
+            whole = s.whole();
+            joints = s.joints();
         }
 
-        void remember(long tick, Body body) {
-            int row = (int) Math.floorMod(tick, (long) TRAIL);
-            Vector3d at = body.position(new Vector3d());
-            Quaternionf q = body.rotation(new Quaternionf());
-            trailTicks[row] = tick;
-            int i = row * 7;
-            trail[i] = at.x;
-            trail[i + 1] = at.y;
-            trail[i + 2] = at.z;
-            trail[i + 3] = q.x;
-            trail[i + 4] = q.y;
-            trail[i + 5] = q.z;
-            trail[i + 6] = q.w;
-        }
-
-        /** Where it was at that tick, or {@code null} if not remembered. */
-        @Nullable
-        double[] at(long tick) {
-            int row = (int) Math.floorMod(tick, (long) TRAIL);
-            if (tick < 0 || trailTicks[row] != tick) {
-                return null;
+        /**
+         * Whether a client can simulate it as the server does: what it touches is here, and it is held here by as many
+         * joints as there — the client's own copies of them (an EntityStudio constraint is made on both ends) — not
+         * counting those its own body {@code own} holds it by, which the server's count leaves out too.
+         */
+        boolean reproducible(Body body, @Nullable Body own) {
+            if (dynamics == null || !whole) {
+                return false;
             }
-            return java.util.Arrays.copyOfRange(trail, row * 7, row * 7 + 7);
-        }
-
-        void forgetTrail() {
-            java.util.Arrays.fill(trailTicks, -1);
+            int here = body.joints().size() - (own == null ? 0 : jointsBetween(body, own));
+            return here >= joints;
         }
     }
 }

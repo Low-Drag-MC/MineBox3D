@@ -57,6 +57,7 @@ public final class LevelPhysics implements AutoCloseable {
     private final SyncedBodies sync = new SyncedBodies(this);
     private final EntityBases.Riders riders = new EntityBases.Riders();
     private final Settings settings = new Settings();
+    private final LevelRewind rewind = new LevelRewind(this);
 
     private long ticks;
     private float lastTickMillis;
@@ -76,6 +77,17 @@ public final class LevelPhysics implements AutoCloseable {
 
         /** The steps taken; what stands on the bodies not yet carried, nothing sent yet. */
         default void afterSteps(LevelPhysics physics) {
+        }
+
+        /**
+         * A past tick simulated again ({@link LevelRewind}), before its steps: what moves a body of the listener's in a tick,
+         * given again as it was for that one — Unreal's resimulation replaying a tick's inputs.
+         */
+        default void beforeResimTick(LevelPhysics physics, long tick) {
+        }
+
+        /** That tick's steps taken again: a body whose place for it is known (the server said) is put there. */
+        default void afterResimTick(LevelPhysics physics, long tick) {
         }
     }
 
@@ -234,6 +246,11 @@ public final class LevelPhysics implements AutoCloseable {
         return sync;
     }
 
+    /** Its bodies rolled back and simulated again, around what something watches (EntityStudio doc 61 §3.8). */
+    public LevelRewind rewind() {
+        return rewind;
+    }
+
     /** The entities standing on this physics' bodies (design doc 04 §11, EntityBases). */
     @ApiStatus.Internal
     public EntityBases.Riders riders() {
@@ -310,6 +327,7 @@ public final class LevelPhysics implements AutoCloseable {
                 tell(true);
                 step();
                 tell(false);
+                rewind.afterSteps(ticks);
                 if (existing(level) == this) {
                     // what stands on the bodies, to where the steps took them (EntityBases; only the level's own bodies bear)
                     riders.carry(level);
@@ -339,8 +357,34 @@ public final class LevelPhysics implements AutoCloseable {
         world.beginInterpolationFrame();
         terrain.update();
         entities.update(1f / 20f);
+        // what was asked since the last tick, before the replicas are given this one's targets (the rewind would undo them)
+        rewind.resimulateIfAsked();
         if (level.isClientSide) {
             sync.beforeSteps(1f / 20f);
+        }
+    }
+
+    /** The steps of one tick and nothing else: a past tick simulated again ({@link LevelRewind}) moves no entity. */
+    void stepWorld() {
+        float timeStep = 1f / (20f * settings.stepsPerTick);
+        for (int i = 0; i < settings.stepsPerTick; i++) {
+            world.step(timeStep, settings.subSteps);
+        }
+    }
+
+    void tellResim(boolean before, long tick) {
+        for (TickListener listener : listeners) {
+            try {
+                if (before) {
+                    listener.beforeResimTick(this, tick);
+                } else {
+                    listener.afterResimTick(this, tick);
+                }
+            } catch (RuntimeException e) {
+                listeners.remove(listener);
+                MineBox3D.LOGGER.error("a tick listener of the physics of {} failed and was taken off: {}",
+                        level.dimension().location(), listener, e);
+            }
         }
     }
 

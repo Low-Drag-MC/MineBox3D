@@ -5,13 +5,11 @@ import com.lowdragmc.minebox3d.mc.LevelPhysics;
 import com.lowdragmc.minebox3d.mc.LevelPhysicsEvents;
 import com.lowdragmc.minebox3d.mc.entity.EntityCollisions;
 import com.lowdragmc.minebox3d.mc.sync.StandingPayload;
-import com.lowdragmc.minebox3d.mc.sync.SyncedBodies;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -43,12 +41,6 @@ public final class ClientPhysicsEvents {
             LevelPhysics physics = LevelPhysics.existing(minecraft.level);
             if (physics != null) {
                 ClientPacketListener connection = minecraft.getConnection();
-                // how long the replicas this client pushes are simulated here (SyncedBodies.predict)
-                PlayerInfo self = connection == null || minecraft.player == null ? null
-                        : connection.getPlayerInfo(minecraft.player.getUUID());
-                if (self != null) {
-                    SyncedBodies.setRoundTrip(self.getLatency());
-                }
                 physics.tick();
                 // after the step: our player's pushes on replicas told to the server, and the others the server says
                 // stand on bodies put there (design doc 04 §11.2 #3, §11.5)

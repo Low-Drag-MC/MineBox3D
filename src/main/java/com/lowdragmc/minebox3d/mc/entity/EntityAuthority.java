@@ -14,8 +14,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * reports the pushes it gives.
  *
  * <p>A mod that moves players on the server itself and only lets their clients predict (EntityStudio's movers) says so
- * ({@link #register}): MineBox3D then treats them as the server's — swept, based, pushing from the server — and their
- * clients stop reporting what the server already knows.
+ * ({@link #register}): MineBox3D then treats them as the server's — swept and based on the server — and their clients
+ * stop reporting what the server already knows. Such a mover usually says its moves push no body either
+ * ({@link #pushesBodies}): pushed on the server, a body would go where its client cannot foresee.
  */
 public final class EntityAuthority {
 
@@ -35,25 +36,16 @@ public final class EntityAuthority {
         }
 
         /**
-         * True while the entity's move is one being run again — a client's prediction replayed after the server corrected
-         * it — rather than lived through: it pushes no body (its pushes were given when it first ran).
+         * True when the entity's own moves push bodies, false when they do not, null for no say
+         * ({@link EntityAuthority#pushesBodies}).
          */
-        default boolean isResimulating(Entity entity) {
-            return false;
+        @Nullable
+        default Boolean pushesBodies(Entity entity) {
+            return null;
         }
     }
 
     private static final List<Provider> PROVIDERS = new CopyOnWriteArrayList<>();
-
-    /** Whether any provider says the entity's move is being run again ({@link Provider#isResimulating}). */
-    public static boolean isResimulating(Entity entity) {
-        for (Provider provider : PROVIDERS) {
-            if (provider.isResimulating(entity)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
     private EntityAuthority() {
     }
@@ -74,6 +66,21 @@ public final class EntityAuthority {
             }
         }
         return entity instanceof Player || entity.getControllingPassenger() instanceof Player;
+    }
+
+    /**
+     * Whether the entity's own moves push the bodies it walks into, and its weight presses on the one it stands on — the
+     * first provider with a say, else yes. No: bodies are walls and floors to it, as to Unreal's Mover, which puts no force
+     * into physics bodies. Bodies still push it ({@link EntityPushedByBodyEvent}). The same answer on both sides.
+     */
+    public static boolean pushesBodies(Entity entity) {
+        for (Provider provider : PROVIDERS) {
+            Boolean said = provider.pushesBodies(entity);
+            if (said != null) {
+                return said;
+            }
+        }
+        return true;
     }
 
     /**

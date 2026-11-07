@@ -111,4 +111,15 @@ final class JointParam {
     static final int WHEEL_TARGET_STEERING_ANGLE = 136;
     static final int WHEEL_STEERING_ANGLE = 137;
     static final int WHEEL_STEERING_TORQUE = 138;
+    static final int MOVER_LINEAR_VELOCITY = 140;
+    static final int MOVER_MAX_FORCE = 141;
+    static final int POGO_REST_LENGTH = 150;
+    static final int POGO_HERTZ = 151;
+    static final int POGO_DAMPING = 152;
+    static final int POGO_MAX_TENSION_FORCE = 153;
+    static final int POGO_MAX_COMPRESSION_FORCE = 154;
+    static final int POGO_NORMAL = 155;
+    static final int POGO_CURRENT_LENGTH = 156;
+    static final int POGO_CURRENT_SPEED = 157;
+    static final int POGO_IMPULSE = 158;
 }

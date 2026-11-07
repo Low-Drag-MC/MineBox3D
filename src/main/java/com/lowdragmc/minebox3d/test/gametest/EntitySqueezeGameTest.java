@@ -345,12 +345,12 @@ public final class EntitySqueezeGameTest {
     }
 
     /**
-     * Capped on a crate, then put back through a static wall it does not push: held behind it a while, then put where
-     * its entity is rather than lagging behind for good.
+     * Capped on a crate, then put back through a static wall it does not push: put where its entity is at once, rather
+     * than held behind the wall for good — while a stand put on into the squeezed crate stays capped (the squeeze tests).
      */
     @GameTest(template = "empty", batch = "minebox3d_squeeze_held", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
-    public static void aCappedProxyHeldOffItsEntityIsPutWhereItIs(GameTestHelper helper) {
+    public static void aCappedProxyLeftBehindIsPutWhereItsEntityIs(GameTestHelper helper) {
         TestArea.clear(helper, -1, 0, -1, 7, 4, 4);
         TestArea.forceChunks(helper, -1, -1, 7, 4, true);
         Set<Body> before = targetsBefore(helper);
@@ -359,24 +359,18 @@ public final class EntitySqueezeGameTest {
         Body wall = physics(helper).createBody(new BodyDef().position(wallAt.x, wallAt.y, wallAt.z));
         wall.createShape(new ShapeDef(), Geometry.Box.of(0.05f, 1, 1.5f)); // x from 2.45 to 2.55
         Entity[] stand = {stand(helper, 3.0, 0, 1.5)};
-        double[] heldAt = new double[1];
         GameTestSequence sequence = helper.startSequence();
         sequence.thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper, stand[0]), "the stand ticks"));
         step(sequence, stand, 0.1, 0, 4);
         sequence.thenExecute(() -> {
             helper.assertTrue(capped(helper, stand[0]), "force-capped on the crate");
-            // to 1.5, through the wall: short of a teleport, and far enough off the crate to be put there
+            // to 1.5, through the wall: short of a teleport
             stand[0].setPos(stand[0].getX() - 1.9, stand[0].getY(), stand[0].getZ());
         });
-        sequence.thenExecuteAfter(10, () -> {
-            heldAt[0] = physics(helper).entities().proxyOf(stand[0]).position(new Vector3d()).x - stand[0].getX();
-            helper.assertTrue(capped(helper, stand[0]) && heldAt[0] > 0.3, "held behind the wall, capped: "
-                    + heldAt[0] + " off its stand");
-        });
-        sequence.thenExecuteAfter(20, () -> {
+        sequence.thenExecuteAfter(3, () -> {
             double off = physics(helper).entities().proxyOf(stand[0]).position(new Vector3d()).x - stand[0].getX();
             helper.assertFalse(capped(helper, stand[0]), "kinematic again");
-            helper.assertTrue(Math.abs(off) < 0.01, "where its stand is: " + off + " off");
+            helper.assertTrue(Math.abs(off) < 0.01, "where its stand is, not behind the wall: " + off + " off");
             helper.assertTrue(targets(helper, before).size() == 1, "its target kept for next time: "
                     + targets(helper, before));
             stand[0].discard();

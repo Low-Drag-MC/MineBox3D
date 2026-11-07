@@ -262,16 +262,103 @@ public final class Body {
         return out.set((float) current[3], (float) current[4], (float) current[5], (float) current[6]);
     }
 
-    /** Between the start of the interpolation frame ({@code partial = 0}) and now ({@code partial = 1}). */
+    /**
+     * Between the start of the interpolation frame ({@code partial = 0}) and now ({@code partial = 1}), and where a
+     * correction is still fading ({@link #addRenderError}), that far off.
+     */
     public Vector3d renderPosition(float partial, Vector3d out) {
-        return out.set(previous[0] + (current[0] - previous[0]) * partial,
+        out.set(previous[0] + (current[0] - previous[0]) * partial,
                 previous[1] + (current[1] - previous[1]) * partial,
                 previous[2] + (current[2] - previous[2]) * partial);
+        if (error != null) {
+            out.add(error.start[0] + (error.end[0] - error.start[0]) * partial,
+                    error.start[1] + (error.end[1] - error.start[1]) * partial,
+                    error.start[2] + (error.end[2] - error.start[2]) * partial);
+        }
+        return out;
     }
 
     public Quaternionf renderRotation(float partial, Quaternionf out) {
         out.set((float) previous[3], (float) previous[4], (float) previous[5], (float) previous[6]);
-        return out.slerp(new Quaternionf((float) current[3], (float) current[4], (float) current[5], (float) current[6]), partial);
+        out.slerp(new Quaternionf((float) current[3], (float) current[4], (float) current[5], (float) current[6]), partial);
+        if (error != null) {
+            out.premul(new Quaternionf(error.turnStart).slerp(error.turnEnd, partial));
+        }
+        return out;
+    }
+
+    // ---- drawn off where it is, while a correction fades ----
+
+    /** Frames a correction takes to fade: Unreal's {@code p.RenderInterp.ErrorCorrectionDuration}, 0.3 s at 20 a second. */
+    public static final int ERROR_FRAMES = 6;
+    /** Further apart than this the body is drawn where it is at once, as Unreal snaps past 250 cm. */
+    public static final double ERROR_SNAP = 2.5;
+
+    @Nullable
+    private RenderError error;
+
+    /**
+     * It was put somewhere else while it was being drawn going on — a simulation run again moved it: drawn from where it
+     * was for a moment, the gap fading over {@link #ERROR_FRAMES} frames (Unreal's error correction). {@code (dx, dy, dz)}
+     * is where it was less where it is now, {@code turn} its turn then times the inverse of its turn now. Added to a gap
+     * still fading; past {@link #ERROR_SNAP} it is drawn where it is instead.
+     */
+    public void addRenderError(double dx, double dy, double dz, Quaternionfc turn) {
+        world.enter();
+        try {
+            checkValid();
+            RenderError e = error != null ? error : new RenderError();
+            double x = e.end[0] + dx, y = e.end[1] + dy, z = e.end[2] + dz;
+            if (x * x + y * y + z * z > ERROR_SNAP * ERROR_SNAP) {
+                error = null;
+                System.arraycopy(current, 0, previous, 0, 7);
+                return;
+            }
+            e.end[0] = e.from[0] = x;
+            e.end[1] = e.from[1] = y;
+            e.end[2] = e.from[2] = z;
+            e.turnEnd.mul(turn).normalize();
+            e.turnFrom.set(e.turnEnd);
+            e.frames = ERROR_FRAMES;
+            if (error == null) {
+                error = e;
+                world.noteRenderError(this);
+            }
+        } finally {
+            world.exit();
+        }
+    }
+
+    /** How far off it is drawn now, at the end of the frame; zero with no correction fading. */
+    public Vector3d renderError(Vector3d out) {
+        return error == null ? out.zero() : out.set(error.end[0], error.end[1], error.end[2]);
+    }
+
+    /** A new frame: the gap the last ended on is where this one starts, and it ends a step closer to none. */
+    boolean fadeRenderError() {
+        RenderError e = error;
+        if (e == null) {
+            return false;
+        }
+        System.arraycopy(e.end, 0, e.start, 0, 3);
+        e.turnStart.set(e.turnEnd);
+        if (e.frames == 0) {
+            error = null;   // the frame that ended on none is drawn: done
+            return false;
+        }
+        e.frames--;
+        double left = (double) e.frames / ERROR_FRAMES;
+        for (int i = 0; i < 3; i++) {
+            e.end[i] = e.from[i] * left;
+        }
+        e.turnEnd.identity().slerp(e.turnFrom, (float) left);
+        return true;
+    }
+
+    private static final class RenderError {
+        final double[] start = new double[3], end = new double[3], from = new double[3];
+        final Quaternionf turnStart = new Quaternionf(), turnEnd = new Quaternionf(), turnFrom = new Quaternionf();
+        int frames;
     }
 
     /**
@@ -299,6 +386,38 @@ public final class Body {
      */
     public void correctTransform(double x, double y, double z, Quaternionfc rotation, boolean wake) {
         place(x, y, z, rotation, wake, false);
+    }
+
+    /**
+     * Back to a state {@link RewindHistory} recorded: the place, the turn as it was — not normalised again, so a
+     * simulation run on from here takes the very numbers it took the first time — the velocities, awake or not. Part of
+     * the frame's motion, not a teleport: the frame it is drawn from stays.
+     */
+    void restore(double x, double y, double z, float qx, float qy, float qz, float qw, float vx, float vy, float vz,
+                 float wx, float wy, float wz, boolean awake) {
+        world.enter();
+        try {
+            checkValid();
+            B3.bodySetTransform(id, x, y, z, qx, qy, qz, qw);
+            if (type != BodyType.STATIC) {
+                B3.bodySetLinearVelocity(id, vx, vy, vz);
+                B3.bodySetAngularVelocity(id, wx, wy, wz);
+                B3.bodySetAwake(id, awake);
+            }
+            current[0] = x;
+            current[1] = y;
+            current[2] = z;
+            current[3] = qx;
+            current[4] = qy;
+            current[5] = qz;
+            current[6] = qw;
+            boundsKnown = false;
+            forgetMotion();
+            world.motionEpoch++;
+            world.noteMoved(this);
+        } finally {
+            world.exit();
+        }
     }
 
     private void place(double x, double y, double z, Quaternionfc rotation, boolean wake, boolean teleport) {

@@ -492,4 +492,37 @@ public final class EntityBaseGameTest {
                     done(helper, 8, 4);
                 });
     }
+
+    /** The same plank under a stand whose moves a mod says push no body (Unreal's Mover): it stays level. */
+    @GameTest(template = "empty", batch = "minebox3d_base_no_weight", timeoutTicks = 1200)
+    @PrefixGameTestTemplate(false)
+    public static void aStandWhoseMovesPushNothingLeavesThePlankLevel(GameTestHelper helper) {
+        area(helper, 8, 4);
+        Vec3 pivot = helper.absoluteVec(new Vec3(4, 2.5, 1.5));
+        Body anchor = physics(helper).createBody(new BodyDef().position(pivot.x, pivot.y, pivot.z));
+        Body plank = physics(helper).createBody(new BodyDef().type(BodyType.DYNAMIC).position(pivot.x, pivot.y, pivot.z));
+        plank.createShape(new ShapeDef().density(100), Geometry.Box.of(2.5f, 0.1f, 0.5f));
+        var hinge = physics(helper).world().createJoint(new RevoluteJointDef().bodies(anchor, plank)
+                .worldFrame(pivot.x, pivot.y, pivot.z));
+        ArmorStand[] stand = new ArmorStand[1];
+        helper.startSequence()
+                .thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper), "the area ticks"))
+                .thenExecute(() -> stand[0] = EntityAuthorityGameTest.pushingNothing(stand(helper, 6, 3, 1.5)))
+                .thenWaitUntil(() -> helper.assertTrue(standsOn(helper, stand[0], plank), "the stand stands on the plank"))
+                .thenExecute(() -> {
+                    // level and still again after the landing, which is no weight: from here only a weight would tip it
+                    plank.setTransform(pivot.x, pivot.y, pivot.z, new Quaternionf());
+                    plank.setLinearVelocity(0, 0, 0);
+                    plank.setAngularVelocity(0, 0, 0);
+                })
+                .thenExecuteAfter(10, () -> {
+                    Vector3f east = plank.rotation(new Quaternionf()).transform(new Vector3f(1, 0, 0));
+                    helper.assertTrue(Math.abs(east.y) < 0.01, "level under it: " + east);
+                    hinge.destroy(false);
+                    plank.destroy();
+                    anchor.destroy();
+                    stand[0].discard();
+                    done(helper, 8, 4);
+                });
+    }
 }

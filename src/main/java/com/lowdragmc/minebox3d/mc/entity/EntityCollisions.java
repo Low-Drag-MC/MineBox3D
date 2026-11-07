@@ -63,8 +63,8 @@ import java.util.List;
  * moving ({@link LevelBodies#setIgnoredEntity}, §17) — and none at all for an entity whose physics collision is off
  * ({@link EntityShapes#hasPhysicsCollision}). On a client its replicas of the server's
  * bodies, with the server body's mass ({@link SyncedBodies#serverMass}); a push its own player gives one is told to
- * the server when the client moves it ({@link SyncedRiders}), and when the server moves it and the client predicts that,
- * the replica is simulated there till the server has the push ({@link SyncedBodies#predict}, §16).
+ * the server when the client moves it ({@link SyncedRiders}). An entity whose moves push no body
+ * ({@link EntityAuthority#pushesBodies}) is stopped by them all, as by walls.
  *
  * <p>⚠️ Not what a client moves, on the server — a player, and what a player steers: the server takes the client's
  * word on bodies (§11.2 #2), its move put in the body's frame first (SyncedRiders). A server replaying a client's move
@@ -116,8 +116,7 @@ public final class EntityCollisions {
                 return true;
             }
             Shape other = contacts.otherShape(i);
-            // a replica of a body the server simulates gives as the server's does: simulated here with the one pushed
-            if (other != null && other.body().type() != BodyType.DYNAMIC && !SyncedBodies.isDynamicOnServer(other.body())) {
+            if (other != null && other.body().type() != BodyType.DYNAMIC) {
                 return true;
             }
         }
@@ -545,6 +544,8 @@ public final class EntityCollisions {
         final List<Shape> shapes = new ArrayList<>();
         /** the entity's mass, NaN until a pushable body asks */
         float mass = Float.NaN;
+        /** {@link EntityAuthority#pushesBodies}: no, and every body is a wall to the move */
+        boolean pushes;
         double intentX, intentZ;
         /** the body whose top stopped the move's fall, if one did */
         @Nullable
@@ -572,6 +573,7 @@ public final class EntityCollisions {
             physics = null;
             shapes.clear();
             mass = Float.NaN;
+            pushes = false;
             intentX = intentZ = 0;
             ground = null;
             for (int i = 0; i < 3; i++) {
@@ -622,6 +624,7 @@ public final class EntityCollisions {
             }
             this.entity = entity;
             this.physics = physics;
+            this.pushes = EntityAuthority.pushesBodies(entity);
             return true;
         }
 
@@ -683,7 +686,7 @@ public final class EntityCollisions {
             if (main && stopping != null) {
                 int i = axis.ordinal();
                 // falling onto one pushes nothing (the class notes)
-                if (!(axis == Direction.Axis.Y && d < 0) && massOf(stopping.body())) {
+                if (!(axis == Direction.Axis.Y && d < 0) && pushes && massOf(stopping.body())) {
                     pushed[i] = stopping;
                     pushedBy[i] = d;
                     // where on the face it pushes: the sweep's point is any of the touching face's (a crate's edge, as
@@ -716,8 +719,9 @@ public final class EntityCollisions {
 
         /**
          * The move's end: each body it pushed, pushed — the inelastic collision of the two along the axis, the body by the
-         * impulse at the point (a replica's, told to the server by its player's client), the entity by keeping the shared
-         * speed on a sideways axis nothing else cut, which then is no collision to Minecraft.
+         * impulse at the point (a replica's, told to the server by its player's client; one the server moves pushes the
+         * server's body from there itself), the entity by keeping the shared speed on a sideways axis nothing else cut,
+         * which then is no collision to Minecraft.
          */
         void settle() {
             if (entity == null) {
@@ -737,9 +741,9 @@ public final class EntityCollisions {
                 float sign = Math.signum((float) v);
                 Vector3d at = pushedAt[i];
                 boolean replica = SyncedBodies.isReplica(body);
-                // a wall: against something that does not give. The server judges a replica's, save one simulated here
-                if ((!replica || SyncedBodies.isPredicting(body)) && isPinned(body, axis == Direction.Axis.X ? sign : 0,
-                        axis == Direction.Axis.Y ? sign : 0, axis == Direction.Axis.Z ? sign : 0)) {
+                // a wall: against something that does not give. The server judges a replica's
+                if (!replica && isPinned(body, axis == Direction.Axis.X ? sign : 0, axis == Direction.Axis.Y ? sign : 0,
+                        axis == Direction.Axis.Z ? sign : 0)) {
                     stopped[i] = true;
                     continue;
                 }
@@ -757,17 +761,11 @@ public final class EntityCollisions {
                         iz = axis == Direction.Axis.Z ? impulse : 0;
                 if (!replica) {
                     body.applyLinearImpulse(ix, iy, iz, at.x, at.y, at.z);
-                } else if (entity.isControlledByLocalInstance() && !EntityAuthority.isResimulating(entity)) {
-                    if (EntityAuthority.clientMoves(entity)) {
-                        // told to the server, which takes this client's word for where it is; not simulated here —
-                        // walked on past what this client lacks (a body not synced), it would stand where the server
-                        // holds the body, and nothing would pull it back
-                        physics.sync().riders().pushed(body, ix, iy, iz, at);
-                    } else if (physics.sync().predict(body)) {
-                        // one the server moves pushes the server's body from there itself; its client, predicting
-                        // that, simulates the replica till the server has the push (§16), given it as the server's is
-                        body.applyLinearImpulse(ix, iy, iz, at.x, at.y, at.z);
-                    }
+                } else if (entity.isControlledByLocalInstance() && EntityAuthority.clientMoves(entity)) {
+                    // told to the server, which takes this client's word for where it is; not simulated here — walked on
+                    // past what this client lacks (a body not synced), it would stand where the server holds the body,
+                    // and nothing would pull it back
+                    physics.sync().riders().pushed(body, ix, iy, iz, at);
                 }
                 if (axis != Direction.Axis.Y && !stopped[i]) {
                     kept[i] = shared;

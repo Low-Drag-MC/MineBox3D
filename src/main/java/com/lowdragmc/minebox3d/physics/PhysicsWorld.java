@@ -76,6 +76,8 @@ public final class PhysicsWorld implements AutoCloseable {
     private final Long2ObjectOpenHashMap<Joint> joints = new Long2ObjectOpenHashMap<>();
     private final List<Body> movedThisFrame = new ArrayList<>();
     private final Set<Body> fellAsleep = new LinkedHashSet<>();
+    /** Bodies drawn off where they are while a correction fades ({@link Body#addRenderError}) */
+    private final Set<Body> withRenderError = new LinkedHashSet<>();
     private final WorldEvents events = new WorldEvents();
     /** shapes destroyed since the last step: Box3D reports their end events after the next one */
     private final Long2ObjectOpenHashMap<Shape> goneSinceStep = new Long2ObjectOpenHashMap<>();
@@ -312,6 +314,7 @@ public final class PhysicsWorld implements AutoCloseable {
                 movedThisFrame.remove(body);
             }
             fellAsleep.remove(body);
+            withRenderError.remove(body);
             body.markDestroyed();
         } finally {
             exit();
@@ -475,9 +478,28 @@ public final class PhysicsWorld implements AutoCloseable {
             movedThisFrame.clear();
             fellAsleep.clear();
             events.clear();
+            withRenderError.removeIf(body -> !body.fadeRenderError());
         } finally {
             exit();
         }
+    }
+
+    /**
+     * The frame's events so far dropped — what a simulation run again set off, which Unreal's resimulation does not raise
+     * again either. What moved stays moved.
+     */
+    public void discardEvents() {
+        enter();
+        try {
+            events.clear();
+            fellAsleep.clear();
+        } finally {
+            exit();
+        }
+    }
+
+    void noteRenderError(Body body) {
+        withRenderError.add(body);
     }
 
     /** Advances the world by {@code timeStep} seconds in {@code subStepCount} sub-steps. */
@@ -538,6 +560,14 @@ public final class PhysicsWorld implements AutoCloseable {
                 // woke again later in the same frame
                 fellAsleep.remove(body);
             }
+        }
+    }
+
+    /** A body put somewhere outside a step: its frame's start follows it at the next {@link #beginInterpolationFrame}. */
+    void noteMoved(Body body) {
+        if (!body.movedThisFrame) {
+            body.movedThisFrame = true;
+            movedThisFrame.add(body);
         }
     }
 

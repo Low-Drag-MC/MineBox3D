@@ -98,5 +98,6 @@
 - 上游只多一个提交：**Dynamic Mover (#202)**——从 Box2D 移植的动态角色移动：角色是锁了旋转的动态胶囊刚体（会被推、也推别人），`b3_moverJoint` 在关节 B 坐标系的 xz 平面里把速度拉向目标、冲量按 `maxForce × h` 封顶；`b3_pogoJoint` 是沿 B 的 y 轴的弹簧（拉 / 压各有最大力）把它托离地面、上台阶不碰胶囊。示例 `samples/dynamic_mover.*`（「应该拷进你的项目里改」）、`geometric_mover.*`（原来的 `mover.*`，几何扫掠式）。其余是格式化（行宽 100）、录制 / 回放的 mover 操作、SIMD 头去掉一个函数。
 - 冲突三个文件，全是「两边都在末尾加」：`types.h` 的 `b3JointType` 取上游的 mover / pogo 在前、我们的 `b3_constraintJoint` 在后（数值 9 → 11）；`box3d.h` 只是注释换行；`joint.c` 各个分派 switch 两边的 case 都留。`b3GetJointReaction` 的球关节：上游那边只是换行，留我们的 `7ec31b5`。
 - ⚠️ 枚举值变了 ⇒ 桥和 Java 跟着改（MineBox3D 主仓库，未提交）：`JointType` 在 `WHEEL` 后加 `MOVER`、`POGO`（顺序 = Box3D 枚举，桥传序号；不加的话 Java 的 `CONSTRAINT` 序号 9 会建成 mover 关节）；`mb3_joint.c` 的 `s_kinds` 给两者占位（Java 暂不建）。
+- 2026-11-07：Java 接上了 mover / pogo（`03-threading-and-api.md` 关节一行），`s_kinds` 的占位换成真的字段表。
 - §3.1 的上游 bug：这次上游一个都没修（相关文件只有格式化），全部保留。
 - 验证：重编 native；MineBox3D JUnit 210、GameTest 74、MP 3/3（61 项）全绿。
