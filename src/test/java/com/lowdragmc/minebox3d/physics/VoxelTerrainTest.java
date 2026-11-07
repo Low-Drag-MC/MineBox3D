@@ -560,6 +560,50 @@ class VoxelTerrainTest {
         }
     }
 
+    /**
+     * A ray on a whole-numbered coordinate it does not move along runs on the seam between blocks: where both sides are
+     * solid it is in them, and hits — straight down onto a floor between two blocks, between four, across a section
+     * border — and where one side is air it runs along a face, and does not.
+     */
+    @Test
+    void aRayAlongTheSeamBetweenSolidBlocksHitsThem() {
+        try (Terrain t = new Terrain()) {
+            t.floor(0, 20, 0, 4, 0, (x, z) -> t.full);
+            for (double[] at : new double[][]{{1, 1.5}, {1.5, 1}, {1, 1}, {16, 1.5}, {16, 2}}) {
+                CastHit hit = t.world.castRayClosest(at[0], 5, at[1], 0, -10, 0, QueryFilter.ALL);
+                String where = "down at x " + at[0] + ", z " + at[1];
+                assertNotNull(hit, where);
+                assertEquals(1, hit.y(), 1e-4, where);
+                assertEquals(1, hit.normalY(), 1e-4, where);
+            }
+            CastHit along = t.world.castRayClosest(-1, 0.5, 2, 10, 0, 0, QueryFilter.ALL);
+            assertNotNull(along, "along the floor between two rows of blocks");
+            assertEquals(0, along.x(), 1e-4);
+            assertEquals(-1, along.normalX(), 1e-4);
+
+            assertNull(t.world.castRayClosest(0, 5, 1.5, 0, -10, 0, QueryFilter.ALL), "down the floor's west face");
+            assertNull(t.world.castRayClosest(1.5, 5, 4, 0, -10, 0, QueryFilter.ALL), "down its south face");
+            assertNull(t.world.castRayClosest(0, 5, 0, 0, -10, 0, QueryFilter.ALL), "down its corner");
+        }
+        try (Terrain t = new Terrain()) {
+            // a step up at x = 2: down its face, onto the lower floor, from either side's cells
+            t.floor(0, 4, 0, 4, 0, (x, z) -> t.full);
+            t.floor(2, 4, 0, 4, 1, (x, z) -> t.full);
+            CastHit hit = t.world.castRayClosest(2, 5, 1.5, 0, -10, 0, QueryFilter.ALL);
+            assertNotNull(hit, "down the step's face");
+            assertEquals(1, hit.y(), 1e-4, "onto the lower floor");
+            assertEquals(1, hit.normalY(), 1e-4);
+        }
+        try (Terrain t = new Terrain()) {
+            // a stair's two boxes meet at y = 0.5 under its back half: inside it, a seam; over its front, its slab's top
+            t.set(1, 0, 1, t.stairs);
+            CastHit seam = t.world.castRayClosest(0, 0.5, 1.75, 5, 0, 0, QueryFilter.ALL);
+            assertNotNull(seam, "between the stair's boxes");
+            assertEquals(1, seam.x(), 1e-4);
+            assertNull(t.world.castRayClosest(0, 0.5, 1.25, 5, 0, 0, QueryFilter.ALL), "along its slab's top");
+        }
+    }
+
     @Test
     void aHitKeepsTheCellItNamedAfterTheSectionIsGone() {
         try (Terrain t = new Terrain()) {
