@@ -116,7 +116,7 @@ public final class PredictedReplicaGameTest {
 
         void spawn(int id, BodySyncPayload.State state, long tag, BodySyncPayload.Dynamics dynamics) {
             var shape = new BodySyncPayload.SyncedShape(BOX, new float[]{0.4f, 0.4f, 0.4f, 0, 0, 0, 0, 0, 0, 1}, -1L, -1L, 0,
-                    false, 0.6f, 0, 0);
+                    false, 0.6f, 0, 0, com.lowdragmc.minebox3d.mc.entity.StepUpOn.YES);
             physics.sync().apply(new BodySyncPayload(List.of(new BodySyncPayload.Spawn(id, "crate", 0, tag, 0, List.of(shape),
                     state, dynamics, new org.joml.Vector3f())), List.of(), new int[0], false, physics.ticks(),
                     BodySyncPayload.NO_FRAME));

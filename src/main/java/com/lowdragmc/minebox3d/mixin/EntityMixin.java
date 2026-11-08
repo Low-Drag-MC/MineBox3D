@@ -58,6 +58,12 @@ public abstract class EntityMixin implements EntityBases.Holder {
         EntityCollisions.collide(motion);
     }
 
+    /** Whether it stepped up: what it stepped over is not pushed. */
+    @Inject(method = "collide", at = @At("RETURN"))
+    private void minebox3d$collided(Vec3 motion, CallbackInfoReturnable<Vec3> cir) {
+        EntityCollisions.collided(cir.getReturnValue());
+    }
+
     /** The step-up's own sweeps. */
     @WrapOperation(method = "collide", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/world/entity/Entity;collideWithShapes(Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/AABB;Ljava/util/List;)Lnet/minecraft/world/phys/Vec3;"))

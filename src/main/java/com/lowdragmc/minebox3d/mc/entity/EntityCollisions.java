@@ -7,6 +7,7 @@ import com.lowdragmc.minebox3d.mc.LevelPhysics;
 import com.lowdragmc.minebox3d.mc.LevelThreads;
 import com.lowdragmc.minebox3d.mc.sync.SyncedBodies;
 import com.lowdragmc.minebox3d.mc.sync.SyncedRiders;
+import com.lowdragmc.minebox3d.mixin.EntityInvoker;
 import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.BoxSweep;
@@ -36,6 +37,7 @@ import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * <b>Bodies in the way of Minecraft entities</b> (design doc {@code 04-entities-and-bodies.md} §11, batch 4c-1): an
@@ -45,17 +47,24 @@ import java.util.List;
  * <p>Minecraft moves an entity's box one axis at a time, Y first, each axis cut short by the blocks in the way
  * ({@code Entity.collideWithShapes}). Here each axis is also cut short by the bodies, with Box3D's box-mover sweep
  * against every solid shape nearby ({@link Shape#castShape}, {@code canEncroach}): a box resting on a body or sliding
- * along its side is not stopped by it, one moving in stops a few millimetres short. The shapes' tops join Minecraft's
- * candidate step heights, so Minecraft's own step-up climbs onto bodies.
+ * along its side is not stopped by it, one moving in stops a few millimetres short. The tops of the shapes it may step
+ * onto ({@link StepUpOn}) join Minecraft's candidate step heights, so Minecraft's own step-up climbs onto bodies.
  *
- * <p><b>By mass</b> (§11.2 #1). Every body stops the entity at its surface; one it can push ({@link #pushable}) is
- * then pushed, when the move ends, as an inelastic collision of the two along the cut axis: both go on at the shared
- * speed {@code u = (M v + m v_b) / (M + m)} (M the entity's mass, m the body's effective mass at the point along the
- * axis, its turning included), the body by an impulse at the point, the entity by keeping {@code u} where Minecraft
- * would zero the axis — and the cut is no collision to Minecraft (sprinting goes on, no step-up: it pushes the crate
- * rather than climbs it). Next tick the gap the body opened lets the entity on: a 5 kg crate goes along with a player
- * at nearly its pace, two tonnes of iron stay put against the ground's friction. Falling onto a body pushes nothing —
- * the weight of what stands on one is pressed into it by its proxy ({@link EntityProxies}).
+ * <p><b>Stepping up</b> goes as Unreal's Mover goes ({@code TryMoveToStepUp}): none at all when what stopped the move
+ * may not be stepped onto, none that lands on such a shape, and a step that climbs over a body does not push it. A shape
+ * that may not be stepped onto is still walked on by an entity standing on its body: Minecraft has no slopes, and
+ * walking up one is stepping up it a little at a time — what Unreal's option leaves alone ("not whether they can walk on
+ * it after landing on it").
+ *
+ * <p><b>By mass</b> (§11.2 #1). Every body stops the entity at its surface; one it can push ({@link #pushable}) and did
+ * not step up onto is then pushed, when the move ends, as an inelastic collision of the two along the cut axis: both go
+ * on at the shared speed {@code u = (M v + m v_b) / (M + m)} (M the entity's mass, m the body's effective mass at the
+ * point along the axis, its turning included), the body by an impulse at the point, the entity by keeping {@code u}
+ * where Minecraft would zero the axis — and the cut is no collision to Minecraft (sprinting goes on). Next tick the gap
+ * the body opened lets the entity on: a 5 kg crate goes along with a player at nearly its pace, two tonnes of iron stay
+ * put against the ground's friction. A crate lower than the step is stepped onto rather than pushed, unless its shapes
+ * say no ({@link StepUpOn#NO}). Falling onto a body pushes nothing — the weight of what stands on one is pressed into it
+ * by its proxy ({@link EntityProxies}).
  *
  * <p>Which bodies: the level's own physics only (a private one changes nothing of the level), shapes that accept
  * entities ({@link #FILTER}: not terrain, which is Minecraft's blocks, nor entity proxies; a shape that masks out
@@ -82,6 +91,10 @@ public final class EntityCollisions {
     private static final float SKIN = 0.01f;
     /** How far a body may be into an entity's box and still be only touching it. */
     private static final float OVERLAP = 0.01f;
+    /** How much further along an axis than its own sweep a move's step-up went, to have stepped over what cut it. */
+    private static final double STEPPED_OVER = 1.0e-4;
+    /** The least upward normal a top is stood and stepped on at: Unreal's walkable floor angle, 44.765 degrees. */
+    private static final float WALKABLE = 0.7f;
     private static final Quaternionfc NO_TURN = new Quaternionf();
     private static final int MAX_DEPTH = 8;
     private static final Direction.Axis[] AXES = Direction.Axis.values();
@@ -94,6 +107,57 @@ public final class EntityCollisions {
     /** Whether entities push a body by mass rather than stop at it: dynamic, and {@linkplain LevelBodies#pushedByEntities pushed}. */
     public static boolean pushable(Body body) {
         return body.type() == BodyType.DYNAMIC && LevelBodies.pushedByEntities(body);
+    }
+
+    // ---- stepping up onto shapes ----------------------------------------------------------------
+
+    /** A mod's answer for its bodies' shapes set to {@link StepUpOn#OWNER} — Unreal's {@code AActor::CanBeBaseForCharacter}. */
+    public interface StepUpOwner {
+        /** Whether {@code mover} may step up onto {@code body}; {@code null} for a body that is not this mod's. */
+        @Nullable
+        Boolean canStepUpOnto(Body body, Entity mover);
+    }
+
+    private static final List<StepUpOwner> STEP_UP_OWNERS = new CopyOnWriteArrayList<>();
+
+    public static void registerStepUpOwner(StepUpOwner owner) {
+        STEP_UP_OWNERS.add(owner);
+    }
+
+    /**
+     * Whether an entity walking into {@code shape} may step up onto it; {@code null} goes back to the default, yes. Copied
+     * to clients with the shape (a client moves its player, steps up included).
+     */
+    public static void setStepUpOn(Shape shape, @Nullable StepUpOn stepUpOn) {
+        StepUpOn kept = stepUpOn == StepUpOn.YES ? null : stepUpOn;
+        if (shape.attachment(StepUpOn.class) != kept) {
+            shape.attach(StepUpOn.class, kept);
+            shape.markChanged();
+        }
+    }
+
+    public static StepUpOn stepUpOn(Shape shape) {
+        StepUpOn set = shape.attachment(StepUpOn.class);
+        return set != null ? set : StepUpOn.YES;
+    }
+
+    /**
+     * Whether {@code mover} may step up onto {@code shape} ({@link StepUpOn}) — as Unreal's {@code CanStepUpOnHitSurface}
+     * asks it (GroundMovementUtils.cpp:565-598): the shape's own no, and then its owner, the first with a say, else yes.
+     * So a shape set to yes on something whose owner says no (a part of a character) is not stepped onto either.
+     */
+    public static boolean canStepUpOnto(Shape shape, Entity mover) {
+        return stepUpOn(shape) != StepUpOn.NO && ownerLets(shape.body(), mover);
+    }
+
+    private static boolean ownerLets(Body body, Entity mover) {
+        for (StepUpOwner owner : STEP_UP_OWNERS) {
+            Boolean said = owner.canStepUpOnto(body, mover);
+            if (said != null) {
+                return said;
+            }
+        }
+        return true;
     }
 
     /**
@@ -342,6 +406,15 @@ public final class EntityCollisions {
         }
     }
 
+    /** {@code Entity.collide} ends with {@code result}: further sideways than the move's own sweep, it stepped up. */
+    @ApiStatus.Internal
+    public static void collided(Vec3 result) {
+        Mover mover = MOVERS.get().current();
+        if (mover != null) {
+            mover.collided(result);
+        }
+    }
+
     /** Whether the move going on on this thread has bodies to look at: if not, Minecraft's collision is left alone. */
     @ApiStatus.Internal
     public static boolean isActive() {
@@ -360,6 +433,7 @@ public final class EntityCollisions {
             mover = Mover.NONE;
             main = false;
         }
+        AABB from = box;
         double dx = motion.x, dy = motion.y, dz = motion.z;
         if (dy != 0) {
             dy = mover.cut(Direction.Axis.Y, box, shapes, dy, main);
@@ -383,21 +457,27 @@ public final class EntityCollisions {
         if (!zFirst && dz != 0) {
             dz = mover.cut(Direction.Axis.Z, box, shapes, dz, main);
         }
+        if (main) {
+            mover.sweptX = dx;
+            mover.sweptZ = dz;
+        } else if (mover != Mover.NONE && dy > 0 && (dx != 0 || dz != 0)
+                && mover.landsWhereItMayNotStep(from.move(dx, dy, dz))) {
+            // a step-up's sweep that would end on a shape it may not step onto goes nowhere sideways, so Minecraft does
+            // not take it — Unreal's step down onto "!CanStepUpOnHitSurface" while going up
+            return new Vec3(0, dy, 0);
+        }
         return new Vec3(dx, dy, dz);
     }
 
     /**
-     * {@code Entity.collectCandidateStepUpHeights}, with the tops of the bodies where the entity is going — and none at
-     * all when what stopped it was only bodies it pushes: it pushes them rather than climbs them.
+     * {@code Entity.collectCandidateStepUpHeights}, with the tops of the bodies where the entity is going that it may step
+     * onto — and none at all when a body it may not step onto is what stopped it ({@link StepUpOn}).
      */
     @ApiStatus.Internal
     public static float[] stepUpHeights(float[] heights, AABB box, float stepHeight) {
         Mover mover = MOVERS.get().current();
         if (mover == null) {
             return heights;
-        }
-        if (mover.onlyPushed()) {
-            return new float[0];
         }
         return mover.stepUpHeights(heights, box, stepHeight);
     }
@@ -416,15 +496,18 @@ public final class EntityCollisions {
     }
 
     /**
-     * Where an entity's own next move takes it, bodies included: {@code Entity.collideBoundingBox} as the move does it.
-     * For a proxy's target (EntityProxies), from inside the physics' prepare.
+     * Where an entity's own next move takes it, bodies included: {@code Entity.collide} as the move does it, its step-up
+     * too — and into {@code steppedUp[0]}, whether it steps up. For a proxy's target (EntityProxies), from inside the
+     * physics' prepare.
      */
-    static Vec3 predict(Entity entity, Vec3 motion) {
+    static Vec3 predict(Entity entity, Vec3 motion, boolean[] steppedUp) {
         Movers movers = MOVERS.get();
         Mover mover = movers.push();
         try {
             mover.gather(entity, motion);
-            return Entity.collideBoundingBox(entity, motion, entity.getBoundingBox(), entity.level(), List.of());
+            Vec3 allowed = ((EntityInvoker) entity).minebox3d$collide(motion);
+            steppedUp[0] = mover.steppedUp;
+            return allowed;
         } finally {
             movers.pop();
         }
@@ -550,11 +633,20 @@ public final class EntityCollisions {
         /** the body whose top stopped the move's fall, if one did */
         @Nullable
         Body ground;
+        /** the body it stood on as the move began: walked on, whatever its shapes say of stepping up onto them */
+        @Nullable
+        Body base;
         /** per axis, in the move's own sweep: cut by a block or a body it does not push; the body it pushes, where, how fast */
         final boolean[] stopped = new boolean[3];
         final Shape[] pushed = new Shape[3];
         final Vector3d[] pushedAt = {new Vector3d(), new Vector3d(), new Vector3d()};
         final double[] pushedBy = new double[3];
+        /** per axis, in the move's own sweep: the shape that cut it short of the blocks, if one did */
+        final Shape[] cutBy = new Shape[3];
+        /** how far the move's own sweep went along x and z; NaN before it */
+        double sweptX = Double.NaN, sweptZ = Double.NaN;
+        /** Minecraft took a step-up ({@link #collided}) */
+        boolean steppedUp;
 
         final Overlaps overlaps = new Overlaps(16);
         final CastResult hit = new CastResult();
@@ -576,10 +668,14 @@ public final class EntityCollisions {
             pushes = false;
             intentX = intentZ = 0;
             ground = null;
+            base = null;
+            sweptX = sweptZ = Double.NaN;
+            steppedUp = false;
             for (int i = 0; i < 3; i++) {
                 stopped[i] = false;
                 pushed[i] = null;
                 pushedBy[i] = 0;
+                cutBy[i] = null;
             }
         }
 
@@ -625,6 +721,7 @@ public final class EntityCollisions {
             this.entity = entity;
             this.physics = physics;
             this.pushes = EntityAuthority.pushesBodies(entity);
+            this.base = entity.onGround() ? EntityBases.baseOf(entity) : null;
             return true;
         }
 
@@ -676,7 +773,7 @@ public final class EntityCollisions {
                 if (Math.abs(reach) < Math.abs(allowed)) {
                     allowed = reach;
                     stopping = shape;
-                    top = normal.y > 0.7f;
+                    top = normal.y > WALKABLE;
                     hit.point(point);
                 }
             }
@@ -685,6 +782,7 @@ public final class EntityCollisions {
             }
             if (main && stopping != null) {
                 int i = axis.ordinal();
+                cutBy[i] = stopping;
                 // falling onto one pushes nothing (the class notes)
                 if (!(axis == Direction.Axis.Y && d < 0) && pushes && massOf(stopping.body())) {
                     pushed[i] = stopping;
@@ -711,10 +809,46 @@ public final class EntityCollisions {
             return allowed;
         }
 
-        /** Whether the move's sideways cuts were only bodies it pushes: no step-up then (it pushes them). */
-        boolean onlyPushed() {
-            int x = Direction.Axis.X.ordinal(), z = Direction.Axis.Z.ordinal();
-            return (pushed[x] != null || pushed[z] != null) && !stopped[x] && !stopped[z];
+        /**
+         * {@code Entity.collide}'s result: further along x or z than the move's own sweep, Minecraft took a step-up — over
+         * what cut that axis, which is then not pushed (Unreal pushes what it walks into only when the step up failed). An
+         * axis the step went no further along keeps its push: a step tried at a crate taller than it, a hair higher, comes
+         * out an ulp further and is no step over it.
+         */
+        void collided(Vec3 result) {
+            if (Double.isNaN(sweptX)) {
+                return;
+            }
+            boolean overX = Math.abs(result.x) > Math.abs(sweptX) + STEPPED_OVER;
+            boolean overZ = Math.abs(result.z) > Math.abs(sweptZ) + STEPPED_OVER;
+            if (overX) {
+                pushed[Direction.Axis.X.ordinal()] = null;
+            }
+            if (overZ) {
+                pushed[Direction.Axis.Z.ordinal()] = null;
+            }
+            steppedUp = overX || overZ;
+        }
+
+        /** Whether it may step up onto {@code shape} — {@code null} for a block, or none — or stands on its body already. */
+        boolean mayStepOnto(@Nullable Shape shape) {
+            return shape == null || !shape.isValid() || shape.body() == base || canStepUpOnto(shape, entity);
+        }
+
+        /**
+         * Whether a box at {@code end} rests on a shape it may not step up onto (its top within a {@link #SKIN} of the
+         * box's bottom): where a step-up may not end.
+         */
+        boolean landsWhereItMayNotStep(AABB end) {
+            Geometry.Box query = sweeping(end, Direction.Axis.Y);
+            double cx = (end.minX + end.maxX) / 2, cy = (end.minY + end.maxY) / 2, cz = (end.minZ + end.maxZ) / 2;
+            for (Shape shape : shapes) {
+                if (!mayStepOnto(shape) && shape.castShape(query, cx, cy + SKIN, cz, NO_TURN, 0, -2 * SKIN, 0, true, hit)
+                        && hit.normal(normal).y >= WALKABLE) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /**
@@ -826,21 +960,35 @@ public final class EntityCollisions {
             if (stepHeight <= 0) {
                 return heights;
             }
-            Geometry.Box query = sweeping(box, Direction.Axis.Y);
+            // Unreal asks it of what stopped the move before it tries: a shape it may not step onto, and no step at all —
+            // nor onto a block beside it
+            if (!mayStepOnto(cutBy[Direction.Axis.X.ordinal()]) || !mayStepOnto(cutBy[Direction.Axis.Z.ordinal()])) {
+                return new float[0];
+            }
+            // the whole box, not one a centimetre thinner: a move into a body by less than that is still cut, and a top it
+            // did not find is a push instead of a step — then pushed on at its pace, a crate is never more than grazed again
+            // (Minecraft takes every top in the move's way)
+            Geometry.Box query = Geometry.Box.of((float) (box.getXsize() / 2), (float) (box.getYsize() / 2),
+                    (float) (box.getZsize() / 2));
             // from a step's height above where the move goes, down
             double cx = (box.minX + box.maxX) / 2 + intentX, cz = (box.minZ + box.maxZ) / 2 + intentZ;
             double cy = (box.minY + box.maxY) / 2 + stepHeight;
             float[] more = null;
             int added = 0;
             for (Shape shape : shapes) {
-                if (!shape.isValid() || !shape.castShape(query, cx, cy, cz, NO_TURN, 0, -stepHeight, 0, true, hit)) {
+                if (!shape.isValid() || !mayStepOnto(shape)
+                        || !shape.castShape(query, cx, cy, cz, NO_TURN, 0, -stepHeight, 0, true, hit)) {
                     continue;
                 }
-                if (hit.normal(normal).y < 0.5f) {
-                    continue; // inside it at that height, or a side rather than a top
+                if (hit.normal(normal).y < WALKABLE) {
+                    // inside it at that height, or a side rather than a top — or a face too steep to stand on (a tall
+                    // crate tipping over as it is pushed): Unreal's step up onto an unwalkable floor is no step
+                    continue;
                 }
                 float height = stepHeight * (1 - hit.fraction());
-                if (height > 0 && height <= stepHeight) {
+                // a top less than the skin up is no step: the move's own sweep slides over it already. One tried anyway —
+                // the body it stands on, found a hair off its feet — tries the move again for nothing
+                if (height >= SKIN && height <= stepHeight) {
                     if (more == null) {
                         more = new float[shapes.size()];
                     }

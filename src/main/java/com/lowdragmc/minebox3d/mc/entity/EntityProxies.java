@@ -92,6 +92,8 @@ public final class EntityProxies implements AutoCloseable {
     private static final double LAGS = 0.25;
     /** Metres in from an entity's faces it is asked what it is in: touching is not being in. */
     private static final float SKIN = 0.02f;
+    /** Metres an entity on the ground rose since the last update that is a step up (or a lift). */
+    private static final double STEPPED = 1.0e-4;
     private static final Quaternionfc UPRIGHT = new Quaternionf();
 
     private final Level level;
@@ -107,6 +109,8 @@ public final class EntityProxies implements AutoCloseable {
     private final Vector3f anchor = new Vector3f();
     private final Vector3d center = new Vector3d();
     private final Vector3f baseVelocity = new Vector3f();
+    /** whether the proxy's entity steps up in its predicted move (EntityCollisions.predict) */
+    private final boolean[] stepping = new boolean[1];
     /** this update's dynamic bodies entities push, and their bounds, six floats each */
     private Body[] movableBodies = new Body[16];
     private float[] movableBounds = new float[6 * 16];
@@ -307,6 +311,7 @@ public final class EntityProxies implements AutoCloseable {
             proxy.pushesShowLate = EntityAuthority.pushesShowLate(entity);
             readFreedom(proxy, entity, dx, dy, dz);
             double tx = x, ty = y, tz = z;
+            stepping[0] = false;
             if (!level.isClientSide && !proxy.clientMoved && proxy.mass != Float.POSITIVE_INFINITY) {
                 // where the entity will be when the coming steps end, not where it is: a body that has just pushed it
                 // would otherwise meet the proxy standing still for a tick and be stopped dead. Its motion cut as
@@ -318,7 +323,7 @@ public final class EntityProxies implements AutoCloseable {
                 if (motion.lengthSqr() > 1.0e-10) {
                     // and as the bodies will: into a crate it pushes by the share its mass gives (EntityCollisions), so
                     // the proxy pushes the crate by as much — up to it, for one whose moves push no body
-                    Vec3 allowed = EntityCollisions.predict(entity, motion);
+                    Vec3 allowed = EntityCollisions.predict(entity, motion, stepping);
                     tx += allowed.x;
                     ty += allowed.y;
                     tz += allowed.z;
@@ -339,8 +344,12 @@ public final class EntityProxies implements AutoCloseable {
             // one whose moves push no body is put where its entity is, not driven there: driven, its straight path cuts
             // the corner its entity steps up around (onto a crate) and flings what it cuts; made dynamic, it carries its
             // speed into a crate it walks up to. Put, it only stands in the way, and Box3D lets out what it overlaps no
-            // faster than its contact speed
-            boolean teleported = !pushes || dx * dx + dy * dy + dz * dz > teleport * teleport;
+            // faster than its contact speed. So is one stepping up — in its next move as predicted, or in its last (a
+            // client moves a player) — and once more after, should the predicted step not come
+            boolean stepped = stepping[0] || proxy.wasOnGround && entity.onGround() && dy > STEPPED;
+            boolean teleported = !pushes || stepped || proxy.stepped || dx * dx + dy * dy + dz * dz > teleport * teleport;
+            proxy.stepped = stepped;
+            proxy.wasOnGround = entity.onGround();
             boolean capping = settings.strength > 0 && proxy.mass < Float.POSITIVE_INFINITY && !teleported;
             if (capping && tick - proxy.pressedTick > CAPPED_TICKS && comesOntoABody(proxy, entity, tx, ty, tz)) {
                 proxy.pressedTick = tick;
@@ -1023,6 +1032,8 @@ public final class EntityProxies implements AutoCloseable {
         long lastSeen;
         /** where the entity was at the last update, and where its proxy was driven to */
         double lastX, lastY, lastZ, targetX, targetY, targetZ;
+        /** at the last update: the entity on the ground; stepping up, so put rather than driven */
+        boolean wasOnGround, stepped;
         /** what this tick's steps pushed the entity by, m/s, and the body that pushed hardest */
         float pushX, pushY, pushZ, strongest, approach;
         @Nullable

@@ -1,5 +1,6 @@
 package com.lowdragmc.minebox3d.mc.sync;
 
+import com.lowdragmc.minebox3d.mc.entity.StepUpOn;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.MassData;
@@ -37,7 +38,8 @@ class BodySyncPayloadTest {
         surface.friction = 0.25f + Math.abs(group % 4);
         surface.restitution = 0.5f;
         surface.rollingResistance = 0.125f;
-        return BodySyncPayload.SyncedShape.of(geometry, category, mask, group, sensor, surface);
+        return BodySyncPayload.SyncedShape.of(geometry, category, mask, group, sensor, surface,
+                StepUpOn.values()[Math.floorMod(group, StepUpOn.values().length)]);
     }
 
     private static BodySyncPayload roundTrip(BodySyncPayload sent) {
@@ -89,6 +91,7 @@ class BodySyncPayloadTest {
             assertEquals(s.maskBits(), r.maskBits(), "mask of " + i);
             assertEquals(s.groupIndex(), r.groupIndex(), "group of " + i);
             assertEquals(s.sensor(), r.sensor(), "sensor of " + i);
+            assertEquals(s.stepUpOn(), r.stepUpOn(), "step-up of " + i);
             SurfaceMaterial surface = r.surface(new SurfaceMaterial());
             assertEquals(s.friction(), surface.friction, "friction of " + i);
             assertEquals(0.5f, surface.restitution, "restitution of " + i);
@@ -138,7 +141,8 @@ class BodySyncPayloadTest {
         assertFalse(new BodySyncPayload.Dynamics(1, Float.NaN, 0, 0, inertia, true).isUsable(), "NaN centre");
         SurfaceMaterial kept = new SurfaceMaterial();
         kept.friction = 0.6f;
-        new BodySyncPayload.SyncedShape((byte) 0, new float[4], 1, -1, 0, false, Float.NaN, -1, 0).surface(kept);
+        new BodySyncPayload.SyncedShape((byte) 0, new float[4], 1, -1, 0, false, Float.NaN, -1, 0, StepUpOn.YES)
+                .surface(kept);
         assertEquals(0.6f, kept.friction, "an unusable friction leaves the replica's own");
         assertNull(read.spawns().get(1).name());
         assertEquals(List.of(state(3), state(300_000)), read.states());
@@ -194,6 +198,7 @@ class BodySyncPayloadTest {
         buffer.writeFloat(0.6f); // friction, restitution, rolling resistance
         buffer.writeFloat(0);
         buffer.writeFloat(0);
+        buffer.writeByte(StepUpOn.YES.ordinal());
         BodySyncPayload.State s = state(1);
         buffer.writeDouble(s.x());
         buffer.writeDouble(s.y());

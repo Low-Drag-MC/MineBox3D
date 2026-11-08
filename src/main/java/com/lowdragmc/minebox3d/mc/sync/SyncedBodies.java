@@ -236,7 +236,7 @@ public final class SyncedBodies {
         if (!NativeLibrary.isLoaded()) {
             return;
         }
-        var registrar = event.registrar("5").optional();
+        var registrar = event.registrar("6").optional();
         registrar.playToClient(BodySyncPayload.TYPE, BodySyncPayload.CODEC,
                 (payload, context) -> context.enqueueWork(() -> receive(payload, context.player().level())));
         registrar.playToClient(RiderPayload.TYPE, RiderPayload.CODEC,
@@ -473,7 +473,7 @@ public final class SyncedBodies {
                 ShapeDef def = new ShapeDef().sensor(shape.sensor());
                 def.filter.set(new Filter(shape.categoryBits(), shape.maskBits(), shape.groupIndex()));
                 shape.surface(def.baseMaterial);
-                body.createShape(def, shape.geometry());
+                EntityCollisions.setStepUpOn(body.createShape(def, shape.geometry()), shape.stepUpOn());
             }
         } catch (RuntimeException e) {
             MineBox3D.LOGGER.error("could not build the replica of synced body {}", spawn.id(), e);
@@ -786,7 +786,8 @@ public final class SyncedBodies {
             for (Shape shape : body.shapes()) {
                 shape.filter(filter);
                 BodySyncPayload.SyncedShape synced = BodySyncPayload.SyncedShape.of(shape.geometry(), filter.categoryBits,
-                        filter.maskBits, filter.groupIndex, shape.isSensor(), shape.surfaceMaterial(surface));
+                        filter.maskBits, filter.groupIndex, shape.isSensor(), shape.surfaceMaterial(surface),
+                        EntityCollisions.stepUpOn(shape));
                 if (synced != null) {
                     shapes.add(synced);
                 } else if (!s.warned) {

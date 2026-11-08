@@ -1,6 +1,7 @@
 package com.lowdragmc.minebox3d.mc.sync;
 
 import com.lowdragmc.minebox3d.MineBox3D;
+import com.lowdragmc.minebox3d.mc.entity.StepUpOn;
 import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.MassData;
@@ -81,13 +82,14 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
 
     /**
      * A shape to copy: its kind and numbers ({@link #of}), the filter the client's collisions with it go by, whether it
-     * is a sensor (which on the client stays one, rather than becoming a solid box), and its surface — what the client's
-     * own bodies slide and bounce on it by.
+     * is a sensor (which on the client stays one, rather than becoming a solid box), its surface — what the client's
+     * own bodies slide and bounce on it by — and whether entities step up onto it (the client moves its player).
      */
     public record SyncedShape(byte kind, float[] values, long categoryBits, long maskBits, int groupIndex, boolean sensor,
-                              float friction, float restitution, float rollingResistance) {
+                              float friction, float restitution, float rollingResistance, StepUpOn stepUpOn) {
 
         static final byte SPHERE = 0, CAPSULE = 1, BOX = 2, HULL = 3;
+        private static final StepUpOn[] STEP_UP_ON = StepUpOn.values();
 
         /** Whether a shape of this geometry is sent: not a mesh or height field, whose whole data would be. */
         static boolean isSent(Geometry geometry) {
@@ -98,21 +100,26 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
         /** {@code null} for what is not sent in this version ({@link #isSent}). */
         @Nullable
         static SyncedShape of(Geometry geometry, long categoryBits, long maskBits, int groupIndex, boolean sensor,
-                              SurfaceMaterial surface) {
+                              SurfaceMaterial surface, StepUpOn stepUpOn) {
             return switch (geometry) {
                 case Geometry.Sphere s -> new SyncedShape(SPHERE, new float[]{s.cx(), s.cy(), s.cz(), s.radius()},
                         categoryBits, maskBits, groupIndex, sensor, surface.friction, surface.restitution,
-                        surface.rollingResistance);
+                        surface.rollingResistance, stepUpOn);
                 case Geometry.Capsule c -> new SyncedShape(CAPSULE, new float[]{c.ax(), c.ay(), c.az(), c.bx(), c.by(),
                         c.bz(), c.radius()}, categoryBits, maskBits, groupIndex, sensor, surface.friction,
-                        surface.restitution, surface.rollingResistance);
+                        surface.restitution, surface.rollingResistance, stepUpOn);
                 case Geometry.Box b -> new SyncedShape(BOX, new float[]{b.hx(), b.hy(), b.hz(), b.cx(), b.cy(), b.cz(),
                         b.qx(), b.qy(), b.qz(), b.qw()}, categoryBits, maskBits, groupIndex, sensor, surface.friction,
-                        surface.restitution, surface.rollingResistance);
+                        surface.restitution, surface.rollingResistance, stepUpOn);
                 case Geometry.Hull h -> new SyncedShape(HULL, h.points().clone(), categoryBits, maskBits, groupIndex, sensor,
-                        surface.friction, surface.restitution, surface.rollingResistance);
+                        surface.friction, surface.restitution, surface.rollingResistance, stepUpOn);
                 default -> null;
             };
+        }
+
+        /** The step-up value written as {@code ordinal}; one this version does not know is the default. */
+        static StepUpOn stepUpOn(int ordinal) {
+            return ordinal >= 0 && ordinal < STEP_UP_ON.length ? STEP_UP_ON[ordinal] : StepUpOn.YES;
         }
 
         /** The surface into {@code out}; a number that is not a usable one is left as {@code out} had it. */
@@ -251,6 +258,7 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
                 buffer.writeFloat(shape.friction);
                 buffer.writeFloat(shape.restitution);
                 buffer.writeFloat(shape.rollingResistance);
+                buffer.writeByte(shape.stepUpOn.ordinal());
             }
             writeState(buffer, spawn.state);
             buffer.writeBoolean(spawn.dynamics != null);
@@ -329,7 +337,8 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
                     values[v] = buffer.readFloat();
                 }
                 shapes.add(new SyncedShape(kind, values, buffer.readLong(), buffer.readLong(), buffer.readInt(),
-                        buffer.readBoolean(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat()));
+                        buffer.readBoolean(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat(),
+                        SyncedShape.stepUpOn(buffer.readUnsignedByte())));
             }
             State state = readState(buffer, id);
             Dynamics dynamics = buffer.readBoolean() ? readDynamics(buffer) : null;

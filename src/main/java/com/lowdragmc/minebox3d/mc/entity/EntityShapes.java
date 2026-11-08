@@ -9,6 +9,7 @@ import net.minecraft.world.entity.Interaction;
 import net.minecraft.world.entity.Marker;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.decoration.BlockAttachedEntity;
+import net.minecraft.world.level.Level;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.attachment.AttachmentType;
 import net.neoforged.neoforge.entity.PartEntity;
@@ -92,6 +93,12 @@ public final class EntityShapes {
      */
     public static long tagOf(Entity entity) {
         return ENTITY_TAG | (entity.getId() & 0xFFFFFFFFL);
+    }
+
+    /** The entity of {@code level} an entity tag ({@link #tagOf}) names, or {@code null}: not an entity's tag, or gone. */
+    @Nullable
+    public static Entity entityOf(Level level, long tag) {
+        return (tag & ~0xFFFFFFFFL) == ENTITY_TAG ? level.getEntity((int) tag) : null;
     }
 
     /**

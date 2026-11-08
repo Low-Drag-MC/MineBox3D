@@ -311,8 +311,8 @@ public final class EntityBlockedGameTest {
 
     /**
      * What the mass rule must not do: a stand on a crate it could push does not sink into it (its weight presses through
-     * its proxy, not by going in); one pushing a crate pinned against a wall does not walk through it; one with a step
-     * pushes a low light crate rather than climbing it.
+     * its proxy, not by going in); one pushing a crate pinned against a wall does not walk through it. (Whether one with a
+     * step climbs a low crate or pushes it: EntityStepUpGameTest.)
      */
     @GameTest(template = "empty", batch = "minebox3d_blocked_pinned", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
@@ -325,32 +325,24 @@ public final class EntityBlockedGameTest {
         Body pinned = box(helper, BodyType.DYNAMIC, 6, 0.3, 4.5, 0.3f, 0.3f, 0.3f, new ShapeDef().density(23));
         Body wall = box(helper, BodyType.STATIC, 6.55, 1, 4.5, 0.25f, 1, 1, new ShapeDef()); // its face at 6.3
         ArmorStand shover = stand(helper, 4.5, 0, 4.5);
-        // a low light crate in a stepping stand's way
-        Body low = box(helper, BodyType.DYNAMIC, 4, 0.2, 7, 0.3f, 0.2f, 0.3f, new ShapeDef().density(23));
-        ArmorStand stepper = stand(helper, 2.5, 0, 7);
-        stepper.getAttribute(Attributes.STEP_HEIGHT).setBaseValue(0.6);
         helper.onEachTick(() -> {
             if (shover.tickCount > 2 && shover.isAlive()) {
                 shover.setDeltaMovement(0.3, shover.getDeltaMovement().y, 0); // keeps walking into it
             }
         });
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(ticking(helper, onTop, shover, stepper) && onTop.onGround(), "the stands tick"))
-                .thenExecute(() -> stepper.setDeltaMovement(0.5, 0, 0))
+                .thenWaitUntil(() -> helper.assertTrue(ticking(helper, onTop, shover) && onTop.onGround(), "the stands tick"))
                 .thenExecuteAfter(40, () -> {
                     double top = relative(helper, under).y + 0.3, feet = relative(helper, onTop).y;
                     helper.assertTrue(feet - top > 0 && feet - top < 0.01, "on the crate, not in it: " + (feet - top));
                     double into = relative(helper, shover).x + 0.25 - (relative(helper, pinned).x - 0.3);
                     helper.assertTrue(into < 0.01, "against the pinned crate, not through it: " + into + " in");
                     helper.assertTrue(relative(helper, pinned).x < 6.05, "the crate pinned at the wall: " + relative(helper, pinned).x);
-                    helper.assertTrue(relative(helper, low).x - 4 > 0.3, "the low crate pushed along: " + (relative(helper, low).x - 4));
-                    helper.assertTrue(relative(helper, stepper).y < 0.05, "not climbed: y = " + relative(helper, stepper).y);
-                    for (Body body : new Body[]{under, pinned, wall, low}) {
+                    for (Body body : new Body[]{under, pinned, wall}) {
                         body.destroy();
                     }
                     onTop.discard();
                     shover.discard();
-                    stepper.discard();
                     done(helper, 10, 8);
                 });
     }

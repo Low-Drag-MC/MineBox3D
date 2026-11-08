@@ -125,6 +125,8 @@ public final class PhysicsWorld implements AutoCloseable {
     private final Vector3f queryCorner = new Vector3f();
     private final Quaternionf queryRotation = new Quaternionf();
     private final CastResult scratchResult = new CastResult();
+    /** every hit of a tagged cast, its closest that meets the tag kept ({@link #castShapeClosest}) */
+    private final CastHits scratchHits = new CastHits();
 
     private PhysicsWorld(int id, WorldDef def) {
         this.id = id;
@@ -955,6 +957,37 @@ public final class PhysicsWorld implements AutoCloseable {
                     tx, ty, tz, filter.categoryBits(), filter.maskBits(), ignoreExits, ignored, tag, out.doubles,
                     out.longs);
             return out.hit;
+        } finally {
+            exit();
+        }
+    }
+
+    /**
+     * {@link #castShapeClosest(Geometry, double, double, double, Quaternionfc, float, float, float, QueryFilter, CastResult)}
+     * for something ({@link Body#setTag}): the bodies that never meet it ({@link Body#setIgnoredTag}) are passed through —
+     * an entity's own ragdoll, to the ground query its mover stands by. 0 is nothing.
+     */
+    public boolean castShapeClosest(Geometry geometry, double x, double y, double z, Quaternionfc rotation, float tx, float ty,
+                                    float tz, QueryFilter filter, long tag, CastResult out) {
+        if (tag == 0L) {
+            return castShapeClosest(geometry, x, y, z, rotation, tx, ty, tz, filter, out);
+        }
+        enter();
+        try {
+            int count = castShape(geometry, x, y, z, rotation, tx, ty, tz, filter, scratchHits);
+            CastHits hit = out.hit;
+            hit.clear(this);
+            for (int i = 0; i < count; i++) {
+                Body body = scratchHits.body(i);
+                if (body != null && body.ignoredTag() == tag) {
+                    continue;
+                }
+                System.arraycopy(scratchHits.doubles, i * CastHits.DOUBLES, hit.doubles, 0, CastHits.DOUBLES);
+                System.arraycopy(scratchHits.longs, i * CastHits.LONGS, hit.longs, 0, CastHits.LONGS);
+                hit.count = 1;
+                break;
+            }
+            return hit.count > 0;
         } finally {
             exit();
         }

@@ -10,10 +10,13 @@ import com.lowdragmc.lowdraglib2.uitest.mp.MPScenarioOptions;
 import com.lowdragmc.minebox3d.mc.LevelBodies;
 import com.lowdragmc.minebox3d.mc.LevelPhysics;
 import com.lowdragmc.minebox3d.mc.entity.EntityBases;
+import com.lowdragmc.minebox3d.mc.entity.EntityCollisions;
+import com.lowdragmc.minebox3d.mc.entity.StepUpOn;
 import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.Geometry;
+import com.lowdragmc.minebox3d.physics.Shape;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -98,6 +101,16 @@ public class PlayerOnBodyScenario implements MPScenario {
         body.createShape(new ShapeDef().density(density), Geometry.Box.of(hx, hy, hz));
         LevelBodies.setSynced(body, true);
         return body;
+    }
+
+    /**
+     * A crate B pushes rather than steps onto: as high as a player's step, it would be climbed ({@link StepUpOn}). Said on
+     * the server: B's client steps by its replica's, so a value lost on the way has B on top of it, not pushing it.
+     */
+    private static void pushedNotClimbed(Body crate) {
+        for (Shape shape : crate.shapes()) {
+            EntityCollisions.setStepUpOn(shape, StepUpOn.NO);
+        }
     }
 
     /** Ticks B went less than 0.02 along while W was down, past getting going: held up by a crate that did not give. */
@@ -290,7 +303,7 @@ public class PlayerOnBodyScenario implements MPScenario {
 
         .server("a light synced crate in front of B, B facing it", sc -> {
             sc.player("B").teleportTo(sc.server().overworld(), 2.5, GROUND, 12.5, -90, 0);
-            make(sc, CRATE, BodyType.DYNAMIC, 3.5, GROUND + 0.3, 12.5, 0.3f, 0.3f, 0.3f, 23); // 5 kg
+            pushedNotClimbed(make(sc, CRATE, BodyType.DYNAMIC, 3.5, GROUND + 0.3, 12.5, 0.3f, 0.3f, 0.3f, 23)); // 5 kg
         })
         .client("B", "B walks the crate along, W held for a second and a half", b -> {
             long[] since = {-1};
@@ -334,8 +347,8 @@ public class PlayerOnBodyScenario implements MPScenario {
         // one crate pushed into another: both go along, on the server and as B's client has them
         .server("two crates in a row in front of B, B facing them", sc -> {
             sc.player("B").teleportTo(sc.server().overworld(), 2.5, GROUND, 16.5, -90, 0);
-            make(sc, CRATE_A, BodyType.DYNAMIC, 3.5, GROUND + 0.3, 16.5, 0.3f, 0.3f, 0.3f, 23);
-            make(sc, CRATE_B, BodyType.DYNAMIC, 4.4, GROUND + 0.3, 16.5, 0.3f, 0.3f, 0.3f, 23);
+            pushedNotClimbed(make(sc, CRATE_A, BodyType.DYNAMIC, 3.5, GROUND + 0.3, 16.5, 0.3f, 0.3f, 0.3f, 23));
+            pushedNotClimbed(make(sc, CRATE_B, BodyType.DYNAMIC, 4.4, GROUND + 0.3, 16.5, 0.3f, 0.3f, 0.3f, 23));
         })
         .client("B", "B walks the first crate into the second", b -> {
             long[] since = {-1};
@@ -366,7 +379,7 @@ public class PlayerOnBodyScenario implements MPScenario {
         // as B's client has it
         .server("a crate in front of B, a body its client does not have just past it", sc -> {
             sc.player("B").teleportTo(sc.server().overworld(), 2.5, GROUND, 20.5, -90, 0);
-            make(sc, CRATE_C, BodyType.DYNAMIC, 3.5, GROUND + 0.3, 20.5, 0.3f, 0.3f, 0.3f, 23);
+            pushedNotClimbed(make(sc, CRATE_C, BodyType.DYNAMIC, 3.5, GROUND + 0.3, 20.5, 0.3f, 0.3f, 0.3f, 23));
             Body hidden = physics(sc).createBody(new BodyDef().type(BodyType.STATIC).position(4.65, GROUND + 0.5, 20.5)
                     .name(HIDDEN));
             hidden.createShape(new ShapeDef(), Geometry.Box.of(0.25f, 0.5f, 1)); // its face at x = 4.4

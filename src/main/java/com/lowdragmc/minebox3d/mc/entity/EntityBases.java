@@ -330,6 +330,11 @@ public final class EntityBases {
         return false;
     }
 
+    /** Whether the entity has a base MineBox3D carries and turns it with, a tick at a time ({@link Riders#carry}). */
+    public static boolean turnsWithItsBase(Entity entity) {
+        return baseOf(entity) != null && !carriesItself(entity);
+    }
+
     /**
      * The base that carries the entity now, or {@code null}: {@link #baseOf} for one MineBox3D carries (in the air off it
      * too, for a while); for one a mod carries itself, its base only while that mod is carrying it there

@@ -43,6 +43,14 @@ public final class Shape {
         attachments.put(type, value);
     }
 
+    /**
+     * Says that what is copied of this shape elsewhere changed while the shape did not — an attachment the network sync
+     * sends with it: the body's {@link Body#shapesRevision} moves on, as for a new filter.
+     */
+    public void markChanged() {
+        body.shapesChanged();
+    }
+
     public boolean isValid() {
         return !destroyed && body.isValid();
     }
