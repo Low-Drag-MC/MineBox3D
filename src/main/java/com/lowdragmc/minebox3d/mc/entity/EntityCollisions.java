@@ -791,7 +791,7 @@ public final class EntityCollisions {
                     // often as not, which would flip it); the body's centre as near as the entity's face reaches instead —
                     // a crate it covers is pushed straight, a plank by its end is turned
                     Body body = stopping.body();
-                    body.worldCenter(center);
+                    massCenter(body, center);
                     Vector3d at = pushedAt[i].set(point);
                     if (axis != Direction.Axis.X) {
                         at.x = Math.clamp(center.x, box.minX, box.maxX);
@@ -934,6 +934,18 @@ public final class EntityCollisions {
                 inverseMass += arm.dot(twist);
             }
             return 1 / inverseMass;
+        }
+
+        /**
+         * The body's centre of mass in the level, from {@link #massData} ({@link #massOf} first). ⚠️ Not
+         * {@code worldCenter}: a replica is kinematic, and Box3D puts a body that does not simulate's centre at its origin —
+         * a post's foot, where its joint turns it, and a push there turns nothing.
+         */
+        Vector3d massCenter(Body body, Vector3d out) {
+            body.position(out);
+            body.rotation(rotation);
+            arm.set(massData.centerX, massData.centerY, massData.centerZ).rotate(rotation);
+            return out.add(arm.x, arm.y, arm.z);
         }
 
         /** The body's mass into {@link #massData} if entities push it; false for one as heavy as a wall. */
