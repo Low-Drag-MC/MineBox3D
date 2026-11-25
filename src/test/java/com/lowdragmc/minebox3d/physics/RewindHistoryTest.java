@@ -1,18 +1,17 @@
 package com.lowdragmc.minebox3d.physics;
 
-import org.joml.Quaternionf;
-import org.joml.Vector3d;
-import org.joml.Vector3f;
-import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.ArrayList;
+import java.util.List;
+import org.joml.Quaternionf;
+import org.joml.Vector3d;
+import org.joml.Vector3f;
+import org.junit.jupiter.api.Test;
 
 /**
  * <b>Putting bodies back and simulating again</b> ({@link RewindHistory}): where nothing touches, the run again is the
@@ -60,7 +59,7 @@ class RewindHistoryTest {
             Quaternionf q = body.rotation(new Quaternionf());
             Vector3f v = body.linearVelocity(new Vector3f());
             Vector3f w = body.angularVelocity(new Vector3f());
-            states.add(new float[]{q.x, q.y, q.z, q.w, v.x, v.y, v.z, w.x, w.y, w.z});
+            states.add(new float[] {q.x, q.y, q.z, q.w, v.x, v.y, v.z, w.x, w.y, w.z});
         }
         return states;
     }
@@ -94,7 +93,10 @@ class RewindHistoryTest {
             for (int i = 0; i < bodies.size(); i++) {
                 assertEquals(first.get(i), again.get(i), "body " + i + " where it was the first time, to the bit");
                 for (int k = 0; k < firstStates.get(i).length; k++) {
-                    assertEquals(firstStates.get(i)[k], againStates.get(i)[k], 0f,
+                    assertEquals(
+                            firstStates.get(i)[k],
+                            againStates.get(i)[k],
+                            0f,
                             "body " + i + " turned and going as the first time, to the bit (" + k + ")");
                 }
             }
@@ -122,7 +124,8 @@ class RewindHistoryTest {
             run(world, history, bodies, 0, 40);
             List<Vector3d> first = new ArrayList<>();
             statesOf(bodies, first);
-            List<Quaternionf> firstTurns = bodies.stream().map(b -> b.rotation(new Quaternionf())).toList();
+            List<Quaternionf> firstTurns =
+                    bodies.stream().map(b -> b.rotation(new Quaternionf())).toList();
 
             for (Body body : bodies) {
                 assertTrue(history.restore(19, body));
@@ -154,9 +157,11 @@ class RewindHistoryTest {
             run(world, history, links, 0, 40);
             List<Vector3d> first = new ArrayList<>();
             statesOf(links, first);
-            List<Quaternionf> firstTurns = links.stream().map(b -> b.rotation(new Quaternionf())).toList();
+            List<Quaternionf> firstTurns =
+                    links.stream().map(b -> b.rotation(new Quaternionf())).toList();
 
-            // back a round trip's worth (six ticks): a swinging chain is chaotic, and the joints' warm starts that are not
+            // back a round trip's worth (six ticks): a swinging chain is chaotic, and the joints' warm starts that are
+            // not
             // held part the two runs by 2 cm over a second and a quarter
             for (Body link : links) {
                 assertTrue(history.restore(33, link));

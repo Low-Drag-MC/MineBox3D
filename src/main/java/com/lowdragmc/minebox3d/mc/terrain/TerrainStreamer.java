@@ -16,17 +16,6 @@ import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongLinkedOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
-import net.minecraft.util.Mth;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.phys.AABB;
-import org.jetbrains.annotations.Nullable;
-import org.joml.Vector3f;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,6 +28,16 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
+import net.minecraft.util.Mth;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.phys.AABB;
+import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3f;
 
 /**
  * <b>Streams block collision into a {@link PhysicsWorld}</b>, one chunk section at a time, around the bodies
@@ -73,6 +72,7 @@ public final class TerrainStreamer implements AutoCloseable {
     private final LongOpenHashSet loaded = new LongOpenHashSet();
     /** section → the last tick something wanted it */
     private final Long2LongOpenHashMap wanted = new Long2LongOpenHashMap();
+
     private final LongLinkedOpenHashSet queue = new LongLinkedOpenHashSet();
     /** cells to work out again at the next update, as {@link BlockPos#asLong}; swapped out while being worked */
     private LongLinkedOpenHashSet changedCells = new LongLinkedOpenHashSet();
@@ -82,6 +82,7 @@ public final class TerrainStreamer implements AutoCloseable {
     private final Set<Body> parked = Collections.newSetFromMap(new IdentityHashMap<>());
     /** this update's: the bodies that need terrain, and the ones to be parked */
     private final List<Body> needing = new ArrayList<>();
+
     private final Set<Body> out = Collections.newSetFromMap(new IdentityHashMap<>());
     private final IntArrayList edits = new IntArrayList();
     private final List<Request> requests = new ArrayList<>();
@@ -95,8 +96,7 @@ public final class TerrainStreamer implements AutoCloseable {
         private int keepTicks = 40;
         private int chunkCheckTicks = 20;
 
-        private Settings() {
-        }
+        private Settings() {}
 
         /** Blocks added around a body's bounds before deciding which sections it overlaps. */
         public float margin() {
@@ -179,7 +179,8 @@ public final class TerrainStreamer implements AutoCloseable {
         this.world = world;
         ShapeDef template = new ShapeDef();
         template.filter.categoryBits = CollisionCategories.TERRAIN;
-        // Box3D's default, said out loud: it reports a touch when either shape asks, and terrain asking would report every
+        // Box3D's default, said out loud: it reports a touch when either shape asks, and terrain asking would report
+        // every
         // body landing anywhere
         template.enableContactEvents = false;
         template.enableHitEvents = false;
@@ -243,8 +244,8 @@ public final class TerrainStreamer implements AutoCloseable {
             }
             needing.add(body);
             body.bounds(bounds);
-            if (!out.contains(body) && !chunksLoaded(bounds[0] - margin, bounds[2] - margin, bounds[3] + margin,
-                    bounds[5] + margin)) {
+            if (!out.contains(body)
+                    && !chunksLoaded(bounds[0] - margin, bounds[2] - margin, bounds[3] + margin, bounds[5] + margin)) {
                 withJointed(body, out);
             }
         }
@@ -271,9 +272,13 @@ public final class TerrainStreamer implements AutoCloseable {
             mark(minX, minY, minZ, maxX, maxY, maxZ, urgent);
             // where it is going: needed soon
             body.linearVelocity(velocity).mul(settings.lookaheadSeconds);
-            mark(Math.min(bounds[0], bounds[0] + velocity.x) - margin, Math.min(bounds[1], bounds[1] + velocity.y) - margin,
-                    Math.min(bounds[2], bounds[2] + velocity.z) - margin, Math.max(bounds[3], bounds[3] + velocity.x) + margin,
-                    Math.max(bounds[4], bounds[4] + velocity.y) + margin, Math.max(bounds[5], bounds[5] + velocity.z) + margin,
+            mark(
+                    Math.min(bounds[0], bounds[0] + velocity.x) - margin,
+                    Math.min(bounds[1], bounds[1] + velocity.y) - margin,
+                    Math.min(bounds[2], bounds[2] + velocity.z) - margin,
+                    Math.max(bounds[3], bounds[3] + velocity.x) + margin,
+                    Math.max(bounds[4], bounds[4] + velocity.y) + margin,
+                    Math.max(bounds[5], bounds[5] + velocity.z) + margin,
                     null);
         }
         needing.clear();
@@ -283,7 +288,14 @@ public final class TerrainStreamer implements AutoCloseable {
                 it.remove();
             } else {
                 AABB b = request.box;
-                mark((float) b.minX, (float) b.minY, (float) b.minZ, (float) b.maxX, (float) b.maxY, (float) b.maxZ, null);
+                mark(
+                        (float) b.minX,
+                        (float) b.minY,
+                        (float) b.minZ,
+                        (float) b.maxX,
+                        (float) b.maxY,
+                        (float) b.maxZ,
+                        null);
             }
         }
 
@@ -358,7 +370,8 @@ public final class TerrainStreamer implements AutoCloseable {
         return parked.contains(body);
     }
 
-    private void mark(float minX, float minY, float minZ, float maxX, float maxY, float maxZ, @Nullable LongSet urgent) {
+    private void mark(
+            float minX, float minY, float minZ, float maxX, float maxY, float maxZ, @Nullable LongSet urgent) {
         int x0 = SectionPos.blockToSectionCoord(Mth.floor(minX)), x1 = SectionPos.blockToSectionCoord(Mth.floor(maxX));
         int y0 = SectionPos.blockToSectionCoord(Mth.floor(minY)), y1 = SectionPos.blockToSectionCoord(Mth.floor(maxY));
         int z0 = SectionPos.blockToSectionCoord(Mth.floor(minZ)), z1 = SectionPos.blockToSectionCoord(Mth.floor(maxZ));
@@ -405,7 +418,8 @@ public final class TerrainStreamer implements AutoCloseable {
         if (changedCells.isEmpty()) {
             return;
         }
-        // working out a cell may load a chunk's worth of vanilla work that changes blocks again: those go to the next set
+        // working out a cell may load a chunk's worth of vanilla work that changes blocks again: those go to the next
+        // set
         LongLinkedOpenHashSet cells = changedCells;
         changedCells = new LongLinkedOpenHashSet();
         edits.clear();
@@ -451,7 +465,8 @@ public final class TerrainStreamer implements AutoCloseable {
     }
 
     private void queueChange(BlockPos pos, @Nullable BlockState previous, BlockState current) {
-        boolean large = previous == null || !previous.isAir() && previous.hasLargeCollisionShape()
+        boolean large = previous == null
+                || !previous.isAir() && previous.hasLargeCollisionShape()
                 || !current.isAir() && current.hasLargeCollisionShape();
         if (!large) {
             // a section that is not in is read whole, fresh, when it comes in
@@ -464,7 +479,9 @@ public final class TerrainStreamer implements AutoCloseable {
             for (int dy = -1; dy <= 1; dy++) {
                 for (int dz = -1; dz <= 1; dz++) {
                     int x = pos.getX() + dx, y = pos.getY() + dy, z = pos.getZ() + dz;
-                    if (loaded.contains(SectionPos.asLong(SectionPos.blockToSectionCoord(x), SectionPos.blockToSectionCoord(y),
+                    if (loaded.contains(SectionPos.asLong(
+                            SectionPos.blockToSectionCoord(x),
+                            SectionPos.blockToSectionCoord(y),
                             SectionPos.blockToSectionCoord(z)))) {
                         changedCells.add(BlockPos.asLong(x, y, z));
                     }
@@ -512,8 +529,9 @@ public final class TerrainStreamer implements AutoCloseable {
 
     private void checkLevelThread() {
         if (!LevelThreads.isLevelThread(level)) {
-            throw new WrongThreadException("the terrain of " + level.dimension().location() + " is read on its level's thread, not "
-                    + Thread.currentThread().getName());
+            throw new WrongThreadException(
+                    "the terrain of " + level.dimension().location() + " is read on its level's thread, not "
+                            + Thread.currentThread().getName());
         }
     }
 
@@ -525,8 +543,10 @@ public final class TerrainStreamer implements AutoCloseable {
                 continue;
             }
             body.bounds(bounds);
-            if (Mth.floor(bounds[0] - margin) <= chunk.getMaxBlockX() && Mth.floor(bounds[3] + margin) >= chunk.getMinBlockX()
-                    && Mth.floor(bounds[2] - margin) <= chunk.getMaxBlockZ() && Mth.floor(bounds[5] + margin) >= chunk.getMinBlockZ()) {
+            if (Mth.floor(bounds[0] - margin) <= chunk.getMaxBlockX()
+                    && Mth.floor(bounds[3] + margin) >= chunk.getMinBlockX()
+                    && Mth.floor(bounds[2] - margin) <= chunk.getMaxBlockZ()
+                    && Mth.floor(bounds[5] + margin) >= chunk.getMinBlockZ()) {
                 withJointed(body, going);
             }
         }
@@ -556,8 +576,10 @@ public final class TerrainStreamer implements AutoCloseable {
             if (Math.abs(sx - chunk.x) > 1 || Math.abs(sz - chunk.z) > 1) {
                 continue;
             }
-            int x0 = Math.max(SectionPos.sectionToBlockCoord(sx), minX), x1 = Math.min(SectionPos.sectionToBlockCoord(sx) + 15, maxX);
-            int z0 = Math.max(SectionPos.sectionToBlockCoord(sz), minZ), z1 = Math.min(SectionPos.sectionToBlockCoord(sz) + 15, maxZ);
+            int x0 = Math.max(SectionPos.sectionToBlockCoord(sx), minX),
+                    x1 = Math.min(SectionPos.sectionToBlockCoord(sx) + 15, maxX);
+            int z0 = Math.max(SectionPos.sectionToBlockCoord(sz), minZ),
+                    z1 = Math.min(SectionPos.sectionToBlockCoord(sz) + 15, maxZ);
             int y0 = SectionPos.sectionToBlockCoord(SectionPos.y(section));
             for (int x = x0; x <= x1; x++) {
                 for (int z = z0; z <= z1; z++) {
@@ -638,12 +660,9 @@ public final class TerrainStreamer implements AutoCloseable {
         pendingChunks.clear();
     }
 
-    private record Request(AABB box, long untilTick) {
-    }
+    private record Request(AABB box, long untilTick) {}
 
-    private record OffThreadChange(BlockPos pos, @Nullable BlockState previous, BlockState current) {
-    }
+    private record OffThreadChange(BlockPos pos, @Nullable BlockState previous, BlockState current) {}
 
-    private record PendingChunk(ChunkPos chunk, boolean loaded) {
-    }
+    private record PendingChunk(ChunkPos chunk, boolean loaded) {}
 }

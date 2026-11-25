@@ -1,12 +1,12 @@
 package com.lowdragmc.minebox3d.physics;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * <b>Body tags</b> ({@link Body#setTag}, {@link Body#setIgnoredTag}): a body never meets the bodies tagged with what it
@@ -111,15 +111,37 @@ class BodyTagsTest {
             wall.createShape(new ShapeDef(), Geometry.Box.of(0.25f, 1, 1)); // its face at x = 2
             wall.setIgnoredTag(FLOOR);
             BoxSweep sweep = new BoxSweep();
-            assertTrue(world.sweepBox(0, 1, 0, NO_TURN, 0.25f, 0.25f, 0.25f, 4, 0, 0, QueryFilter.ALL, false, null, 0L,
-                    sweep), "a box that is nothing meets it");
-            assertTrue(world.sweepBox(0, 1, 0, NO_TURN, 0.25f, 0.25f, 0.25f, 4, 0, 0, QueryFilter.ALL, false, null,
-                    FLOOR + 1, sweep), "and one tagged otherwise");
-            assertFalse(world.sweepBox(0, 1, 0, NO_TURN, 0.25f, 0.25f, 0.25f, 4, 0, 0, QueryFilter.ALL, false, null, FLOOR,
-                    sweep), "one tagged what it ignores goes through");
+            assertTrue(
+                    world.sweepBox(
+                            0, 1, 0, NO_TURN, 0.25f, 0.25f, 0.25f, 4, 0, 0, QueryFilter.ALL, false, null, 0L, sweep),
+                    "a box that is nothing meets it");
+            assertTrue(
+                    world.sweepBox(
+                            0,
+                            1,
+                            0,
+                            NO_TURN,
+                            0.25f,
+                            0.25f,
+                            0.25f,
+                            4,
+                            0,
+                            0,
+                            QueryFilter.ALL,
+                            false,
+                            null,
+                            FLOOR + 1,
+                            sweep),
+                    "and one tagged otherwise");
+            assertFalse(
+                    world.sweepBox(
+                            0, 1, 0, NO_TURN, 0.25f, 0.25f, 0.25f, 4, 0, 0, QueryFilter.ALL, false, null, FLOOR, sweep),
+                    "one tagged what it ignores goes through");
             wall.setIgnoredTag(0);
-            assertTrue(world.sweepBox(0, 1, 0, NO_TURN, 0.25f, 0.25f, 0.25f, 4, 0, 0, QueryFilter.ALL, false, null, FLOOR,
-                    sweep), "until it ignores nothing");
+            assertTrue(
+                    world.sweepBox(
+                            0, 1, 0, NO_TURN, 0.25f, 0.25f, 0.25f, 4, 0, 0, QueryFilter.ALL, false, null, FLOOR, sweep),
+                    "until it ignores nothing");
         }
     }
 

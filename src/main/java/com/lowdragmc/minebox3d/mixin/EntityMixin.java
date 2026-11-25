@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.lowdragmc.minebox3d.mc.entity.EntityBases;
 import com.lowdragmc.minebox3d.mc.entity.EntityCollisions;
+import java.util.List;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.AABB;
@@ -16,8 +17,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-import java.util.List;
 
 /**
  * Minecraft's entity movement sees the level's bodies (design doc {@code 04-entities-and-bodies.md} §11, 4c-1 / 4c-2):
@@ -65,25 +64,43 @@ public abstract class EntityMixin implements EntityBases.Holder {
     }
 
     /** The step-up's own sweeps. */
-    @WrapOperation(method = "collide", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/entity/Entity;collideWithShapes(Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/AABB;Ljava/util/List;)Lnet/minecraft/world/phys/Vec3;"))
+    @WrapOperation(
+            method = "collide",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            target =
+                                    "Lnet/minecraft/world/entity/Entity;collideWithShapes(Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/AABB;Ljava/util/List;)Lnet/minecraft/world/phys/Vec3;"))
     private Vec3 minebox3d$stepUpWithBodies(Vec3 motion, AABB box, List<VoxelShape> shapes, Operation<Vec3> original) {
-        return EntityCollisions.isActive() ? EntityCollisions.collideWithShapes(motion, box, shapes, false)
+        return EntityCollisions.isActive()
+                ? EntityCollisions.collideWithShapes(motion, box, shapes, false)
                 : original.call(motion, box, shapes);
     }
 
-    @WrapOperation(method = "collide", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/entity/Entity;collectCandidateStepUpHeights(Lnet/minecraft/world/phys/AABB;Ljava/util/List;FF)[F"))
-    private float[] minebox3d$stepOntoBodies(AABB box, List<VoxelShape> shapes, float stepHeight, float clippedY,
-                                             Operation<float[]> original) {
+    @WrapOperation(
+            method = "collide",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            target =
+                                    "Lnet/minecraft/world/entity/Entity;collectCandidateStepUpHeights(Lnet/minecraft/world/phys/AABB;Ljava/util/List;FF)[F"))
+    private float[] minebox3d$stepOntoBodies(
+            AABB box, List<VoxelShape> shapes, float stepHeight, float clippedY, Operation<float[]> original) {
         return EntityCollisions.stepUpHeights(original.call(box, shapes, stepHeight, clippedY), box, stepHeight);
     }
 
     /** The move's sweep (and anyone else's {@code collideBoundingBox} during a move, or a proxy's prediction). */
-    @WrapOperation(method = "collideBoundingBox", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/entity/Entity;collideWithShapes(Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/AABB;Ljava/util/List;)Lnet/minecraft/world/phys/Vec3;"))
-    private static Vec3 minebox3d$collideWithBodies(Vec3 motion, AABB box, List<VoxelShape> shapes, Operation<Vec3> original) {
-        return EntityCollisions.isActive() ? EntityCollisions.collideWithShapes(motion, box, shapes, true)
+    @WrapOperation(
+            method = "collideBoundingBox",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            target =
+                                    "Lnet/minecraft/world/entity/Entity;collideWithShapes(Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/AABB;Ljava/util/List;)Lnet/minecraft/world/phys/Vec3;"))
+    private static Vec3 minebox3d$collideWithBodies(
+            Vec3 motion, AABB box, List<VoxelShape> shapes, Operation<Vec3> original) {
+        return EntityCollisions.isActive()
+                ? EntityCollisions.collideWithShapes(motion, box, shapes, true)
                 : original.call(motion, box, shapes);
     }
 }

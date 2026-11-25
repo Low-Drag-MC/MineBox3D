@@ -52,8 +52,8 @@ public final class EntityIgnoredGameTest {
     }
 
     /** A body of one box at a point relative to the test, its shapes asking Box3D's custom filter. */
-    private static Body box(GameTestHelper helper, BodyType type, double x, double y, double z, float hx, float hy,
-                            float hz) {
+    private static Body box(
+            GameTestHelper helper, BodyType type, double x, double y, double z, float hx, float hy, float hz) {
         Vec3 at = helper.absoluteVec(new Vec3(x, y, z));
         Body body = physics(helper).createBody(new BodyDef().type(type).position(at.x, at.y, at.z));
         ShapeDef def = new ShapeDef().density(500);
@@ -89,8 +89,9 @@ public final class EntityIgnoredGameTest {
                 .thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper, falling, standing), "the stands tick"))
                 .thenExecute(() -> crate[0] = box(helper, BodyType.DYNAMIC, 5.5, 3.5, 1.5, 0.25f, 0.25f, 0.25f))
                 .thenExecuteAfter(40, () -> {
-                    helper.assertTrue(relative(helper, falling).y < 0.01, "through the slab to the floor: "
-                            + relative(helper, falling).y);
+                    helper.assertTrue(
+                            relative(helper, falling).y < 0.01,
+                            "through the slab to the floor: " + relative(helper, falling).y);
                     helper.assertTrue(physics(helper).entities().proxyOf(standing) == null, "no proxy for the other");
                     double y = relative(helper, crate[0]).y;
                     helper.assertTrue(y < 0.3, "a crate dropped on it fell through it to the floor: y = " + y);
@@ -100,8 +101,10 @@ public final class EntityIgnoredGameTest {
                     EntityShapes.setPhysicsCollision(standing, true);
                     crate[1] = box(helper, BodyType.DYNAMIC, 5.5, 3.5, 1.5, 0.25f, 0.25f, 0.25f);
                 })
-                .thenExecuteAfter(3, () -> helper.assertTrue(physics(helper).entities().proxyOf(standing) != null,
-                        "a proxy once it is back on"))
+                .thenExecuteAfter(
+                        3,
+                        () -> helper.assertTrue(
+                                physics(helper).entities().proxyOf(standing) != null, "a proxy once it is back on"))
                 .thenExecuteAfter(40, () -> {
                     double y = relative(helper, crate[1]).y;
                     helper.assertTrue(y > 2.1 && y < 2.3, "the next crate lands on the stand's top: y = " + y);
@@ -128,12 +131,14 @@ public final class EntityIgnoredGameTest {
                     crates[1] = box(helper, BodyType.DYNAMIC, 5.5, 3.5, 1.5, 0.25f, 0.25f, 0.25f);
                     for (Body crate : crates) {
                         LevelBodies.setIgnoredEntity(crate, ignored);
-                        helper.assertTrue(LevelBodies.ignores(crate, ignored) && !LevelBodies.ignores(crate, other),
+                        helper.assertTrue(
+                                LevelBodies.ignores(crate, ignored) && !LevelBodies.ignores(crate, other),
                                 "it ignores the first stand only");
                     }
                 })
                 .thenExecuteAfter(40, () -> {
-                    helper.assertTrue(physics(helper).entities().proxyOf(ignored) != null, "the first stand has its proxy");
+                    helper.assertTrue(
+                            physics(helper).entities().proxyOf(ignored) != null, "the first stand has its proxy");
                     double through = relative(helper, crates[0]).y;
                     helper.assertTrue(through < 0.3, "through the stand it ignores to the floor: y = " + through);
                     double on = relative(helper, crates[1]).y;
@@ -150,7 +155,8 @@ public final class EntityIgnoredGameTest {
                     double through = relative(helper, crates[1]).y;
                     helper.assertTrue(through < 0.3, "let go, it fell through the stand it rested on: y = " + through);
                     double y = relative(helper, crates[0]).y;
-                    helper.assertTrue(y > 2.1 && y < 2.3, "ignoring nobody again, it lands on the first stand: y = " + y);
+                    helper.assertTrue(
+                            y > 2.1 && y < 2.3, "ignoring nobody again, it lands on the first stand: y = " + y);
                     for (Body crate : crates) {
                         crate.destroy();
                     }
@@ -171,8 +177,12 @@ public final class EntityIgnoredGameTest {
         ArmorStand off = stand(helper, 2.5, 2, 4.5);
         double[] x = new double[2];
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper, ignored, off) && ignored.onGround()
-                        && off.onGround() && EntityBases.baseOf(ignored) == ignoring && EntityBases.baseOf(off) == deck,
+                .thenWaitUntil(() -> helper.assertTrue(
+                        TestArea.ticks(helper, ignored, off)
+                                && ignored.onGround()
+                                && off.onGround()
+                                && EntityBases.baseOf(ignored) == ignoring
+                                && EntityBases.baseOf(off) == deck,
                         "each stands on its deck"))
                 .thenExecute(() -> {
                     ignoring.setLinearVelocity(3, 0, 0);
@@ -184,17 +194,21 @@ public final class EntityIgnoredGameTest {
                     helper.assertTrue(x[0] > 2.75 && x[1] > 2.75, "carried along at first: " + x[0] + ", " + x[1]);
                     LevelBodies.setIgnoredEntity(ignoring, ignored);
                     EntityShapes.setPhysicsCollision(off, false);
-                    helper.assertTrue(EntityBases.baseOf(ignored) == null && EntityBases.baseOf(off) == null,
+                    helper.assertTrue(
+                            EntityBases.baseOf(ignored) == null && EntityBases.baseOf(off) == null,
                             "neither has a base from now on");
                 })
                 .thenExecuteAfter(30, () -> {
                     Vec3 a = relative(helper, ignored), b = relative(helper, off);
                     helper.assertTrue(a.y < 0.01 && b.y < 0.01, "both fell through to the floor: " + a.y + ", " + b.y);
                     // carried on for a jump's while, or given the deck's speed, either would be well over a block on
-                    helper.assertTrue(Math.abs(a.x - x[0]) < 0.3, "the one its deck ignores went neither on with it nor "
-                            + "flung: from " + x[0] + " to " + a.x);
-                    helper.assertTrue(Math.abs(b.x - x[1]) < 0.3, "nor the one whose collision is off: from " + x[1]
-                            + " to " + b.x);
+                    helper.assertTrue(
+                            Math.abs(a.x - x[0]) < 0.3,
+                            "the one its deck ignores went neither on with it nor " + "flung: from " + x[0] + " to "
+                                    + a.x);
+                    helper.assertTrue(
+                            Math.abs(b.x - x[1]) < 0.3,
+                            "nor the one whose collision is off: from " + x[1] + " to " + b.x);
                     ignoring.destroy();
                     deck.destroy();
                     ignored.discard();
@@ -218,14 +232,48 @@ public final class EntityIgnoredGameTest {
                 .thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper, ignored, other), "the stands tick"))
                 .thenExecute(() -> {
                     // the queries for other mods, as each stand's own
-                    helper.assertTrue(EntityCollisions.anyBodyIn(helper.getLevel(), inWall), "the wall is there to nobody");
+                    helper.assertTrue(
+                            EntityCollisions.anyBodyIn(helper.getLevel(), inWall), "the wall is there to nobody");
                     helper.assertTrue(EntityCollisions.anyBodyIn(helper.getLevel(), inWall, other), "and to the other");
-                    helper.assertFalse(EntityCollisions.anyBodyIn(helper.getLevel(), inWall, ignored), "not to the one");
+                    helper.assertFalse(
+                            EntityCollisions.anyBodyIn(helper.getLevel(), inWall, ignored), "not to the one");
                     BoxSweep sweep = new BoxSweep();
-                    helper.assertTrue(EntityCollisions.sweepBox(helper.getLevel(), at.x, at.y, at.z, new Quaternionf(),
-                            0.25f, 0.25f, 0.25f, 2, 0, 0, false, null, other, sweep), "the other's sweep meets it");
-                    helper.assertFalse(EntityCollisions.sweepBox(helper.getLevel(), at.x, at.y, at.z, new Quaternionf(),
-                            0.25f, 0.25f, 0.25f, 2, 0, 0, false, null, ignored, sweep), "the one's goes through");
+                    helper.assertTrue(
+                            EntityCollisions.sweepBox(
+                                    helper.getLevel(),
+                                    at.x,
+                                    at.y,
+                                    at.z,
+                                    new Quaternionf(),
+                                    0.25f,
+                                    0.25f,
+                                    0.25f,
+                                    2,
+                                    0,
+                                    0,
+                                    false,
+                                    null,
+                                    other,
+                                    sweep),
+                            "the other's sweep meets it");
+                    helper.assertFalse(
+                            EntityCollisions.sweepBox(
+                                    helper.getLevel(),
+                                    at.x,
+                                    at.y,
+                                    at.z,
+                                    new Quaternionf(),
+                                    0.25f,
+                                    0.25f,
+                                    0.25f,
+                                    2,
+                                    0,
+                                    0,
+                                    false,
+                                    null,
+                                    ignored,
+                                    sweep),
+                            "the one's goes through");
                     ignored.setDeltaMovement(1.5, 0, 0);
                     other.setDeltaMovement(1.5, 0, 0);
                 })
@@ -236,7 +284,8 @@ public final class EntityIgnoredGameTest {
                     helper.assertTrue(front <= 5.0 && front > 4.9, "the other stopped at its face: " + front);
                     // its physics collision off, the wall is not there to the other either
                     EntityShapes.setPhysicsCollision(other, false);
-                    helper.assertFalse(EntityCollisions.anyBodyIn(helper.getLevel(), inWall, other),
+                    helper.assertFalse(
+                            EntityCollisions.anyBodyIn(helper.getLevel(), inWall, other),
                             "nothing is in the way of one whose physics collision is off");
                     other.setDeltaMovement(1.5, 0, 0);
                 })

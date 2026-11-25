@@ -182,7 +182,7 @@ MB3_JNI( void, bodiesGetTransforms )( JNIEnv* env, jclass type, jlongArray bodie
 }
 
 MB3_JNI( void, bodySetTransform )( JNIEnv* env, jclass type, jlong body, jdouble px, jdouble py, jdouble pz, jfloat qx,
-								  jfloat qy, jfloat qz, jfloat qw )
+								   jfloat qy, jfloat qz, jfloat qw )
 {
 	(void)type;
 	b3Body_SetTransform( mb3_body( body ), mb3_pos( px, py, pz ), mb3_quat( qx, qy, qz, qw ) );
@@ -269,8 +269,8 @@ MB3_JNI( void, bodySetTargetTransform )( JNIEnv* env, jclass type, jlong body, j
 }
 
 // bodySetTargetTransform for count bodies, 7 doubles each as bodiesGetTransforms
-MB3_JNI( void, bodiesSetTargetTransforms )( JNIEnv* env, jclass type, jlongArray bodies, jint count, jdoubleArray transforms,
-										   jfloat timeStep, jboolean wake )
+MB3_JNI( void, bodiesSetTargetTransforms )( JNIEnv* env, jclass type, jlongArray bodies, jint count,
+											jdoubleArray transforms, jfloat timeStep, jboolean wake )
 {
 	(void)type;
 	if ( bodies == NULL || count < 0 || ( *env )->GetArrayLength( env, bodies ) < count )
@@ -347,8 +347,8 @@ MB3_JNI( void, bodyComputeAABB )( JNIEnv* env, jclass type, jlong body, jfloatAr
 	}
 }
 
-MB3_JNI( void, bodyApplyLinearImpulse )( JNIEnv* env, jclass type, jlong body, jfloat ix, jfloat iy, jfloat iz, jdouble px,
-										 jdouble py, jdouble pz, jboolean wake )
+MB3_JNI( void, bodyApplyLinearImpulse )( JNIEnv* env, jclass type, jlong body, jfloat ix, jfloat iy, jfloat iz,
+										 jdouble px, jdouble py, jdouble pz, jboolean wake )
 {
 	(void)type;
 	b3Body_ApplyLinearImpulse( mb3_body( body ), mb3_vec3( ix, iy, iz ), mb3_pos( px, py, pz ), wake );
@@ -363,7 +363,8 @@ MB3_JNI( void, bodyApplyLinearImpulseToCenter )( JNIEnv* env, jclass type, jlong
 	mb3_check( env );
 }
 
-MB3_JNI( void, bodyApplyAngularImpulse )( JNIEnv* env, jclass type, jlong body, jfloat ix, jfloat iy, jfloat iz, jboolean wake )
+MB3_JNI( void, bodyApplyAngularImpulse )( JNIEnv* env, jclass type, jlong body, jfloat ix, jfloat iy, jfloat iz,
+										  jboolean wake )
 {
 	(void)type;
 	b3Body_ApplyAngularImpulse( mb3_body( body ), mb3_vec3( ix, iy, iz ), wake );
@@ -378,7 +379,8 @@ MB3_JNI( void, bodyApplyForce )( JNIEnv* env, jclass type, jlong body, jfloat fx
 	mb3_check( env );
 }
 
-MB3_JNI( void, bodyApplyForceToCenter )( JNIEnv* env, jclass type, jlong body, jfloat fx, jfloat fy, jfloat fz, jboolean wake )
+MB3_JNI( void, bodyApplyForceToCenter )( JNIEnv* env, jclass type, jlong body, jfloat fx, jfloat fy, jfloat fz,
+										 jboolean wake )
 {
 	(void)type;
 	b3Body_ApplyForceToCenter( mb3_body( body ), mb3_vec3( fx, fy, fz ), wake );
@@ -498,8 +500,8 @@ MB3_JNI( void, bodyGetMassData )( JNIEnv* env, jclass type, jlong body, jfloatAr
 	if ( mb3_check( env ) == false )
 	{
 		const b3Matrix3* m = &data.inertia;
-		float values[13] = { data.mass,	 data.center.x, data.center.y, data.center.z, m->cx.x, m->cx.y, m->cx.z,
-							 m->cy.x,	 m->cy.y,		m->cy.z,	   m->cz.x,		  m->cz.y, m->cz.z };
+		float values[13] = { data.mass, data.center.x, data.center.y, data.center.z, m->cx.x, m->cx.y, m->cx.z,
+							 m->cy.x,	m->cy.y,	   m->cy.z,		  m->cz.x,		 m->cz.y, m->cz.z };
 		mb3_put_floats( env, out, 0, values, 13 );
 	}
 }
@@ -562,13 +564,15 @@ static bool mb3_body_hit( JNIEnv* env, b3BodyCastResult result, jdoubleArray dou
 	}
 	double d[MB3_HIT_DOUBLES];
 	jlong l[MB3_HIT_LONGS];
-	mb3_hit( result.shapeId, result.point, result.normal, result.fraction, result.userMaterialId, result.triangleIndex, d, l );
+	mb3_hit( result.shapeId, result.point, result.normal, result.fraction, result.userMaterialId, result.triangleIndex,
+			 d, l );
 	mb3_put_hit( env, doubles, longs, 0, d, l );
 	return mb3_check( env ) == false;
 }
 
-MB3_JNI( jboolean, bodyCastRay )( JNIEnv* env, jclass type, jlong body, jdouble ox, jdouble oy, jdouble oz, jfloat tx, jfloat ty,
-								  jfloat tz, jlong categoryBits, jlong maskBits, jdoubleArray doubles, jlongArray longs )
+MB3_JNI( jboolean, bodyCastRay )( JNIEnv* env, jclass type, jlong body, jdouble ox, jdouble oy, jdouble oz, jfloat tx,
+								  jfloat ty, jfloat tz, jlong categoryBits, jlong maskBits, jdoubleArray doubles,
+								  jlongArray longs )
 {
 	(void)type;
 	if ( mb3_hit_arrays( env, doubles, longs ) == false )
@@ -587,14 +591,15 @@ MB3_JNI( jboolean, bodyCastRay )( JNIEnv* env, jclass type, jlong body, jdouble 
 }
 
 // The closest hit of a query shape swept against this body; touching at the start hits at fraction 0, as the world's.
-MB3_JNI( jboolean, bodyCastShape )( JNIEnv* env, jclass type, jlong body, jdouble ox, jdouble oy, jdouble oz, jfloatArray points,
-									jint count, jfloat radius, jfloat tx, jfloat ty, jfloat tz, jlong categoryBits, jlong maskBits,
-									jdoubleArray doubles, jlongArray longs )
+MB3_JNI( jboolean, bodyCastShape )( JNIEnv* env, jclass type, jlong body, jdouble ox, jdouble oy, jdouble oz,
+									jfloatArray points, jint count, jfloat radius, jfloat tx, jfloat ty, jfloat tz,
+									jlong categoryBits, jlong maskBits, jdoubleArray doubles, jlongArray longs )
 {
 	(void)type;
 	b3Vec3 storage[B3_MAX_SHAPE_CAST_POINTS];
 	b3ShapeProxy proxy;
-	if ( mb3_proxy( env, points, count, radius, storage, &proxy ) == false || mb3_hit_arrays( env, doubles, longs ) == false )
+	if ( mb3_proxy( env, points, count, radius, storage, &proxy ) == false ||
+		 mb3_hit_arrays( env, doubles, longs ) == false )
 	{
 		return JNI_FALSE;
 	}
@@ -610,7 +615,8 @@ MB3_JNI( jboolean, bodyCastShape )( JNIEnv* env, jclass type, jlong body, jdoubl
 }
 
 MB3_JNI( jboolean, bodyOverlapShape )( JNIEnv* env, jclass type, jlong body, jdouble ox, jdouble oy, jdouble oz,
-									   jfloatArray points, jint count, jfloat radius, jlong categoryBits, jlong maskBits )
+									   jfloatArray points, jint count, jfloat radius, jlong categoryBits,
+									   jlong maskBits )
 {
 	(void)type;
 	b3Vec3 storage[B3_MAX_SHAPE_CAST_POINTS];
@@ -625,11 +631,13 @@ MB3_JNI( jboolean, bodyOverlapShape )( JNIEnv* env, jclass type, jlong body, jdo
 	{
 		return JNI_FALSE;
 	}
-	bool overlaps = b3Body_OverlapShape( id, mb3_pos( ox, oy, oz ), &proxy, mb3_query_filter( categoryBits, maskBits ), transform );
+	bool overlaps =
+		b3Body_OverlapShape( id, mb3_pos( ox, oy, oz ), &proxy, mb3_query_filter( categoryBits, maskBits ), transform );
 	return mb3_check( env ) == false && overlaps ? JNI_TRUE : JNI_FALSE;
 }
 
-MB3_JNI( jfloat, bodyGetClosestPoint )( JNIEnv* env, jclass type, jlong body, jdouble x, jdouble y, jdouble z, jdoubleArray out )
+MB3_JNI( jfloat, bodyGetClosestPoint )( JNIEnv* env, jclass type, jlong body, jdouble x, jdouble y, jdouble z,
+										jdoubleArray out )
 {
 	(void)type;
 	b3BodyId id = mb3_body( body );

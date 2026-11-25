@@ -1,8 +1,7 @@
 package com.lowdragmc.minebox3d.physics;
 
-import org.jetbrains.annotations.Nullable;
-
 import java.util.Arrays;
+import org.jetbrains.annotations.Nullable;
 
 /** A few values keyed by their class, for bodies and shapes: small, so a linear search beats a map. */
 final class Attachments {

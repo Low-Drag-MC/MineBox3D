@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.lowdragmc.minebox3d.mc.entity.EntityCollisions;
 import com.lowdragmc.minebox3d.mc.sync.SyncedRiders;
+import java.util.Set;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundMoveVehiclePacket;
 import net.minecraft.server.level.ServerPlayer;
@@ -19,8 +20,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import java.util.Set;
 
 /**
  * The server and a player standing on a body (design doc {@code 04-entities-and-bodies.md} §11.2 #2 / #3):
@@ -49,45 +48,76 @@ public abstract class ServerGamePacketListenerImplMixin {
 
     // the move's own read of its position (the first getX(0) only checks it is a number)
 
-    @WrapOperation(method = "handleMovePlayer", at = @At(value = "INVOKE", ordinal = 1,
-            target = "Lnet/minecraft/network/protocol/game/ServerboundMovePlayerPacket;getX(D)D"))
+    @WrapOperation(
+            method = "handleMovePlayer",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            ordinal = 1,
+                            target = "Lnet/minecraft/network/protocol/game/ServerboundMovePlayerPacket;getX(D)D"))
     private double minebox3d$moveX(ServerboundMovePlayerPacket packet, double fallback, Operation<Double> original) {
         double x = original.call(packet, fallback);
-        minebox3d$converted = packet.hasPosition() ? SyncedRiders.convert(player, false, x, packet.getY(player.getY()),
-                packet.getZ(player.getZ())) : null;
+        minebox3d$converted = packet.hasPosition()
+                ? SyncedRiders.convert(player, false, x, packet.getY(player.getY()), packet.getZ(player.getZ()))
+                : null;
         return minebox3d$converted == null ? x : minebox3d$converted.x;
     }
 
-    @WrapOperation(method = "handleMovePlayer", at = @At(value = "INVOKE", ordinal = 1,
-            target = "Lnet/minecraft/network/protocol/game/ServerboundMovePlayerPacket;getY(D)D"))
+    @WrapOperation(
+            method = "handleMovePlayer",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            ordinal = 1,
+                            target = "Lnet/minecraft/network/protocol/game/ServerboundMovePlayerPacket;getY(D)D"))
     private double minebox3d$moveY(ServerboundMovePlayerPacket packet, double fallback, Operation<Double> original) {
         return minebox3d$converted == null ? original.call(packet, fallback) : minebox3d$converted.y;
     }
 
-    @WrapOperation(method = "handleMovePlayer", at = @At(value = "INVOKE", ordinal = 1,
-            target = "Lnet/minecraft/network/protocol/game/ServerboundMovePlayerPacket;getZ(D)D"))
+    @WrapOperation(
+            method = "handleMovePlayer",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            ordinal = 1,
+                            target = "Lnet/minecraft/network/protocol/game/ServerboundMovePlayerPacket;getZ(D)D"))
     private double minebox3d$moveZ(ServerboundMovePlayerPacket packet, double fallback, Operation<Double> original) {
         Vec3 converted = minebox3d$converted;
         minebox3d$converted = null;
         return converted == null ? original.call(packet, fallback) : converted.z;
     }
 
-    @WrapOperation(method = "handleMoveVehicle", at = @At(value = "INVOKE", ordinal = 1,
-            target = "Lnet/minecraft/network/protocol/game/ServerboundMoveVehiclePacket;getX()D"))
+    @WrapOperation(
+            method = "handleMoveVehicle",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            ordinal = 1,
+                            target = "Lnet/minecraft/network/protocol/game/ServerboundMoveVehiclePacket;getX()D"))
     private double minebox3d$vehicleX(ServerboundMoveVehiclePacket packet, Operation<Double> original) {
         double x = original.call(packet);
         minebox3d$converted = SyncedRiders.convert(player, true, x, packet.getY(), packet.getZ());
         return minebox3d$converted == null ? x : minebox3d$converted.x;
     }
 
-    @WrapOperation(method = "handleMoveVehicle", at = @At(value = "INVOKE", ordinal = 1,
-            target = "Lnet/minecraft/network/protocol/game/ServerboundMoveVehiclePacket;getY()D"))
+    @WrapOperation(
+            method = "handleMoveVehicle",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            ordinal = 1,
+                            target = "Lnet/minecraft/network/protocol/game/ServerboundMoveVehiclePacket;getY()D"))
     private double minebox3d$vehicleY(ServerboundMoveVehiclePacket packet, Operation<Double> original) {
         return minebox3d$converted == null ? original.call(packet) : minebox3d$converted.y;
     }
 
-    @WrapOperation(method = "handleMoveVehicle", at = @At(value = "INVOKE", ordinal = 1,
-            target = "Lnet/minecraft/network/protocol/game/ServerboundMoveVehiclePacket;getZ()D"))
+    @WrapOperation(
+            method = "handleMoveVehicle",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            ordinal = 1,
+                            target = "Lnet/minecraft/network/protocol/game/ServerboundMoveVehiclePacket;getZ()D"))
     private double minebox3d$vehicleZ(ServerboundMoveVehiclePacket packet, Operation<Double> original) {
         Vec3 converted = minebox3d$converted;
         minebox3d$converted = null;
@@ -95,8 +125,8 @@ public abstract class ServerGamePacketListenerImplMixin {
     }
 
     @Inject(method = "teleport(DDDFFLjava/util/Set;)V", at = @At("RETURN"))
-    private void minebox3d$putSomewhere(double x, double y, double z, float yaw, float pitch, Set<RelativeMovement> relative,
-                                        CallbackInfo ci) {
+    private void minebox3d$putSomewhere(
+            double x, double y, double z, float yaw, float pitch, Set<RelativeMovement> relative, CallbackInfo ci) {
         SyncedRiders.putSomewhere(player);
     }
 }

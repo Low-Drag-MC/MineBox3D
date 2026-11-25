@@ -18,7 +18,9 @@ public final class BoxSweep {
     final double[] doubles = new double[9];
     /** {@code [shape]} */
     final long[] longs = new long[1];
+
     boolean hit;
+
     @Nullable
     PhysicsWorld world;
 

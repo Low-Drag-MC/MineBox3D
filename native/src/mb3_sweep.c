@@ -2,8 +2,8 @@
 //
 // What a character mover sweeping a turned box needs and Box3D's own cast does not give: the box stops where it touches
 // (Box3D's cast stops a linear slop short); touching is no hit unless the box moves into the surface; and a box that
-// starts inside a shape is told how far out along which way (Box3D's cast passes through it). Each shape is worked in its
-// body's frame, the box put there from double positions, so the answer is as exact far from the origin as near it.
+// starts inside a shape is told how far out along which way (Box3D's cast passes through it). Each shape is worked in
+// its body's frame, the box put there from double positions, so the answer is as exact far from the origin as near it.
 
 #include "mb3.h"
 
@@ -11,9 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Closer than this, metres, a box touches a shape, and inside it by no more than this it is touching it too: no hit unless
-// moving on takes it in deeper. The advancement stops half of it short, so the next sweep from there starts touching.
-// Near a body's origin; further out it is what a float there can still tell apart (mb3_sweep_tolerance).
+// Closer than this, metres, a box touches a shape, and inside it by no more than this it is touching it too: no hit
+// unless moving on takes it in deeper. The advancement stops half of it short, so the next sweep from there starts
+// touching. Near a body's origin; further out it is what a float there can still tell apart (mb3_sweep_tolerance).
 #define MB3_SWEEP_TOUCH 1.0e-5f
 #define MB3_SWEEP_ITERATIONS 40
 #define MB3_SWEEP_POINTS 16
@@ -90,10 +90,10 @@ static bool mb3_sweep_earlier( const mb3_sweep_hit* a, const mb3_sweep_hit* b )
 	return a->fraction < b->fraction;
 }
 
-// How far the box placed at xf is into the obstacle and which way is out, from Box3D's own contact manifolds (separating
-// axes, so the least way out). False when they make no contact at all.
-static bool mb3_sweep_contact( const mb3_obstacle* o, const mb3_sweep_box* box, b3Transform xf, float* depth, b3Vec3* normal,
-							   b3Vec3* point )
+// How far the box placed at xf is into the obstacle and which way is out, from Box3D's own contact manifolds
+// (separating axes, so the least way out). False when they make no contact at all.
+static bool mb3_sweep_contact( const mb3_obstacle* o, const mb3_sweep_box* box, b3Transform xf, float* depth,
+							   b3Vec3* normal, b3Vec3* point )
 {
 	b3LocalManifoldPoint points[MB3_SWEEP_POINTS];
 	b3LocalManifold manifold = { 0 };
@@ -113,8 +113,8 @@ static bool mb3_sweep_contact( const mb3_obstacle* o, const mb3_sweep_box* box, 
 		case MB3_OBSTACLE_SPHERE:
 		{
 			b3SimplexCache cache = { 0 };
-			b3CollideHullAndSphere( &manifold, MB3_SWEEP_POINTS, boxHull, &o->sphere, b3InvMulTransforms( xf, b3Transform_identity ),
-									&cache );
+			b3CollideHullAndSphere( &manifold, MB3_SWEEP_POINTS, boxHull, &o->sphere,
+									b3InvMulTransforms( xf, b3Transform_identity ), &cache );
 			frame = xf;
 			towardBox = false;
 			break;
@@ -122,8 +122,8 @@ static bool mb3_sweep_contact( const mb3_obstacle* o, const mb3_sweep_box* box, 
 		case MB3_OBSTACLE_CAPSULE:
 		{
 			b3SimplexCache cache = { 0 };
-			b3CollideHullAndCapsule( &manifold, MB3_SWEEP_POINTS, boxHull, &o->capsule, b3InvMulTransforms( xf, b3Transform_identity ),
-									 &cache );
+			b3CollideHullAndCapsule( &manifold, MB3_SWEEP_POINTS, boxHull, &o->capsule,
+									 b3InvMulTransforms( xf, b3Transform_identity ), &cache );
 			frame = xf;
 			towardBox = false;
 			break;
@@ -179,8 +179,8 @@ static float mb3_sweep_overlap_along( const mb3_obstacle* o, const mb3_sweep_box
 
 // Where the box is at time t against the obstacle: apart by a gap (s > 0) or in by a depth (s < 0), which way is out
 // toward the box, and the obstacle's point there.
-static void mb3_sweep_separation( const mb3_obstacle* o, const mb3_sweep_pair* pair, b3DistanceInput* input, b3SimplexCache* cache,
-								  float t, float* s, b3Vec3* normal, b3Vec3* point )
+static void mb3_sweep_separation( const mb3_obstacle* o, const mb3_sweep_pair* pair, b3DistanceInput* input,
+								  b3SimplexCache* cache, float t, float* s, b3Vec3* normal, b3Vec3* point )
 {
 	input->transform.p = b3MulAdd( pair->boxInBody.p, t, pair->translation );
 	b3DistanceOutput out = b3ShapeDistance( input, cache, NULL, 0 );
@@ -197,7 +197,8 @@ static void mb3_sweep_separation( const mb3_obstacle* o, const mb3_sweep_pair* p
 		*s = -depth;
 		return;
 	}
-	// overlapping with no manifold to say how: out from the obstacle's middle through the box's, or back the way it came
+	// overlapping with no manifold to say how: out from the obstacle's middle through the box's, or back the way it
+	// came
 	b3Vec3 middle = b3Vec3_zero;
 	for ( int i = 0; i < o->proxy.count; ++i )
 	{
@@ -215,12 +216,12 @@ static void mb3_sweep_separation( const mb3_obstacle* o, const mb3_sweep_pair* p
 }
 
 // Whether the box, touching the obstacle at t, goes on into it deeper than touching before its move ends: what makes a
-// touch a hit. Not, along a surface it rests on, across a seam where the next shape starts flush with the last, or past a
-// corner it brushes. The separation along a straight move is convex in t, so a step that takes the box at most 2·touch
-// past where its last reading put the surface cannot go deeper than that within it, and a reading no longer closing has
-// seen the least of it.
-static bool mb3_sweep_goes_in( const mb3_obstacle* o, const mb3_sweep_pair* pair, b3DistanceInput* input, b3SimplexCache* cache,
-							   float t, float s, b3Vec3 normal )
+// touch a hit. Not, along a surface it rests on, across a seam where the next shape starts flush with the last, or past
+// a corner it brushes. The separation along a straight move is convex in t, so a step that takes the box at most
+// 2·touch past where its last reading put the surface cannot go deeper than that within it, and a reading no longer
+// closing has seen the least of it.
+static bool mb3_sweep_goes_in( const mb3_obstacle* o, const mb3_sweep_pair* pair, b3DistanceInput* input,
+							   b3SimplexCache* cache, float t, float s, b3Vec3 normal )
 {
 	for ( int i = 0; i < MB3_SWEEP_ITERATIONS; ++i )
 	{
@@ -242,13 +243,13 @@ static bool mb3_sweep_goes_in( const mb3_obstacle* o, const mb3_sweep_pair* pair
 
 // The box swept against one convex obstacle. Starting inside it deeper than touching: how deep and which way out.
 // Apart: conservative advancement — each step as far as the gap over the speed it closes at, which never passes the
-// surface for a box that only translates — to half a touch short of it. Touching, there or from the start: a hit only if
-// moving on takes it in.
+// surface for a box that only translates — to half a touch short of it. Touching, there or from the start: a hit only
+// if moving on takes it in.
 static bool mb3_sweep_obstacle( const mb3_obstacle* o, const mb3_sweep_pair* pair, mb3_sweep_hit* hit )
 {
 	b3DistanceInput input;
 	input.proxyA = o->proxy;
-	input.proxyB = ( b3ShapeProxy ){ pair->box->corners, 8, 0.0f };
+	input.proxyB = (b3ShapeProxy){ pair->box->corners, 8, 0.0f };
 	input.transform = pair->boxInBody;
 	input.useRadii = true;
 	b3SimplexCache cache = { 0 };
@@ -263,7 +264,7 @@ static bool mb3_sweep_obstacle( const mb3_obstacle* o, const mb3_sweep_pair* pai
 		{
 			return false; // moving out of it
 		}
-		*hit = ( mb3_sweep_hit ){ 0.0f, normal, point, -s, true };
+		*hit = (mb3_sweep_hit){ 0.0f, normal, point, -s, true };
 		return true;
 	}
 
@@ -294,7 +295,7 @@ static bool mb3_sweep_obstacle( const mb3_obstacle* o, const mb3_sweep_pair* pai
 	{
 		return false;
 	}
-	*hit = ( mb3_sweep_hit ){ t, normal, point, 0.0f, false };
+	*hit = (mb3_sweep_hit){ t, normal, point, 0.0f, false };
 	return true;
 }
 
@@ -321,9 +322,10 @@ static bool mb3_sweep_triangle_fcn( b3Vec3 a, b3Vec3 b, b3Vec3 c, int triangleIn
 	o.triangle[0] = a;
 	o.triangle[1] = b;
 	o.triangle[2] = c;
-	o.proxy = ( b3ShapeProxy ){ o.triangle, 3, 0.0f };
+	o.proxy = (b3ShapeProxy){ o.triangle, 3, 0.0f };
 	mb3_sweep_hit hit;
-	if ( mb3_sweep_obstacle( &o, triangles->pair, &hit ) && ( triangles->found == false || mb3_sweep_earlier( &hit, triangles->best ) ) )
+	if ( mb3_sweep_obstacle( &o, triangles->pair, &hit ) &&
+		 ( triangles->found == false || mb3_sweep_earlier( &hit, triangles->best ) ) )
 	{
 		*triangles->best = hit;
 		triangles->found = true;
@@ -358,18 +360,18 @@ static bool mb3_sweep_shape( b3ShapeId shape, const mb3_sweep_pair* pair, mb3_sw
 		case b3_hullShape:
 			o.kind = MB3_OBSTACLE_HULL;
 			o.hull = b3Shape_GetHull( shape );
-			o.proxy = ( b3ShapeProxy ){ b3GetHullPoints( o.hull ), o.hull->vertexCount, 0.0f };
+			o.proxy = (b3ShapeProxy){ b3GetHullPoints( o.hull ), o.hull->vertexCount, 0.0f };
 			return mb3_sweep_obstacle( &o, pair, hit );
 		case b3_sphereShape:
 			o.kind = MB3_OBSTACLE_SPHERE;
 			o.sphere = b3Shape_GetSphere( shape );
-			o.proxy = ( b3ShapeProxy ){ &o.sphere.center, 1, o.sphere.radius };
+			o.proxy = (b3ShapeProxy){ &o.sphere.center, 1, o.sphere.radius };
 			return mb3_sweep_obstacle( &o, pair, hit );
 		case b3_capsuleShape:
 			// center1 and center2 sit next to each other: the two points of the proxy
 			o.kind = MB3_OBSTACLE_CAPSULE;
 			o.capsule = b3Shape_GetCapsule( shape );
-			o.proxy = ( b3ShapeProxy ){ &o.capsule.center1, 2, o.capsule.radius };
+			o.proxy = (b3ShapeProxy){ &o.capsule.center1, 2, o.capsule.radius };
 			return mb3_sweep_obstacle( &o, pair, hit );
 		case b3_meshShape:
 		{
@@ -381,11 +383,11 @@ static bool mb3_sweep_shape( b3ShapeId shape, const mb3_sweep_pair* pair, mb3_sw
 		case b3_heightShape:
 		{
 			mb3_sweep_triangles triangles = { pair, hit, false };
-			b3QueryHeightField( b3Shape_GetHeightField( shape ), mb3_sweep_bounds( pair ), mb3_sweep_triangle_fcn, &triangles );
+			b3QueryHeightField( b3Shape_GetHeightField( shape ), mb3_sweep_bounds( pair ), mb3_sweep_triangle_fcn,
+								&triangles );
 			return triangles.found;
 		}
-		default:
-			return false;
+		default: return false;
 	}
 }
 
@@ -417,12 +419,12 @@ static bool mb3_sweep_gather_fcn( b3ShapeId shapeId, void* context )
 }
 
 // ignoreBody: a body whose shapes are not swept (0 for none) — what the box stands on and is being carried with, which
-// moved first and would otherwise be met as the box catches up with it. tag: what the box is (0 for nothing) — the bodies
-// that never meet it (mb3_pairs.c) are not swept either
-MB3_JNI( jboolean, worldSweepBox )( JNIEnv* env, jclass type, jint world, jdouble cx, jdouble cy, jdouble cz, jfloat qx, jfloat qy,
-									jfloat qz, jfloat qw, jfloat hx, jfloat hy, jfloat hz, jfloat tx, jfloat ty, jfloat tz,
-									jlong categoryBits, jlong maskBits, jboolean ignoreExits, jlong ignoreBody, jlong tag,
-									jdoubleArray doubles, jlongArray longs )
+// moved first and would otherwise be met as the box catches up with it. tag: what the box is (0 for nothing) — the
+// bodies that never meet it (mb3_pairs.c) are not swept either
+MB3_JNI( jboolean, worldSweepBox )( JNIEnv* env, jclass type, jint world, jdouble cx, jdouble cy, jdouble cz, jfloat qx,
+									jfloat qy, jfloat qz, jfloat qw, jfloat hx, jfloat hy, jfloat hz, jfloat tx,
+									jfloat ty, jfloat tz, jlong categoryBits, jlong maskBits, jboolean ignoreExits,
+									jlong ignoreBody, jlong tag, jdoubleArray doubles, jlongArray longs )
 {
 	(void)type;
 	if ( doubles == NULL || longs == NULL || ( *env )->GetArrayLength( env, doubles ) < MB3_SWEEP_DOUBLES ||
@@ -444,7 +446,7 @@ MB3_JNI( jboolean, worldSweepBox )( JNIEnv* env, jclass type, jint world, jdoubl
 	box.hull = b3MakeBoxHull( hx, hy, hz );
 	for ( int i = 0; i < 8; ++i )
 	{
-		box.corners[i] = ( b3Vec3 ){ ( i & 1 ) ? hx : -hx, ( i & 2 ) ? hy : -hy, ( i & 4 ) ? hz : -hz };
+		box.corners[i] = (b3Vec3){ ( i & 1 ) ? hx : -hx, ( i & 2 ) ? hy : -hy, ( i & 4 ) ? hz : -hz };
 	}
 	box.radius = sqrtf( hx * hx + hy * hy + hz * hz );
 
@@ -452,10 +454,13 @@ MB3_JNI( jboolean, worldSweepBox )( JNIEnv* env, jclass type, jint world, jdoubl
 	// any shape's touch
 	float reach = box.radius + B3_LINEAR_SLOP;
 	double lowX = fmin( cx, cx + tx ) - reach, lowY = fmin( cy, cy + ty ) - reach, lowZ = fmin( cz, cz + tz ) - reach;
-	double highX = fmax( cx, cx + tx ) + reach, highY = fmax( cy, cy + ty ) + reach, highZ = fmax( cz, cz + tz ) + reach;
+	double highX = fmax( cx, cx + tx ) + reach, highY = fmax( cy, cy + ty ) + reach,
+		   highZ = fmax( cz, cz + tz ) + reach;
 	b3AABB bounds = {
-		{ nextafterf( (float)lowX, -INFINITY ), nextafterf( (float)lowY, -INFINITY ), nextafterf( (float)lowZ, -INFINITY ) },
-		{ nextafterf( (float)highX, INFINITY ), nextafterf( (float)highY, INFINITY ), nextafterf( (float)highZ, INFINITY ) },
+		{ nextafterf( (float)lowX, -INFINITY ), nextafterf( (float)lowY, -INFINITY ),
+		  nextafterf( (float)lowZ, -INFINITY ) },
+		{ nextafterf( (float)highX, INFINITY ), nextafterf( (float)highY, INFINITY ),
+		  nextafterf( (float)highZ, INFINITY ) },
 	};
 	mb3_sweep_shapes shapes = { malloc( 16 * sizeof( b3ShapeId ) ), 16, 0, false };
 	if ( shapes.ids == NULL )
@@ -463,7 +468,8 @@ MB3_JNI( jboolean, worldSweepBox )( JNIEnv* env, jclass type, jint world, jdoubl
 		mb3_throw( env, "out of memory" );
 		return JNI_FALSE;
 	}
-	b3World_OverlapAABB( mb3_world( world ), bounds, mb3_query_filter( categoryBits, maskBits ), mb3_sweep_gather_fcn, &shapes );
+	b3World_OverlapAABB( mb3_world( world ), bounds, mb3_query_filter( categoryBits, maskBits ), mb3_sweep_gather_fcn,
+						 &shapes );
 	if ( mb3_check( env ) || shapes.full )
 	{
 		if ( shapes.full )
@@ -510,8 +516,9 @@ MB3_JNI( jboolean, worldSweepBox )( JNIEnv* env, jclass type, jint world, jdoubl
 	b3Vec3 normal = b3RotateVector( bestBody.q, best.normal );
 	b3Vec3 point = b3TransformPoint( bestBody, best.point );
 	double d[MB3_SWEEP_DOUBLES] = {
-		best.fraction,	   normal.x,	 normal.y, normal.z, origin.x + point.x, origin.y + point.y, origin.z + point.z,
-		best.depth, best.startPenetrating ? 1.0 : 0.0,
+		best.fraction,		normal.x,			normal.y,
+		normal.z,			origin.x + point.x, origin.y + point.y,
+		origin.z + point.z, best.depth,			best.startPenetrating ? 1.0 : 0.0,
 	};
 	jlong l[MB3_SWEEP_LONGS] = { mb3_pack_shape( bestShape ) };
 	( *env )->SetDoubleArrayRegion( env, doubles, 0, MB3_SWEEP_DOUBLES, d );

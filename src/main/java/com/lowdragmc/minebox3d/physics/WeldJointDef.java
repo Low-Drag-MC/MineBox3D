@@ -9,6 +9,7 @@ public final class WeldJointDef extends JointDef<WeldJoint, WeldJointDef> {
     public float linearHertz;
     /** Hz, 0 = as stiff as possible. */
     public float angularHertz;
+
     public float linearDampingRatio;
     public float angularDampingRatio;
 
@@ -29,7 +30,8 @@ public final class WeldJointDef extends JointDef<WeldJoint, WeldJointDef> {
         Checks.notNegative(angularDampingRatio, "angular damping ratio");
     }
 
-    public WeldJointDef springs(float linearHertz, float linearDampingRatio, float angularHertz, float angularDampingRatio) {
+    public WeldJointDef springs(
+            float linearHertz, float linearDampingRatio, float angularHertz, float angularDampingRatio) {
         this.linearHertz = linearHertz;
         this.linearDampingRatio = linearDampingRatio;
         this.angularHertz = angularHertz;

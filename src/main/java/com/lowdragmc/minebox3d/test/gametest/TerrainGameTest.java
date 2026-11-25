@@ -42,7 +42,8 @@ public final class TerrainGameTest {
 
     private static Body box(GameTestHelper helper, double x, double y, double z, float half) {
         Vec3 at = helper.absoluteVec(new Vec3(x, y, z));
-        Body body = physics(helper).createBody(new BodyDef().type(BodyType.DYNAMIC).position(at.x, at.y, at.z));
+        Body body =
+                physics(helper).createBody(new BodyDef().type(BodyType.DYNAMIC).position(at.x, at.y, at.z));
         body.createShape(new ShapeDef().density(500), Geometry.Box.of(half, half, half));
         return body;
     }
@@ -104,7 +105,8 @@ public final class TerrainGameTest {
     @PrefixGameTestTemplate(false)
     public static void aSlabHoldsTheBoxAtHalfABlock(GameTestHelper helper) {
         TestArea.clear(helper, -1, 0, -1, 6, 8, 5);
-        helper.setBlock(new BlockPos(1, 1, 1), Blocks.STONE_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.BOTTOM));
+        helper.setBlock(
+                new BlockPos(1, 1, 1), Blocks.STONE_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.BOTTOM));
         Body body = box(helper, 1.5, 4, 1.5, 0.2f);
         helper.succeedWhen(() -> {
             near(helper, 1.7, relative(helper, body).y, 0.02, "resting on the slab's top at y = 1.5");
@@ -126,17 +128,25 @@ public final class TerrainGameTest {
         }
         BlockPos min = helper.absolutePos(new BlockPos(1, 1, 1));
         TerrainStreamer terrain = physics(helper).terrain();
-        terrain.request(new AABB(min.getX(), min.getY(), min.getZ(), min.getX() + 3, min.getY() + 3, min.getZ() + 3), 40);
+        terrain.request(
+                new AABB(min.getX(), min.getY(), min.getZ(), min.getX() + 3, min.getY() + 3, min.getZ() + 3), 40);
         helper.succeedWhen(() -> {
             // the cube may straddle section borders: count over every section it touches
             int triangles = 0;
             float[] bounds = {0, 0, 0, 16, 16, 16};
             float[] v = new float[9 * 4096];
             byte[] flags = new byte[4096];
-            for (int sx = SectionPos.blockToSectionCoord(min.getX()); sx <= SectionPos.blockToSectionCoord(min.getX() + 2); sx++) {
-                for (int sy = SectionPos.blockToSectionCoord(min.getY()); sy <= SectionPos.blockToSectionCoord(min.getY() + 2); sy++) {
-                    for (int sz = SectionPos.blockToSectionCoord(min.getZ()); sz <= SectionPos.blockToSectionCoord(min.getZ() + 2); sz++) {
-                        helper.assertTrue(terrain.isLoaded(SectionPos.asLong(sx, sy, sz)), "the requested sections are in");
+            for (int sx = SectionPos.blockToSectionCoord(min.getX());
+                    sx <= SectionPos.blockToSectionCoord(min.getX() + 2);
+                    sx++) {
+                for (int sy = SectionPos.blockToSectionCoord(min.getY());
+                        sy <= SectionPos.blockToSectionCoord(min.getY() + 2);
+                        sy++) {
+                    for (int sz = SectionPos.blockToSectionCoord(min.getZ());
+                            sz <= SectionPos.blockToSectionCoord(min.getZ() + 2);
+                            sz++) {
+                        helper.assertTrue(
+                                terrain.isLoaded(SectionPos.asLong(sx, sy, sz)), "the requested sections are in");
                         int count = terrain.grid().exposedTriangles(sx, sy, sz, bounds, v, flags);
                         helper.assertTrue(count <= 4096, "more triangles than the buffer: " + count);
                         float ox = SectionPos.sectionToBlockCoord(sx) - min.getX();
@@ -146,7 +156,12 @@ public final class TerrainGameTest {
                             float cx = (v[9 * t] + v[9 * t + 3] + v[9 * t + 6]) / 3 + ox;
                             float cy = (v[9 * t + 1] + v[9 * t + 4] + v[9 * t + 7]) / 3 + oy;
                             float cz = (v[9 * t + 2] + v[9 * t + 5] + v[9 * t + 8]) / 3 + oz;
-                            if (cx >= -0.01f && cx <= 3.01f && cy >= -0.01f && cy <= 3.01f && cz >= -0.01f && cz <= 3.01f) {
+                            if (cx >= -0.01f
+                                    && cx <= 3.01f
+                                    && cy >= -0.01f
+                                    && cy <= 3.01f
+                                    && cz >= -0.01f
+                                    && cz <= 3.01f) {
                                 triangles++;
                             }
                         }

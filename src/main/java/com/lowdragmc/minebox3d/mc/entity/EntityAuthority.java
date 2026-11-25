@@ -1,11 +1,10 @@
 package com.lowdragmc.minebox3d.mc.entity;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * <b>Whose word an entity's position is</b>: its client's, the server taking it — Minecraft's rule for a player and what a
@@ -47,8 +46,7 @@ public final class EntityAuthority {
 
     private static final List<Provider> PROVIDERS = new CopyOnWriteArrayList<>();
 
-    private EntityAuthority() {
-    }
+    private EntityAuthority() {}
 
     public static void register(Provider provider) {
         PROVIDERS.add(provider);

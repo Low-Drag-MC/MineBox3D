@@ -1,14 +1,13 @@
 package com.lowdragmc.minebox3d.mc.terrain;
 
 import com.lowdragmc.minebox3d.physics.SurfaceMaterial;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * <b>The surface a block gives rigid bodies</b>: Box3D friction and restitution from Minecraft's
@@ -32,8 +31,7 @@ public final class TerrainMaterials {
         register(Blocks.SLIME_BLOCK, (level, pos, state, out) -> out.restitution = 0.8f);
     }
 
-    private TerrainMaterials() {
-    }
+    private TerrainMaterials() {}
 
     /** Gives every block of {@code block} its surface from {@code provider}, after the defaults. */
     public static void register(Block block, Provider provider) {

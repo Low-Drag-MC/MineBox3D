@@ -16,8 +16,19 @@ import org.joml.Vector3f;
  * <p>Belongs to its world's thread rule, like the world.
  */
 public abstract sealed class Joint
-        permits DistanceJoint, FilterJoint, MotorJoint, ParallelJoint, PrismaticJoint, RevoluteJoint, SphericalJoint,
-        WeldJoint, WheelJoint, MoverJoint, PogoJoint, MotionLockJoint, ConstraintJoint {
+        permits DistanceJoint,
+                FilterJoint,
+                MotorJoint,
+                ParallelJoint,
+                PrismaticJoint,
+                RevoluteJoint,
+                SphericalJoint,
+                WeldJoint,
+                WheelJoint,
+                MoverJoint,
+                PogoJoint,
+                MotionLockJoint,
+                ConstraintJoint {
 
     final PhysicsWorld world;
     final long id;

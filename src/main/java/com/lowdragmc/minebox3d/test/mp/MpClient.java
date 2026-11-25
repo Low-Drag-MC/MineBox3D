@@ -4,6 +4,9 @@ import com.lowdragmc.lowdraglib2.uitest.mp.MPRoles;
 import com.lowdragmc.minebox3d.mc.LevelPhysics;
 import com.lowdragmc.minebox3d.mc.sync.SyncedBodyEvent;
 import com.lowdragmc.minebox3d.physics.Body;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.Input;
@@ -15,10 +18,6 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
 /**
  * What a multi-process scenario reads on a client. ⚠️ The only class of the scenarios that names client types: a scenario
  * is defined on the dedicated server too, so it calls these only inside step bodies and they hand back common types.
@@ -27,10 +26,10 @@ final class MpClient {
 
     /** name → {added, removed, removed with the replica already destroyed} */
     private static final Map<String, int[]> EVENTS = new ConcurrentHashMap<>();
+
     private static boolean listening;
 
-    private MpClient() {
-    }
+    private MpClient() {}
 
     @Nullable
     private static LevelPhysics physics() {
@@ -43,7 +42,9 @@ final class MpClient {
         if (physics == null) {
             return List.of();
         }
-        return physics.sync().replicas().stream().filter(body -> body.isValid() && name.equals(body.name())).toList();
+        return physics.sync().replicas().stream()
+                .filter(body -> body.isValid() && name.equals(body.name()))
+                .toList();
     }
 
     /** The one replica named {@code name}, or {@code null}. */
@@ -105,19 +106,23 @@ final class MpClient {
         if (player == null) {
             return;
         }
-        player.input = forward ? new Input() {
-            @Override
-            public void tick(boolean isSneaking, float sneakingSpeedMultiplier) {
-                up = true;
-                forwardImpulse = 1;
-            }
-        } : new KeyboardInput(Minecraft.getInstance().options);
+        player.input = forward
+                ? new Input() {
+                    @Override
+                    public void tick(boolean isSneaking, float sneakingSpeedMultiplier) {
+                        up = true;
+                        forwardImpulse = 1;
+                    }
+                }
+                : new KeyboardInput(Minecraft.getInstance().options);
     }
 
     /** Per tick since {@link #track}: this client's own player's x and the replica's, at the tick's end. */
     private static final List<double[]> TRACK = new java.util.concurrent.CopyOnWriteArrayList<>();
+
     @Nullable
     private static volatile String tracked;
+
     private static boolean ticking;
 
     /** Starts recording this player and the replica {@code name} every tick, from nothing; null stops. */
@@ -129,7 +134,7 @@ final class MpClient {
                 Entity me = self();
                 Body replica = body == null ? null : replica(body);
                 if (me != null && replica != null) {
-                    TRACK.add(new double[]{me.getX(), replica.position(new org.joml.Vector3d()).x});
+                    TRACK.add(new double[] {me.getX(), replica.position(new org.joml.Vector3d()).x});
                 }
             });
         }
@@ -155,7 +160,8 @@ final class MpClient {
         if (!listening) {
             listening = true;
             NeoForge.EVENT_BUS.addListener(SyncedBodyEvent.Added.class, event -> count(event, 0));
-            NeoForge.EVENT_BUS.addListener(SyncedBodyEvent.Removed.class,
+            NeoForge.EVENT_BUS.addListener(
+                    SyncedBodyEvent.Removed.class,
                     event -> count(event, event.getReplica().isValid() ? 1 : 2));
         }
         EVENTS.clear();

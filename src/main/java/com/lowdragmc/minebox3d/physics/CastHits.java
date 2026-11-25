@@ -1,11 +1,10 @@
 package com.lowdragmc.minebox3d.physics;
 
+import java.util.Arrays;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-
-import java.util.Arrays;
 
 /**
  * <b>Hits of a ray or shape cast</b>, closest first: a result object the caller keeps and passes in again, so a query
@@ -22,6 +21,7 @@ public final class CastHits {
     double[] doubles;
     long[] longs;
     int count;
+
     @Nullable
     PhysicsWorld world;
 
@@ -142,8 +142,20 @@ public final class CastHits {
     /** A copy of hit {@code i} that stays as it is. */
     public CastHit toHit(int i) {
         int d = DOUBLES * at(i);
-        return new CastHit(shape(i), shapeId(i), doubles[d], doubles[d + 1], doubles[d + 2], (float) doubles[d + 4],
-                (float) doubles[d + 5], (float) doubles[d + 6], (float) doubles[d + 3], userMaterialId(i), isTerrain(i), cellX(i),
-                cellY(i), cellZ(i));
+        return new CastHit(
+                shape(i),
+                shapeId(i),
+                doubles[d],
+                doubles[d + 1],
+                doubles[d + 2],
+                (float) doubles[d + 4],
+                (float) doubles[d + 5],
+                (float) doubles[d + 6],
+                (float) doubles[d + 3],
+                userMaterialId(i),
+                isTerrain(i),
+                cellX(i),
+                cellY(i),
+                cellZ(i));
     }
 }

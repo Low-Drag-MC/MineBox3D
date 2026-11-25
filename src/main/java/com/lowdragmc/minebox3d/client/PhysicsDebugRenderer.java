@@ -8,9 +8,9 @@ import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.Shape;
 import com.lowdragmc.minebox3d.physics.VoxelGrid;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -46,8 +46,7 @@ public final class PhysicsDebugRenderer {
     private static float[] triangleBuffer = new float[9 * 4096];
     private static byte[] flagBuffer = new byte[4096];
 
-    private PhysicsDebugRenderer() {
-    }
+    private PhysicsDebugRenderer() {}
 
     public static boolean toggle() {
         enabled = !enabled;
@@ -75,12 +74,13 @@ public final class PhysicsDebugRenderer {
             if (body.type() == BodyType.STATIC) {
                 continue;
             }
-            int colour = body.type() == BodyType.KINEMATIC || EntityProxies.entityOf(body) != null ? KINEMATIC
+            int colour = body.type() == BodyType.KINEMATIC || EntityProxies.entityOf(body) != null
+                    ? KINEMATIC
                     : body.isAwake() ? AWAKE : ASLEEP;
             body.renderPosition(partial, position);
             body.renderRotation(partial, rotation);
-            Vector3f origin = new Vector3f((float) (position.x - camera.x), (float) (position.y - camera.y),
-                    (float) (position.z - camera.z));
+            Vector3f origin = new Vector3f(
+                    (float) (position.x - camera.x), (float) (position.y - camera.y), (float) (position.z - camera.z));
             for (Shape shape : body.shapes()) {
                 drawShape(lines, pose, origin, rotation, shape.geometry(), colour);
             }
@@ -100,15 +100,20 @@ public final class PhysicsDebugRenderer {
                 cached = sectionLines(grid, section);
                 terrainLines.put(section, cached);
             }
-            drawSegments(lines, pose, (float) (ox - camera.x), (float) (oy - camera.y), (float) (oz - camera.z), cached.points);
+            drawSegments(
+                    lines,
+                    pose,
+                    (float) (ox - camera.x),
+                    (float) (oy - camera.y),
+                    (float) (oz - camera.z),
+                    cached.points);
         });
         // forget sections not drawn for a while
         terrainLines.values().removeIf(cached -> frame - cached.frame > 4 * TERRAIN_REFRESH_FRAMES);
         buffers.endBatch(RenderType.lines());
     }
 
-    private record SectionLines(long frame, float[] points) {
-    }
+    private record SectionLines(long frame, float[] points) {}
 
     /**
      * What contacts see of a section: the edges of its exposed block faces, less the flat ones where the surface
@@ -131,19 +136,21 @@ public final class PhysicsDebugRenderer {
             b.set(v[9 * t + 3], v[9 * t + 4], v[9 * t + 5]);
             c.set(v[9 * t + 6], v[9 * t + 7], v[9 * t + 8]);
             new Vector3f(b).sub(a).cross(new Vector3f(c).sub(a), normal).normalize(0.004f);
-            Vector3f[] corners = {new Vector3f(a).add(normal), new Vector3f(b).add(normal), new Vector3f(c).add(normal)};
+            Vector3f[] corners = {new Vector3f(a).add(normal), new Vector3f(b).add(normal), new Vector3f(c).add(normal)
+            };
             for (int e = 0; e < 3; e++) {
                 if ((flagBuffer[t] & bits[e]) == bits[e]) {
                     continue;
                 }
                 Vector3f p = corners[e], q = corners[(e + 1) % 3];
-                points.addElements(points.size(), new float[]{p.x, p.y, p.z, q.x, q.y, q.z});
+                points.addElements(points.size(), new float[] {p.x, p.y, p.z, q.x, q.y, q.z});
             }
         }
         return new SectionLines(frame, points.toFloatArray());
     }
 
-    private static void drawSegments(VertexConsumer lines, Matrix4f pose, float ox, float oy, float oz, float[] points) {
+    private static void drawSegments(
+            VertexConsumer lines, Matrix4f pose, float ox, float oy, float oz, float[] points) {
         Vector3f p = new Vector3f(), q = new Vector3f();
         for (int i = 0; i < points.length; i += 6) {
             p.set(points[i] + ox, points[i + 1] + oy, points[i + 2] + oz);
@@ -152,38 +159,48 @@ public final class PhysicsDebugRenderer {
         }
     }
 
-    private static void drawShape(VertexConsumer lines, Matrix4f pose, Vector3f origin, Quaternionf rotation,
-                                  Geometry geometry, int colour) {
+    private static void drawShape(
+            VertexConsumer lines, Matrix4f pose, Vector3f origin, Quaternionf rotation, Geometry geometry, int colour) {
         switch (geometry) {
             case Geometry.Sphere s -> {
-                Vector3f centre = rotation.transform(new Vector3f(s.cx(), s.cy(), s.cz())).add(origin);
+                Vector3f centre =
+                        rotation.transform(new Vector3f(s.cx(), s.cy(), s.cz())).add(origin);
                 circle(lines, pose, centre, new Vector3f(1, 0, 0), new Vector3f(0, 1, 0), s.radius(), colour);
                 circle(lines, pose, centre, new Vector3f(0, 1, 0), new Vector3f(0, 0, 1), s.radius(), colour);
                 circle(lines, pose, centre, new Vector3f(1, 0, 0), new Vector3f(0, 0, 1), s.radius(), colour);
             }
             case Geometry.Capsule c -> {
-                Vector3f a = rotation.transform(new Vector3f(c.ax(), c.ay(), c.az())).add(origin);
-                Vector3f b = rotation.transform(new Vector3f(c.bx(), c.by(), c.bz())).add(origin);
+                Vector3f a =
+                        rotation.transform(new Vector3f(c.ax(), c.ay(), c.az())).add(origin);
+                Vector3f b =
+                        rotation.transform(new Vector3f(c.bx(), c.by(), c.bz())).add(origin);
                 Vector3f axis = new Vector3f(b).sub(a);
                 Vector3f u = axis.lengthSquared() > 1e-8f ? new Vector3f(axis).normalize() : new Vector3f(0, 1, 0);
-                Vector3f v = Math.abs(u.y) < 0.9f ? new Vector3f(u).cross(0, 1, 0).normalize() : new Vector3f(u).cross(1, 0, 0).normalize();
+                Vector3f v = Math.abs(u.y) < 0.9f
+                        ? new Vector3f(u).cross(0, 1, 0).normalize()
+                        : new Vector3f(u).cross(1, 0, 0).normalize();
                 Vector3f w = new Vector3f(u).cross(v).normalize();
                 circle(lines, pose, a, v, w, c.radius(), colour);
                 circle(lines, pose, b, v, w, c.radius(), colour);
                 circle(lines, pose, a, u, v, c.radius(), colour);
                 circle(lines, pose, b, u, v, c.radius(), colour);
-                for (Vector3f side : new Vector3f[]{v, w, new Vector3f(v).negate(), new Vector3f(w).negate()}) {
+                for (Vector3f side : new Vector3f[] {v, w, new Vector3f(v).negate(), new Vector3f(w).negate()}) {
                     Vector3f offset = new Vector3f(side).mul(c.radius());
                     segment(lines, pose, new Vector3f(a).add(offset), new Vector3f(b).add(offset), colour);
                 }
             }
             case Geometry.Box box -> {
-                Quaternionf turn = new Quaternionf(rotation).mul(new Quaternionf(box.qx(), box.qy(), box.qz(), box.qw()));
-                Vector3f centre = rotation.transform(new Vector3f(box.cx(), box.cy(), box.cz())).add(origin);
+                Quaternionf turn =
+                        new Quaternionf(rotation).mul(new Quaternionf(box.qx(), box.qy(), box.qz(), box.qw()));
+                Vector3f centre = rotation.transform(new Vector3f(box.cx(), box.cy(), box.cz()))
+                        .add(origin);
                 Vector3f[] corners = new Vector3f[8];
                 for (int i = 0; i < 8; i++) {
-                    corners[i] = turn.transform(new Vector3f((i & 1) == 0 ? -box.hx() : box.hx(),
-                            (i & 2) == 0 ? -box.hy() : box.hy(), (i & 4) == 0 ? -box.hz() : box.hz())).add(centre);
+                    corners[i] = turn.transform(new Vector3f(
+                                    (i & 1) == 0 ? -box.hx() : box.hx(),
+                                    (i & 2) == 0 ? -box.hy() : box.hy(),
+                                    (i & 4) == 0 ? -box.hz() : box.hz()))
+                            .add(centre);
                 }
                 for (int i = 0; i < 8; i++) {
                     for (int bit = 1; bit < 8; bit <<= 1) {
@@ -197,7 +214,8 @@ public final class PhysicsDebugRenderer {
                 // the vertices only: Java does not keep the hull's edges
                 float[] points = hull.points();
                 for (int i = 0; i < points.length; i += 3) {
-                    Vector3f p = rotation.transform(new Vector3f(points[i], points[i + 1], points[i + 2])).add(origin);
+                    Vector3f p = rotation.transform(new Vector3f(points[i], points[i + 1], points[i + 2]))
+                            .add(origin);
                     for (int axis = 0; axis < 3; axis++) {
                         Vector3f d = new Vector3f(axis == 0 ? 0.05f : 0, axis == 1 ? 0.05f : 0, axis == 2 ? 0.05f : 0);
                         segment(lines, pose, new Vector3f(p).sub(d), new Vector3f(p).add(d), colour);
@@ -213,13 +231,15 @@ public final class PhysicsDebugRenderer {
         }
     }
 
-    private static void circle(VertexConsumer lines, Matrix4f pose, Vector3f centre, Vector3f u, Vector3f v,
-                               float radius, int colour) {
+    private static void circle(
+            VertexConsumer lines, Matrix4f pose, Vector3f centre, Vector3f u, Vector3f v, float radius, int colour) {
         Vector3f previous = null;
         for (int i = 0; i <= CIRCLE_SEGMENTS; i++) {
             double angle = 2 * Math.PI * i / CIRCLE_SEGMENTS;
-            Vector3f point = new Vector3f(u).mul((float) Math.cos(angle) * radius)
-                    .add(new Vector3f(v).mul((float) Math.sin(angle) * radius)).add(centre);
+            Vector3f point = new Vector3f(u)
+                    .mul((float) Math.cos(angle) * radius)
+                    .add(new Vector3f(v).mul((float) Math.sin(angle) * radius))
+                    .add(centre);
             if (previous != null) {
                 segment(lines, pose, previous, point, colour);
             }

@@ -11,6 +11,7 @@ import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.RevoluteJointDef;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
+import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -22,8 +23,6 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
-
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * <b>Stepping up onto bodies, as Unreal's Mover steps</b> (design doc {@code 04-entities-and-bodies.md} §11.2 #1,
@@ -75,17 +74,36 @@ public final class EntityStepUpGameTest {
     }
 
     /** A body of one box at a point relative to the test, its shape saying {@code stepUpOn}. */
-    private static Body box(GameTestHelper helper, BodyType type, double x, double y, double z, Quaternionf rotation,
-                            float hx, float hy, float hz, float density, StepUpOn stepUpOn) {
+    private static Body box(
+            GameTestHelper helper,
+            BodyType type,
+            double x,
+            double y,
+            double z,
+            Quaternionf rotation,
+            float hx,
+            float hy,
+            float hz,
+            float density,
+            StepUpOn stepUpOn) {
         Vec3 at = helper.absoluteVec(new Vec3(x, y, z));
-        Body body = physics(helper).createBody(new BodyDef().type(type).position(at.x, at.y, at.z).rotation(rotation));
-        EntityCollisions.setStepUpOn(body.createShape(new ShapeDef().density(density), Geometry.Box.of(hx, hy, hz)),
-                stepUpOn);
+        Body body = physics(helper)
+                .createBody(new BodyDef().type(type).position(at.x, at.y, at.z).rotation(rotation));
+        EntityCollisions.setStepUpOn(
+                body.createShape(new ShapeDef().density(density), Geometry.Box.of(hx, hy, hz)), stepUpOn);
         return body;
     }
 
-    private static Body box(GameTestHelper helper, BodyType type, double x, double y, double z, float hx, float hy,
-                            float hz, StepUpOn stepUpOn) {
+    private static Body box(
+            GameTestHelper helper,
+            BodyType type,
+            double x,
+            double y,
+            double z,
+            float hx,
+            float hy,
+            float hz,
+            StepUpOn stepUpOn) {
         return box(helper, type, x, y, z, new Quaternionf(), hx, hy, hz, 23, stepUpOn);
     }
 
@@ -151,21 +169,27 @@ public final class EntityStepUpGameTest {
             }
         });
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper, stepper, pusher, grazer), "the stands tick"))
+                .thenWaitUntil(
+                        () -> helper.assertTrue(TestArea.ticks(helper, stepper, pusher, grazer), "the stands tick"))
                 .thenExecute(() -> walking[0] = true)
                 .thenExecuteAfter(30, () -> walking[0] = false)
                 .thenExecuteAfter(20, () -> {
                     double pushedAlong = relative(helper, pushed).x - 4;
-                    release(helper, 8, 9, new Body[]{onto, pushed, grazed}, stepper, pusher, grazer);
-                    helper.assertTrue(highest[0] > 0.35, "the stand stepped up onto the low crate: highest feet " + highest[0]);
-                    helper.assertTrue(Math.abs(crateWhenOn[0] - 4) < 0.1, "and did not push it first: the crate at "
-                            + crateWhenOn[0] + " when it was on");
-                    helper.assertTrue(highest[2] > 0.35, "the one whose first step grazed it stepped onto it too: highest feet "
-                            + highest[2]);
-                    helper.assertTrue(Math.abs(crateWhenOn[1] - 4) < 0.1, "and did not push it first: the crate at "
-                            + crateWhenOn[1] + " when it was on");
-                    helper.assertTrue(highest[1] < 0.05, "the stand did not step onto the crate that says no: highest feet "
-                            + highest[1]);
+                    release(helper, 8, 9, new Body[] {onto, pushed, grazed}, stepper, pusher, grazer);
+                    helper.assertTrue(
+                            highest[0] > 0.35, "the stand stepped up onto the low crate: highest feet " + highest[0]);
+                    helper.assertTrue(
+                            Math.abs(crateWhenOn[0] - 4) < 0.1,
+                            "and did not push it first: the crate at " + crateWhenOn[0] + " when it was on");
+                    helper.assertTrue(
+                            highest[2] > 0.35,
+                            "the one whose first step grazed it stepped onto it too: highest feet " + highest[2]);
+                    helper.assertTrue(
+                            Math.abs(crateWhenOn[1] - 4) < 0.1,
+                            "and did not push it first: the crate at " + crateWhenOn[1] + " when it was on");
+                    helper.assertTrue(
+                            highest[1] < 0.05,
+                            "the stand did not step onto the crate that says no: highest feet " + highest[1]);
                     helper.assertTrue(pushedAlong > 0.3, "it pushed that one along: " + pushedAlong);
                     helper.succeed();
                 });
@@ -179,7 +203,8 @@ public final class EntityStepUpGameTest {
     @PrefixGameTestTemplate(false)
     public static void onADeckACrateTallerThanTheStepIsPushedAlong(GameTestHelper helper) {
         area(helper, 9, 9);
-        // the deck's top at 0.5, x from 0 to 9, z from 0.5 to 4.5; a crate a block high on it, x from 3.7 to 4.3, pushed by
+        // the deck's top at 0.5, x from 0 to 9, z from 0.5 to 4.5; a crate a block high on it, x from 3.7 to 4.3,
+        // pushed by
         // a stand with a step and by one with none, which never tries a step; the same crate on the ground
         Body deck = box(helper, BodyType.STATIC, 4.5, 0.25, 2.5, 4.5f, 0.25f, 2, StepUpOn.YES);
         Body crate = box(helper, BodyType.DYNAMIC, 4, 1, 1.5, 0.3f, 0.5f, 0.3f, StepUpOn.YES);
@@ -194,13 +219,17 @@ public final class EntityStepUpGameTest {
         double[] start = new double[3];
         walk(helper, walking, highest, pusher, stepless, onTheGround);
         Body[] crates = {crate, unstepped, grounded};
-        // kept upright: a tall light crate pushed at its middle tips over, and its slanting back is no step only past 45°
+        // kept upright: a tall light crate pushed at its middle tips over, and its slanting back is no step only past
+        // 45°
         for (Body body : crates) {
             body.setFixedRotation(true);
         }
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper, pusher, stepless, onTheGround)
-                        && pusher.onGround() && EntityBases.baseOf(pusher) == deck, "the stand on the deck"))
+                .thenWaitUntil(() -> helper.assertTrue(
+                        TestArea.ticks(helper, pusher, stepless, onTheGround)
+                                && pusher.onGround()
+                                && EntityBases.baseOf(pusher) == deck,
+                        "the stand on the deck"))
                 .thenExecute(() -> {
                     for (int i = 0; i < 3; i++) {
                         start[i] = relative(helper, crates[i]).x;
@@ -213,11 +242,16 @@ public final class EntityStepUpGameTest {
                     for (int i = 0; i < 3; i++) {
                         went[i] = relative(helper, crates[i]).x - start[i];
                     }
-                    MineBox3D.LOGGER.info("[mb3] pushed on the deck {}, on the deck with no step {}, on the ground {}",
-                            went[0], went[1], went[2]);
-                    release(helper, 9, 9, new Body[]{deck, crate, unstepped, grounded}, pusher, stepless, onTheGround);
-                    helper.assertTrue(went[0] > 0.9 * went[1], "the crate pushed along the deck as by a stand that never "
-                            + "tries a step: " + went[0] + " against " + went[1]);
+                    MineBox3D.LOGGER.info(
+                            "[mb3] pushed on the deck {}, on the deck with no step {}, on the ground {}",
+                            went[0],
+                            went[1],
+                            went[2]);
+                    release(helper, 9, 9, new Body[] {deck, crate, unstepped, grounded}, pusher, stepless, onTheGround);
+                    helper.assertTrue(
+                            went[0] > 0.9 * went[1],
+                            "the crate pushed along the deck as by a stand that never " + "tries a step: " + went[0]
+                                    + " against " + went[1]);
                     helper.succeed();
                 });
     }
@@ -242,14 +276,16 @@ public final class EntityStepUpGameTest {
                 .thenExecuteAfter(10, () -> {
                     double[] front = {relative(helper, stands[0]).x + 0.25, relative(helper, stands[1]).x + 0.25};
                     REFUSED_BY_OWNER.set(null);
-                    release(helper, 8, 9, new Body[]{no, ownerNo, ownerSilent}, stands);
+                    release(helper, 8, 9, new Body[] {no, ownerNo, ownerSilent}, stands);
                     for (int i = 0; i < 2; i++) {
                         String which = i == 0 ? "the box that says no" : "the box whose owner says no";
-                        helper.assertTrue(highest[i] < 0.05, "not stepped onto " + which + ": highest feet " + highest[i]);
+                        helper.assertTrue(
+                                highest[i] < 0.05, "not stepped onto " + which + ": highest feet " + highest[i]);
                         helper.assertTrue(front[i] < 3.71, "stopped at " + which + ": its front at " + front[i]);
                     }
-                    helper.assertTrue(highest[2] > 0.35, "the box whose owner has no say is stepped onto: highest feet "
-                            + highest[2]);
+                    helper.assertTrue(
+                            highest[2] > 0.35,
+                            "the box whose owner has no say is stepped onto: highest feet " + highest[2]);
                     helper.succeed();
                 });
     }
@@ -278,11 +314,12 @@ public final class EntityStepUpGameTest {
                 .thenExecute(() -> walking[0] = true)
                 .thenExecuteAfter(20, () -> walking[0] = false)
                 .thenExecuteAfter(10, () -> {
-                    release(helper, 8, 6, new Body[]{thin, behindNo, thinToo, behindYes}, refused, taken);
-                    helper.assertTrue(highest[0] < 0.05, "no step that ends on the box that says no: highest feet "
-                            + highest[0]);
-                    helper.assertTrue(highest[1] > 0.35, "the same step onto boxes that both say yes: highest feet "
-                            + highest[1]);
+                    release(helper, 8, 6, new Body[] {thin, behindNo, thinToo, behindYes}, refused, taken);
+                    helper.assertTrue(
+                            highest[0] < 0.05, "no step that ends on the box that says no: highest feet " + highest[0]);
+                    helper.assertTrue(
+                            highest[1] > 0.35,
+                            "the same step onto boxes that both say yes: highest feet " + highest[1]);
                     helper.succeed();
                 });
     }
@@ -300,8 +337,9 @@ public final class EntityStepUpGameTest {
         Quaternionf tipped = new Quaternionf().rotationAxis(0.2f, 0, 0, 1);
         Body anchor = physics(helper).createBody(new BodyDef().position(pivot.x, pivot.y, pivot.z));
         Body board = box(helper, BodyType.DYNAMIC, 4, 0.6, 1.5, tipped, 2.5f, 0.1f, 0.5f, 40, StepUpOn.YES);
-        var hinge = physics(helper).world().createJoint(new RevoluteJointDef().bodies(anchor, board)
-                .worldFrame(pivot.x, pivot.y, pivot.z));
+        var hinge = physics(helper)
+                .world()
+                .createJoint(new RevoluteJointDef().bodies(anchor, board).worldFrame(pivot.x, pivot.y, pivot.z));
         ArmorStand stand = stand(helper, 0.6, 0, 1.5);
         boolean[] walking = {false};
         double[] highest = new double[1];
@@ -313,7 +351,7 @@ public final class EntityStepUpGameTest {
                 .thenExecuteAfter(5, () -> {
                     double along = relative(helper, stand).x;
                     hinge.destroy(false);
-                    release(helper, 8, 3, new Body[]{board, anchor}, stand);
+                    release(helper, 8, 3, new Body[] {board, anchor}, stand);
                     helper.assertTrue(highest[0] > 0.45, "up the board: highest feet " + highest[0]);
                     helper.assertTrue(along > 2.5, "along it: at x " + along);
                     helper.succeed();
@@ -340,8 +378,11 @@ public final class EntityStepUpGameTest {
         double[] from = new double[1];
         walk(helper, walking, highest, onIt, fromTheGround);
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper, onIt, fromTheGround) && onIt.onGround()
-                        && EntityBases.baseOf(onIt) == under, "the stand landed on the slope"))
+                .thenWaitUntil(() -> helper.assertTrue(
+                        TestArea.ticks(helper, onIt, fromTheGround)
+                                && onIt.onGround()
+                                && EntityBases.baseOf(onIt) == under,
+                        "the stand landed on the slope"))
                 .thenExecute(() -> {
                     // from where it stands, not from where it fell from
                     from[0] = highest[0] = relative(helper, onIt).y;
@@ -350,11 +391,13 @@ public final class EntityStepUpGameTest {
                 })
                 .thenExecuteAfter(12, () -> walking[0] = false)
                 .thenExecuteAfter(5, () -> {
-                    release(helper, 8, 6, new Body[]{under, ahead}, onIt, fromTheGround);
-                    helper.assertTrue(highest[0] - from[0] > 0.2, "the stand on the slope walked up it: from " + from[0]
-                            + " to " + highest[0]);
-                    helper.assertTrue(highest[1] < 0.05, "the one on the ground did not step onto it: highest feet "
-                            + highest[1]);
+                    release(helper, 8, 6, new Body[] {under, ahead}, onIt, fromTheGround);
+                    helper.assertTrue(
+                            highest[0] - from[0] > 0.2,
+                            "the stand on the slope walked up it: from " + from[0] + " to " + highest[0]);
+                    helper.assertTrue(
+                            highest[1] < 0.05,
+                            "the one on the ground did not step onto it: highest feet " + highest[1]);
                     helper.succeed();
                 });
     }

@@ -10,12 +10,15 @@ import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.MassData;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.gametest.framework.AfterBatch;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -26,10 +29,6 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 /**
  * <b>A body held fast is not squeezed out by an entity's proxy</b> (design doc {@code 04-entities-and-bodies.md} §18): an
@@ -106,17 +105,24 @@ public final class EntitySqueezeGameTest {
                 stand[0] = stand(helper, standAt.x, standAt.y, standAt.z);
             });
             sequence.thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper, stand[0]), "the stand ticks"));
-            sequence.thenExecuteAfter(5, () -> helper.assertTrue(physics.entities().proxyOf(stand[0]) != null,
-                    "the stand by the crate has a proxy"));
+            sequence.thenExecuteAfter(
+                    5,
+                    () -> helper.assertTrue(
+                            physics.entities().proxyOf(stand[0]) != null, "the stand by the crate has a proxy"));
             for (int i = 0; i < steps; i++) {
                 sequence.thenExecuteAfter(1, () -> {
                     stand[0].setPos(stand[0].position().add(step));
-                    fastest[capped] = Math.max(fastest[capped], crate[0].linearVelocity(new Vector3f()).length());
+                    fastest[capped] = Math.max(
+                            fastest[capped],
+                            crate[0].linearVelocity(new Vector3f()).length());
                 });
             }
             for (int i = 0; i < 10; i++) {
-                sequence.thenExecuteAfter(1, () -> fastest[capped] = Math.max(fastest[capped],
-                        crate[0].linearVelocity(new Vector3f()).length()));
+                sequence.thenExecuteAfter(
+                        1,
+                        () -> fastest[capped] = Math.max(
+                                fastest[capped],
+                                crate[0].linearVelocity(new Vector3f()).length()));
             }
         }
         sequence.thenExecute(() -> {
@@ -124,12 +130,18 @@ public final class EntitySqueezeGameTest {
             crate[0].destroy();
             stand[0].discard();
             TestArea.forceChunks(helper, -1, -1, 8, 4, false);
-            MineBox3D.LOGGER.info("squeezed crate ({}), fastest: {} m/s uncapped, {} m/s capped", down ? "down" : "wall",
-                    fastest[0], fastest[1]);
-            helper.assertTrue(fastest[0] > 8, "uncapped, the stand's proxy squeezes the crate out (so this test sees a "
-                    + "squeeze at all): fastest " + fastest[0] + " m/s");
+            MineBox3D.LOGGER.info(
+                    "squeezed crate ({}), fastest: {} m/s uncapped, {} m/s capped",
+                    down ? "down" : "wall",
+                    fastest[0],
+                    fastest[1]);
+            helper.assertTrue(
+                    fastest[0] > 8,
+                    "uncapped, the stand's proxy squeezes the crate out (so this test sees a "
+                            + "squeeze at all): fastest " + fastest[0] + " m/s");
             helper.assertTrue(fastest[1] < 3, "capped, the crate stays: fastest " + fastest[1] + " m/s");
-            helper.assertTrue(at.y < 1.5 && Math.abs(at.x - crateX) < 0.5 && Math.abs(at.z - 1.5) < 0.5,
+            helper.assertTrue(
+                    at.y < 1.5 && Math.abs(at.x - crateX) < 0.5 && Math.abs(at.z - 1.5) < 0.5,
                     "and on the ground where it was: " + at);
         });
         sequence.thenSucceed();
@@ -146,7 +158,8 @@ public final class EntitySqueezeGameTest {
     /** A free 41 kg crate on the ground. */
     private static Body crate(GameTestHelper helper, double x, double z) {
         Vec3 at = helper.absoluteVec(new Vec3(x, 0.4, z));
-        Body crate = physics(helper).createBody(new BodyDef().type(BodyType.DYNAMIC).position(at.x, at.y, at.z));
+        Body crate =
+                physics(helper).createBody(new BodyDef().type(BodyType.DYNAMIC).position(at.x, at.y, at.z));
         crate.createShape(new ShapeDef().density(80).friction(0.6f), Geometry.Box.of(0.4f, 0.4f, 0.4f));
         return crate;
     }
@@ -180,7 +193,8 @@ public final class EntitySqueezeGameTest {
      */
     private static List<Body> targets(GameTestHelper helper, Set<Body> before) {
         return physics(helper).world().bodies().stream()
-                .filter(b -> b.isValid() && "entity target".equals(b.name()) && !before.contains(b)).toList();
+                .filter(b -> b.isValid() && "entity target".equals(b.name()) && !before.contains(b))
+                .toList();
     }
 
     private static Set<Body> targetsBefore(GameTestHelper helper) {
@@ -189,13 +203,15 @@ public final class EntitySqueezeGameTest {
 
     private static void step(GameTestSequence sequence, Entity[] entity, double dx, double dz, int ticks) {
         for (int i = 0; i < ticks; i++) {
-            sequence.thenExecuteAfter(1, () -> entity[0].setPos(entity[0].getX() + dx, entity[0].getY(), entity[0].getZ() + dz));
+            sequence.thenExecuteAfter(
+                    1, () -> entity[0].setPos(entity[0].getX() + dx, entity[0].getY(), entity[0].getZ() + dz));
         }
     }
 
     @GameTest(template = "empty", batch = "minebox3d_squeeze_life", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
-    public static void aProxyCappedOnACrateIsKinematicOnceOffItAndLeavesNothingWhenItsEntityGoes(GameTestHelper helper) {
+    public static void aProxyCappedOnACrateIsKinematicOnceOffItAndLeavesNothingWhenItsEntityGoes(
+            GameTestHelper helper) {
         TestArea.clear(helper, -1, 0, -1, 7, 4, 4);
         TestArea.forceChunks(helper, -1, -1, 7, 4, true);
         Set<Body> before = targetsBefore(helper);
@@ -204,8 +220,11 @@ public final class EntitySqueezeGameTest {
         boolean[] capped = new boolean[1];
         GameTestSequence sequence = helper.startSequence();
         sequence.thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper, stand[0]), "the stand ticks"));
-        sequence.thenExecuteAfter(3, () -> helper.assertTrue(physics(helper).entities().proxyOf(stand[0]) != null
-                && !capped(helper, stand[0]), "kinematic, off the crate"));
+        sequence.thenExecuteAfter(
+                3,
+                () -> helper.assertTrue(
+                        physics(helper).entities().proxyOf(stand[0]) != null && !capped(helper, stand[0]),
+                        "kinematic, off the crate"));
         // onto the crate at 3.6, pushing it along half a block
         for (int i = 0; i < 18; i++) {
             sequence.thenExecuteAfter(1, () -> {
@@ -221,7 +240,8 @@ public final class EntitySqueezeGameTest {
         });
         sequence.thenExecuteAfter(3, () -> {
             helper.assertTrue(physics(helper).entities().proxyOf(stand[0]) == null, "the stand's proxy went with it");
-            helper.assertTrue(targets(helper, before).isEmpty(), "and its target: " + targets(helper, before) + " left");
+            helper.assertTrue(
+                    targets(helper, before).isEmpty(), "and its target: " + targets(helper, before) + " left");
             crate.destroy();
             TestArea.forceChunks(helper, -1, -1, 7, 4, false);
         });
@@ -238,16 +258,21 @@ public final class EntitySqueezeGameTest {
         Entity[] passing = {stand(helper, 2.2, 0, 1.5)};
         LevelBodies.setIgnoredEntity(crate, passing[0]);
         Vec3 slabAt = helper.absoluteVec(new Vec3(3.5, 0.25, 5));
-        Body slab = physics(helper).createBody(new BodyDef().type(BodyType.DYNAMIC).position(slabAt.x, slabAt.y, slabAt.z));
+        Body slab =
+                physics(helper).createBody(new BodyDef().type(BodyType.DYNAMIC).position(slabAt.x, slabAt.y, slabAt.z));
         slab.createShape(new ShapeDef().density(500).friction(0.6f), Geometry.Box.of(2, 0.25f, 1));
         Entity[] standing = {helper.spawn(EntityType.ARMOR_STAND, new Vec3(2.2, 1, 5))};
         boolean[] capped = new boolean[2];
         Vector3d[] crateWas = new Vector3d[1];
         GameTestSequence sequence = helper.startSequence();
         // landing on the slab caps it, as it should: from once it is kinematic again
-        sequence.thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper, passing[0]) && standing[0].onGround()
-                && EntityBases.baseOf(standing[0]) == slab && physics(helper).entities().proxyOf(standing[0]) != null
-                && !capped(helper, standing[0]), "the stands tick, one on the slab, kinematic"));
+        sequence.thenWaitUntil(() -> helper.assertTrue(
+                TestArea.ticks(helper, passing[0])
+                        && standing[0].onGround()
+                        && EntityBases.baseOf(standing[0]) == slab
+                        && physics(helper).entities().proxyOf(standing[0]) != null
+                        && !capped(helper, standing[0]),
+                "the stands tick, one on the slab, kinematic"));
         sequence.thenExecute(() -> crateWas[0] = crate.position(new Vector3d()));
         for (int i = 0; i < 25; i++) {
             sequence.thenExecuteAfter(1, () -> {
@@ -258,8 +283,10 @@ public final class EntitySqueezeGameTest {
             });
         }
         sequence.thenExecute(() -> {
-            helper.assertTrue(physics(helper).entities().proxyOf(passing[0]) != null
-                    && physics(helper).entities().proxyOf(standing[0]) != null, "both have proxies");
+            helper.assertTrue(
+                    physics(helper).entities().proxyOf(passing[0]) != null
+                            && physics(helper).entities().proxyOf(standing[0]) != null,
+                    "both have proxies");
             helper.assertFalse(capped[0], "not capped going through the crate that ignores it");
             helper.assertTrue(crate.position(new Vector3d()).distance(crateWas[0]) < 0.01, "which stayed");
             helper.assertTrue(EntityBases.baseOf(standing[0]) == slab, "the other still on the slab");
@@ -299,9 +326,12 @@ public final class EntitySqueezeGameTest {
             float mass = physics(helper).entities().massOf(stand[0]);
             float bodyMass = proxy.massData(new MassData()).mass;
             helper.assertTrue(proxy.type() == BodyType.DYNAMIC, "still capped, full size");
-            helper.assertTrue(mass > 2 * smallMass[0] && Math.abs(bodyMass - mass) < 0.01 * mass,
-                    "of the stand's mass: " + bodyMass + " kg, the stand " + mass + " kg, small " + smallMass[0] + " kg");
-            helper.assertTrue(targets(helper, before).size() == 1, "pulled after one target: " + targets(helper, before));
+            helper.assertTrue(
+                    mass > 2 * smallMass[0] && Math.abs(bodyMass - mass) < 0.01 * mass,
+                    "of the stand's mass: " + bodyMass + " kg, the stand " + mass + " kg, small " + smallMass[0]
+                            + " kg");
+            helper.assertTrue(
+                    targets(helper, before).size() == 1, "pulled after one target: " + targets(helper, before));
             stand[0].discard();
             crate.destroy();
             TestArea.forceChunks(helper, -1, -1, 7, 4, false);
@@ -329,14 +359,16 @@ public final class EntitySqueezeGameTest {
         step(sequence, stand, 0.1, 0, 2);
         sequence.thenExecute(() -> {
             helper.assertFalse(physics(helper).isStopped(), "the level's physics carried on");
-            helper.assertTrue(capped(helper, stand[0]) && targets(helper, before).size() == 1,
+            helper.assertTrue(
+                    capped(helper, stand[0]) && targets(helper, before).size() == 1,
                     "capped still, after a new target");
             physics(helper).entities().proxyOf(stand[0]).destroy();
         });
         sequence.thenExecuteAfter(3, () -> {
             helper.assertFalse(physics(helper).isStopped(), "the level's physics carried on");
-            helper.assertTrue(targets(helper, before).isEmpty(), "the destroyed proxy's target went too: "
-                    + targets(helper, before) + " left");
+            helper.assertTrue(
+                    targets(helper, before).isEmpty(),
+                    "the destroyed proxy's target went too: " + targets(helper, before) + " left");
             stand[0].discard();
             crate.destroy();
             TestArea.forceChunks(helper, -1, -1, 7, 4, false);
@@ -371,8 +403,8 @@ public final class EntitySqueezeGameTest {
             double off = physics(helper).entities().proxyOf(stand[0]).position(new Vector3d()).x - stand[0].getX();
             helper.assertFalse(capped(helper, stand[0]), "kinematic again");
             helper.assertTrue(Math.abs(off) < 0.01, "where its stand is, not behind the wall: " + off + " off");
-            helper.assertTrue(targets(helper, before).size() == 1, "its target kept for next time: "
-                    + targets(helper, before));
+            helper.assertTrue(
+                    targets(helper, before).size() == 1, "its target kept for next time: " + targets(helper, before));
             stand[0].discard();
             crate.destroy();
             wall.destroy();

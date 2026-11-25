@@ -11,10 +11,6 @@ import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.PhysicsWorld;
 import com.lowdragmc.minebox3d.physics.ThreadMode;
 import com.lowdragmc.minebox3d.physics.WorldDef;
-import net.minecraft.world.level.Level;
-import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.Nullable;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -22,6 +18,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * <b>Physics in a {@link Level}</b> (design doc §3): a {@link PhysicsWorld}, the terrain streamed into it and the
@@ -72,23 +71,19 @@ public final class LevelPhysics implements AutoCloseable {
     public interface TickListener {
 
         /** The level read (terrain, entity proxies, replicas), the steps not yet taken. */
-        default void beforeSteps(LevelPhysics physics) {
-        }
+        default void beforeSteps(LevelPhysics physics) {}
 
         /** The steps taken; what stands on the bodies not yet carried, nothing sent yet. */
-        default void afterSteps(LevelPhysics physics) {
-        }
+        default void afterSteps(LevelPhysics physics) {}
 
         /**
          * A past tick simulated again ({@link LevelRewind}), before its steps: what moves a body of the listener's in a tick,
          * given again as it was for that one — Unreal's resimulation replaying a tick's inputs.
          */
-        default void beforeResimTick(LevelPhysics physics, long tick) {
-        }
+        default void beforeResimTick(LevelPhysics physics, long tick) {}
 
         /** That tick's steps taken again: a body whose place for it is known (the server said) is put there. */
-        default void afterResimTick(LevelPhysics physics, long tick) {
-        }
+        default void afterResimTick(LevelPhysics physics, long tick) {}
     }
 
     /** How a level's physics is stepped. */
@@ -96,8 +91,7 @@ public final class LevelPhysics implements AutoCloseable {
         private int stepsPerTick = 3;
         private int subSteps = 4;
 
-        private Settings() {
-        }
+        private Settings() {}
 
         /** Box3D steps per Minecraft tick; Box3D is tuned for 60 Hz, a tick is 1/20 s. */
         public int stepsPerTick() {
@@ -174,8 +168,9 @@ public final class LevelPhysics implements AutoCloseable {
 
     private static void checkLevelThread(Level level) {
         if (!LevelThreads.isLevelThread(level)) {
-            throw new WrongThreadException("LevelPhysics of " + level.dimension().location() + " asked for on "
-                    + Thread.currentThread().getName() + ", not the level's thread");
+            throw new WrongThreadException(
+                    "LevelPhysics of " + level.dimension().location() + " asked for on "
+                            + Thread.currentThread().getName() + ", not the level's thread");
         }
     }
 
@@ -195,13 +190,15 @@ public final class LevelPhysics implements AutoCloseable {
             try {
                 physics.close();
             } catch (RuntimeException e) {
-                MineBox3D.LOGGER.error("could not close the physics of {}", level.dimension().location(), e);
+                MineBox3D.LOGGER.error(
+                        "could not close the physics of {}", level.dimension().location(), e);
             }
         }
         Set<LevelPhysics> left = PRIVATE.remove(level);
         if (left != null) {
             for (LevelPhysics forgotten : left) {
-                MineBox3D.LOGGER.warn("a private physics of {} was still open when the level unloaded; closing it",
+                MineBox3D.LOGGER.warn(
+                        "a private physics of {} was still open when the level unloaded; closing it",
                         level.dimension().location());
                 try {
                     forgotten.close();
@@ -302,8 +299,11 @@ public final class LevelPhysics implements AutoCloseable {
                 }
             } catch (RuntimeException e) {
                 listeners.remove(listener);
-                MineBox3D.LOGGER.error("a tick listener of the physics of {} failed and was taken off: {}",
-                        level.dimension().location(), listener, e);
+                MineBox3D.LOGGER.error(
+                        "a tick listener of the physics of {} failed and was taken off: {}",
+                        level.dimension().location(),
+                        listener,
+                        e);
             }
         }
     }
@@ -329,17 +329,20 @@ public final class LevelPhysics implements AutoCloseable {
                 tell(false);
                 rewind.afterSteps(ticks);
                 if (existing(level) == this) {
-                    // what stands on the bodies, to where the steps took them (EntityBases; only the level's own bodies bear)
+                    // what stands on the bodies, to where the steps took them (EntityBases; only the level's own bodies
+                    // bear)
                     riders.carry(level);
                 }
             }
-            // what the server's steps did, out to the clients that see it (nothing on a client, or for private physics);
+            // what the server's steps did, out to the clients that see it (nothing on a client, or for private
+            // physics);
             // then what stands on them, which the clients place on the bodies they have just been sent
             sync.afterTick();
             sync.riders().afterTick();
         } catch (RuntimeException e) {
             stopped = true;
-            MineBox3D.LOGGER.error("the physics of {} failed and stopped", level.dimension().location(), e);
+            MineBox3D.LOGGER.error(
+                    "the physics of {} failed and stopped", level.dimension().location(), e);
         }
         if (runs) {
             lastTickMillis = (System.nanoTime() - start) / 1.0e6f;
@@ -357,7 +360,8 @@ public final class LevelPhysics implements AutoCloseable {
         world.beginInterpolationFrame();
         terrain.update();
         entities.update(1f / 20f);
-        // what was asked since the last tick, before the replicas are given this one's targets (the rewind would undo them)
+        // what was asked since the last tick, before the replicas are given this one's targets (the rewind would undo
+        // them)
         rewind.resimulateIfAsked();
         if (level.isClientSide) {
             sync.beforeSteps(1f / 20f);
@@ -382,8 +386,11 @@ public final class LevelPhysics implements AutoCloseable {
                 }
             } catch (RuntimeException e) {
                 listeners.remove(listener);
-                MineBox3D.LOGGER.error("a tick listener of the physics of {} failed and was taken off: {}",
-                        level.dimension().location(), listener, e);
+                MineBox3D.LOGGER.error(
+                        "a tick listener of the physics of {} failed and was taken off: {}",
+                        level.dimension().location(),
+                        listener,
+                        e);
             }
         }
     }
@@ -430,7 +437,8 @@ public final class LevelPhysics implements AutoCloseable {
                     terrain.close();
                 } finally {
                     world.close();
-                    MineBox3D.LOGGER.debug("closed the physics of {}", level.dimension().location());
+                    MineBox3D.LOGGER.debug(
+                            "closed the physics of {}", level.dimension().location());
                 }
             }
         } finally {

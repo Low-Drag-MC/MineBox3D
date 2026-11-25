@@ -1,10 +1,11 @@
-// MineBox3D JNI bridge: bodies that never collide — tables of body pairs (a physics asset's collision groups and disabled
-// pairs) and tags (a body never meets the bodies tagged with what it ignores: a ragdoll and its own entity's proxy).
+// MineBox3D JNI bridge: bodies that never collide — tables of body pairs (a physics asset's collision groups and
+// disabled pairs) and tags (a body never meets the bodies tagged with what it ignores: a ragdoll and its own entity's
+// proxy).
 //
-// Box3D's custom filter asks about a new pair on whichever thread finds it, so the answer is read here, never from Java,
-// and only for pairs one of whose shapes was made with enableCustomFiltering. Tables and tags change between steps only
-// (the world's thread rule), and a change reaches pairs already touching: the bodies whose pairs changed have them found
-// again.
+// Box3D's custom filter asks about a new pair on whichever thread finds it, so the answer is read here, never from
+// Java, and only for pairs one of whose shapes was made with enableCustomFiltering. Tables and tags change between
+// steps only (the world's thread rule), and a change reaches pairs already touching: the bodies whose pairs changed
+// have them found again.
 
 #include "mb3.h"
 
@@ -115,8 +116,8 @@ static mb3_world_pairs* mb3_world_pairs_of( b3WorldId world, bool create )
 	return s_worlds[index];
 }
 
-// Box3D asks the filter only about pairs it has not got, so a body whose pairs changed has its shapes' contacts dropped and
-// its pairs found again
+// Box3D asks the filter only about pairs it has not got, so a body whose pairs changed has its shapes' contacts dropped
+// and its pairs found again
 static void mb3_refresh_body( b3BodyId body )
 {
 	if ( b3Body_IsValid( body ) == false )
@@ -163,7 +164,7 @@ static void mb3_free_table( mb3_world_pairs* pairs, int table )
 	}
 	free( t->bodies );
 	free( t->bits );
-	*t = ( mb3_pair_table ){ 0 };
+	*t = (mb3_pair_table){ 0 };
 }
 
 void mb3_pairs_world_destroyed( b3WorldId world )
@@ -204,7 +205,8 @@ MB3_JNI( void, bodySetTags )( JNIEnv* env, jclass type, jint world, jlong body, 
 	(void)type;
 	b3WorldId worldId = mb3_world( world );
 	b3BodyId bodyId = mb3_body( body );
-	if ( b3World_IsValid( worldId ) == false || b3Body_IsValid( bodyId ) == false || bodyId.world0 != worldId.index1 - 1 )
+	if ( b3World_IsValid( worldId ) == false || b3Body_IsValid( bodyId ) == false ||
+		 bodyId.world0 != worldId.index1 - 1 )
 	{
 		mb3_throw_illegal_argument( env, "not a live body of this world" );
 		return;
@@ -244,7 +246,7 @@ MB3_JNI( void, bodySetTags )( JNIEnv* env, jclass type, jint world, jlong body, 
 	bool had = B3_ID_EQUALS( entry->body, bodyId );
 	uint64_t wasTag = had ? entry->tag : 0;
 	uint64_t wasIgnored = had ? entry->ignored : 0;
-	*entry = tagged ? ( mb3_body_tags ){ bodyId, (uint64_t)tag, (uint64_t)ignored } : ( mb3_body_tags ){ 0 };
+	*entry = tagged ? (mb3_body_tags){ bodyId, (uint64_t)tag, (uint64_t)ignored } : (mb3_body_tags){ 0 };
 	if ( wasTag != (uint64_t)tag || wasIgnored != (uint64_t)ignored )
 	{
 		mb3_refresh_body( bodyId );
@@ -261,7 +263,8 @@ MB3_JNI( jint, pairTableCreate )( JNIEnv* env, jclass type, jint world, jlongArr
 		mb3_throw_illegal_argument( env, "not a live world" );
 		return 0;
 	}
-	if ( bodies == NULL || count <= 0 || count > MB3_PAIRS_MAX_BODIES || ( *env )->GetArrayLength( env, bodies ) < count )
+	if ( bodies == NULL || count <= 0 || count > MB3_PAIRS_MAX_BODIES ||
+		 ( *env )->GetArrayLength( env, bodies ) < count )
 	{
 		mb3_throw_illegal_argument( env, "body id array is null, empty, too long or shorter than count" );
 		return 0;
@@ -284,8 +287,9 @@ MB3_JNI( jint, pairTableCreate )( JNIEnv* env, jclass type, jint world, jlongArr
 	{
 		b3BodyId body = mb3_body( ids[i] );
 		int index = body.index1 - 1;
-		bool taken = index < pairs->slotCount && pairs->slots[index] != 0 &&
-					 B3_ID_EQUALS( pairs->tables[( pairs->slots[index] >> 16 ) - 1].bodies[pairs->slots[index] & 0xFFFF], body );
+		bool taken =
+			index < pairs->slotCount && pairs->slots[index] != 0 &&
+			B3_ID_EQUALS( pairs->tables[( pairs->slots[index] >> 16 ) - 1].bodies[pairs->slots[index] & 0xFFFF], body );
 		if ( b3Body_IsValid( body ) == false || body.world0 != worldId.index1 - 1 || taken )
 		{
 			( *env )->ReleaseLongArrayElements( env, bodies, ids, JNI_ABORT );
@@ -312,7 +316,7 @@ MB3_JNI( jint, pairTableCreate )( JNIEnv* env, jclass type, jint world, jlongArr
 		if ( grown )
 		{
 			pairs->tables = tables;
-			pairs->tables[table] = ( mb3_pair_table ){ 0 };
+			pairs->tables[table] = (mb3_pair_table){ 0 };
 			pairs->tableCount = table + 1;
 		}
 	}

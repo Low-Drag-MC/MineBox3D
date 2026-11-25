@@ -1,8 +1,6 @@
 package com.lowdragmc.minebox3d.natives;
 
 import com.lowdragmc.minebox3d.internal.B3;
-import org.jetbrains.annotations.Nullable;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -12,6 +10,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Locale;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * <b>Loads the Box3D library</b> once per process.
@@ -42,14 +41,16 @@ public final class NativeLibrary {
     public static final String PATH_PROPERTY = "minebox3d.native.path";
 
     private static volatile boolean loaded;
+
     @Nullable
     private static volatile Throwable failure;
+
     @Nullable
     private static volatile Path loadedFrom;
+
     private static volatile boolean fromJar;
 
-    private NativeLibrary() {
-    }
+    private NativeLibrary() {}
 
     /** Loads the library if that has not happened. Throws what loading threw, every time it is asked. */
     public static synchronized void load() {
@@ -110,12 +111,14 @@ public final class NativeLibrary {
     public static String platform() {
         String os = System.getProperty("os.name").toLowerCase(Locale.ROOT);
         String arch = System.getProperty("os.arch").toLowerCase(Locale.ROOT);
-        String osName = os.contains("win") ? "windows" : os.contains("mac") || os.contains("darwin") ? "macos" : "linux";
-        String archName = switch (arch) {
-            case "amd64", "x86_64", "x64" -> "x86_64";
-            case "aarch64", "arm64" -> "aarch64";
-            default -> arch;
-        };
+        String osName =
+                os.contains("win") ? "windows" : os.contains("mac") || os.contains("darwin") ? "macos" : "linux";
+        String archName =
+                switch (arch) {
+                    case "amd64", "x86_64", "x64" -> "x86_64";
+                    case "aarch64", "arm64" -> "aarch64";
+                    default -> arch;
+                };
         return osName + "-" + archName;
     }
 

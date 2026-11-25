@@ -13,12 +13,14 @@ public final class WorldDef {
     public float gravityX, gravityY, gravityZ;
     /** Collisions faster than this (m/s) bounce. */
     public float restitutionThreshold;
+
     public int restitutionIterations;
     public boolean enableRestitutionPropagation;
     /** Collisions faster than this (m/s) can raise hit events. */
     public float hitEventThreshold;
     /** Contact stiffness, Hz. */
     public float contactHertz;
+
     public float contactDampingRatio;
     /** Cap on how fast overlap is pushed apart, m/s. */
     public float contactSpeed;
@@ -26,6 +28,7 @@ public final class WorldDef {
     public float maximumLinearSpeed;
     /** 0–1; a sphere is 0, a 1×1×2 box 0.5. Below it, gyroscopic torque is skipped. */
     public float isotropicInertiaTolerance;
+
     public boolean enableSleep;
     public boolean enableContinuous;
     /**

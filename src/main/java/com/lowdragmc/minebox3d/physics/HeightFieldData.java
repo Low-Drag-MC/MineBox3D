@@ -2,10 +2,9 @@ package com.lowdragmc.minebox3d.physics;
 
 import com.lowdragmc.minebox3d.internal.B3;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
-import org.jetbrains.annotations.Nullable;
-
 import java.lang.ref.Cleaner;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * <b>Box3D height-field data</b>: a grid of heights, compressed and with its triangles' edge flags, built once.
@@ -29,10 +28,12 @@ public final class HeightFieldData implements AutoCloseable {
     private final long pointer;
     /** shapes alive + 1 for the owner until {@link #close()} */
     private final AtomicInteger references = new AtomicInteger(1);
+
     private final Owner owner;
     private final Cleaner.Cleanable cleanable;
 
-    private HeightFieldData(float[] heights, int countX, int countZ, float scaleX, float scaleY, float scaleZ, long pointer) {
+    private HeightFieldData(
+            float[] heights, int countX, int countZ, float scaleX, float scaleY, float scaleZ, long pointer) {
         this.heights = heights;
         this.countX = countX;
         this.countZ = countZ;
@@ -49,13 +50,22 @@ public final class HeightFieldData implements AutoCloseable {
      * @param materials one per cell ({@code (countX - 1) * (countZ - 1)}, index {@code z * (countX - 1) + x}) into the
      *                  shape definition's {@code materials}; {@link #HOLE} leaves the cell out. Null for none.
      */
-    public static HeightFieldData create(float[] heights, int countX, int countZ, @Nullable byte[] materials, float scaleX,
-                                         float scaleY, float scaleZ, float minHeight, float maxHeight) {
+    public static HeightFieldData create(
+            float[] heights,
+            int countX,
+            int countZ,
+            @Nullable byte[] materials,
+            float scaleX,
+            float scaleY,
+            float scaleZ,
+            float minHeight,
+            float maxHeight) {
         NativeLibrary.load();
         // as a long: the int product wraps, and Box3D sizes its cells and triangles from it
         if (countX < 2 || countZ < 2 || (long) countX * countZ != heights.length || heights.length > MAX_POINTS) {
-            throw new IllegalArgumentException("a height field is 2 x 2 to " + MAX_POINTS + " points, countX * countZ heights: "
-                    + countX + " x " + countZ + ", " + heights.length + " heights");
+            throw new IllegalArgumentException(
+                    "a height field is 2 x 2 to " + MAX_POINTS + " points, countX * countZ heights: " + countX + " x "
+                            + countZ + ", " + heights.length + " heights");
         }
         if (materials != null && materials.length != (countX - 1) * (countZ - 1)) {
             throw new IllegalArgumentException("one material per cell: " + (countX - 1) * (countZ - 1));
@@ -67,8 +77,8 @@ public final class HeightFieldData implements AutoCloseable {
         Checks.positive(scaleY, "scale");
         Checks.positive(scaleZ, "scale");
         Checks.range(minHeight, maxHeight, "height range");
-        long pointer = B3.createHeightField(heights, countX, countZ, materials, scaleX, scaleY, scaleZ, minHeight, maxHeight,
-                false);
+        long pointer = B3.createHeightField(
+                heights, countX, countZ, materials, scaleX, scaleY, scaleZ, minHeight, maxHeight, false);
         return new HeightFieldData(heights.clone(), countX, countZ, scaleX, scaleY, scaleZ, pointer);
     }
 

@@ -110,13 +110,15 @@ MB3_JNI( jint, voxelGridAddMaterial )( JNIEnv* env, jclass type, jlong grid, job
 	return mb3_check( env ) ? -1 : index;
 }
 
-MB3_JNI( jint, voxelGridAddCollider )( JNIEnv* env, jclass type, jlong grid, jfloatArray boxes, jint boxCount, jint material )
+MB3_JNI( jint, voxelGridAddCollider )( JNIEnv* env, jclass type, jlong grid, jfloatArray boxes, jint boxCount,
+									   jint material )
 {
 	(void)type;
 	b3VoxelGrid* g = mb3_grid( env, grid );
 	if ( g == NULL )
 		return 0;
-	if ( boxes == NULL || boxCount < 1 || boxCount > B3_MAX_VOXEL_BOXES || ( *env )->GetArrayLength( env, boxes ) < 6 * boxCount )
+	if ( boxes == NULL || boxCount < 1 || boxCount > B3_MAX_VOXEL_BOXES ||
+		 ( *env )->GetArrayLength( env, boxes ) < 6 * boxCount )
 	{
 		mb3_throw_illegal_argument( env, "a collider is 1 to 64 boxes, 6 floats each" );
 		return 0;
@@ -149,7 +151,8 @@ MB3_JNI( jint, voxelGridGetColliderCount )( JNIEnv* env, jclass type, jlong grid
 	return g == NULL ? 0 : b3VoxelGrid_GetColliderCount( g );
 }
 
-MB3_JNI( void, voxelGridSetSection )( JNIEnv* env, jclass type, jlong grid, jint sx, jint sy, jint sz, jshortArray cells )
+MB3_JNI( void, voxelGridSetSection )( JNIEnv* env, jclass type, jlong grid, jint sx, jint sy, jint sz,
+									  jshortArray cells )
 {
 	(void)type;
 	b3VoxelGrid* g = mb3_grid( env, grid );
@@ -238,8 +241,8 @@ MB3_JNI( jlong, voxelGridGetSectionShape )( JNIEnv* env, jclass type, jlong grid
 	return B3_IS_NULL( id ) ? 0 : mb3_pack_shape( id );
 }
 
-MB3_JNI( jint, voxelGridCollectTriangles )( JNIEnv* env, jclass type, jlong grid, jint sx, jint sy, jint sz, jfloatArray bounds,
-											jfloatArray vertices, jbyteArray flags )
+MB3_JNI( jint, voxelGridCollectTriangles )( JNIEnv* env, jclass type, jlong grid, jint sx, jint sy, jint sz,
+											jfloatArray bounds, jfloatArray vertices, jbyteArray flags )
 {
 	(void)type;
 	b3VoxelGrid* g = mb3_grid( env, grid );

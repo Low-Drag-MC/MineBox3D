@@ -2,7 +2,6 @@ package com.lowdragmc.minebox3d.physics;
 
 import com.lowdragmc.minebox3d.internal.B3;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
-
 import java.util.Arrays;
 
 /**
@@ -11,16 +10,14 @@ import java.util.Arrays;
  */
 public sealed interface Geometry {
 
-    record Sphere(float cx, float cy, float cz, float radius) implements Geometry {
-    }
+    record Sphere(float cx, float cy, float cz, float radius) implements Geometry {}
 
     /** A capsule: the segment {@code a → b} swept by a sphere of {@code radius}. */
-    record Capsule(float ax, float ay, float az, float bx, float by, float bz, float radius) implements Geometry {
-    }
+    record Capsule(float ax, float ay, float az, float bx, float by, float bz, float radius) implements Geometry {}
 
     /** A box of half extents {@code (hx, hy, hz)}, centred at {@code c}, turned by the unit quaternion {@code q}. */
-    record Box(float hx, float hy, float hz, float cx, float cy, float cz,
-               float qx, float qy, float qz, float qw) implements Geometry {
+    record Box(float hx, float hy, float hz, float cx, float cy, float cz, float qx, float qy, float qz, float qw)
+            implements Geometry {
         public static Box of(float hx, float hy, float hz) {
             return new Box(hx, hy, hz, 0, 0, 0, 0, 0, 0, 1);
         }
@@ -68,8 +65,7 @@ public sealed interface Geometry {
     }
 
     /** A height field — see {@link HeightFieldData}. Static bodies only. */
-    record HeightField(HeightFieldData data) implements Geometry {
-    }
+    record HeightField(HeightFieldData data) implements Geometry {}
 
     /** Whether it has a radius (a sphere or capsule): Box3D measures how close it comes to its core, not its surface. */
     default boolean isRounded() {

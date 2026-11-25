@@ -17,6 +17,12 @@ import com.lowdragmc.minebox3d.physics.Overlaps;
 import com.lowdragmc.minebox3d.physics.PhysicsWorld;
 import com.lowdragmc.minebox3d.physics.Shape;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
@@ -28,13 +34,6 @@ import org.joml.Quaternionf;
 import org.joml.Quaternionfc;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 
 /**
  * <b>Minecraft entities as kinematic bodies</b> near the bodies that can hit them (design doc §5).
@@ -95,6 +94,7 @@ public final class EntityProxies implements AutoCloseable {
     private static final float SKIN = 0.02f;
     /** Metres an entity on the ground rose since the last update that is a step up (or a lift). */
     private static final double STEPPED = 1.0e-4;
+
     private static final Quaternionfc UPRIGHT = new Quaternionf();
     /** A joint frame whose z axis is its body's y axis. */
     private static final Quaternionfc Z_TO_Y = new Quaternionf().rotationX((float) (-Math.PI / 2));
@@ -116,6 +116,7 @@ public final class EntityProxies implements AutoCloseable {
     private final boolean[] stepping = new boolean[1];
     /** this update's dynamic bodies entities push, and their bounds, six floats each */
     private Body[] movableBodies = new Body[16];
+
     private float[] movableBounds = new float[6 * 16];
     private int movable;
 
@@ -130,8 +131,7 @@ public final class EntityProxies implements AutoCloseable {
         private float entityDensity = 110;
         private float strength;
 
-        private Settings() {
-        }
+        private Settings() {}
 
         /**
          * N per kg of the entity: the most its proxy pushes a dynamic body with (the class notes), as Box3D's dynamic mover
@@ -239,8 +239,9 @@ public final class EntityProxies implements AutoCloseable {
      */
     public void update(float timeStep) {
         if (!LevelThreads.isLevelThread(level)) {
-            throw new WrongThreadException("the entities of " + level.dimension().location() + " are read on its level's thread, not "
-                    + Thread.currentThread().getName());
+            throw new WrongThreadException(
+                    "the entities of " + level.dimension().location() + " are read on its level's thread, not "
+                            + Thread.currentThread().getName());
         }
         tick++;
         applyPushes(); // of steps taken off the level's thread
@@ -253,8 +254,13 @@ public final class EntityProxies implements AutoCloseable {
                 continue;
             }
             body.bounds(bounds);
-            neighbourhoods.add(new AABB(bounds[0] - reach, bounds[1] - reach, bounds[2] - reach,
-                    bounds[3] + reach, bounds[4] + reach, bounds[5] + reach));
+            neighbourhoods.add(new AABB(
+                    bounds[0] - reach,
+                    bounds[1] - reach,
+                    bounds[2] - reach,
+                    bounds[3] + reach,
+                    bounds[4] + reach,
+                    bounds[5] + reach));
             if (settings.strength > 0 && body.type() == BodyType.DYNAMIC) {
                 if (movable == movableBodies.length) {
                     movableBodies = Arrays.copyOf(movableBodies, 2 * movable);
@@ -284,19 +290,23 @@ public final class EntityProxies implements AutoCloseable {
             Entity entity = entry.getKey();
             Proxy proxy = entry.getValue();
             if (!proxy.body.isValid()) {
-                // someone else destroyed it: made again next time the entity is near a body, not driven (which would throw
+                // someone else destroyed it: made again next time the entity is near a body, not driven (which would
+                // throw
                 // and stop the level's physics)
                 discard(proxy);
                 it.remove();
                 continue;
             }
-            if (entity.isRemoved() || entity.level() != level || proxy.lastSeen < tick - settings.keepTicks
+            if (entity.isRemoved()
+                    || entity.level() != level
+                    || proxy.lastSeen < tick - settings.keepTicks
                     || EntityShapes.isExcluded(entity)) {
                 discard(proxy);
                 it.remove();
                 continue;
             }
-            if ((proxy.width != entity.getBbWidth() || proxy.height != entity.getBbHeight()) && !reshape(entity, proxy)) {
+            if ((proxy.width != entity.getBbWidth() || proxy.height != entity.getBbHeight())
+                    && !reshape(entity, proxy)) {
                 discard(proxy);
                 Proxy rebuilt = create(entity);
                 if (rebuilt == null) {
@@ -332,7 +342,8 @@ public final class EntityProxies implements AutoCloseable {
                     tz += allowed.z;
                 }
             }
-            // and where the body it stands on carries it (EntityBases) — its client's move does too — so that the two go
+            // and where the body it stands on carries it (EntityBases) — its client's move does too — so that the two
+            // go
             // on together rather than the body being held back by its rider
             Body base = EntityBases.carryingBase(entity);
             if (base != null && base.world() == world) {
@@ -345,12 +356,14 @@ public final class EntityProxies implements AutoCloseable {
             weigh(proxy, entity, pushes);
             ignoreBase(proxy, base != null && base.world() == world && base.type() == BodyType.DYNAMIC ? base : null);
             // one whose moves push no body is put where its entity is, not driven there: driven, its straight path cuts
-            // the corner its entity steps up around (onto a crate) and flings what it cuts; made dynamic, it carries its
+            // the corner its entity steps up around (onto a crate) and flings what it cuts; made dynamic, it carries
+            // its
             // speed into a crate it walks up to. Put, it only stands in the way, and Box3D lets out what it overlaps no
             // faster than its contact speed. So is one stepping up — in its next move as predicted, or in its last (a
             // client moves a player) — and once more after, should the predicted step not come
             boolean stepped = stepping[0] || proxy.wasOnGround && entity.onGround() && dy > STEPPED;
-            boolean teleported = !pushes || stepped || proxy.stepped || dx * dx + dy * dy + dz * dz > teleport * teleport;
+            boolean teleported =
+                    !pushes || stepped || proxy.stepped || dx * dx + dy * dy + dz * dz > teleport * teleport;
             proxy.stepped = stepped;
             proxy.wasOnGround = entity.onGround();
             boolean capping = settings.strength > 0 && proxy.mass < Float.POSITIVE_INFINITY && !teleported;
@@ -417,7 +430,9 @@ public final class EntityProxies implements AutoCloseable {
     private void weigh(Proxy proxy, Entity entity, boolean pushes) {
         proxy.weighs = null;
         Body base = pushes && entity.onGround() ? EntityBases.baseOf(entity) : null;
-        if (base == null || base.world() != world || !EntityCollisions.pushable(base)
+        if (base == null
+                || base.world() != world
+                || !EntityCollisions.pushable(base)
                 || !(proxy.mass < Float.POSITIVE_INFINITY)) {
             return;
         }
@@ -544,7 +559,8 @@ public final class EntityProxies implements AutoCloseable {
             }
         }
         if (!(impulse > 0)) {
-            return; // close enough to count as touching, not touching: Box3D did not push (its own hits want an impulse too)
+            return; // close enough to count as touching, not touching: Box3D did not push (its own hits want an impulse
+            // too)
         }
         if (other == EntityBases.baseOf(proxy.entity)) {
             return; // the body it stands on carries it (EntityBases), and its proxy goes along
@@ -566,7 +582,8 @@ public final class EntityProxies implements AutoCloseable {
         }
         float scale = 1;
         if (proxy.unechoedX != 0 || proxy.unechoedY != 0 || proxy.unechoedZ != 0) {
-            // a client-moved entity pushed and not yet seen moving: it is going away at that push, whatever its proxy does
+            // a client-moved entity pushed and not yet seen moving: it is going away at that push, whatever its proxy
+            // does
             float away = normal.dot(proxy.unechoedX, proxy.unechoedY, proxy.unechoedZ);
             if (away > 0) {
                 if (approach - away <= PUSH_SPEED) {
@@ -598,7 +615,11 @@ public final class EntityProxies implements AutoCloseable {
         for (int j = first; j < count; j++) {
             if (otherBody(j) == other) {
                 contacts.anchor(j, anchor);
-                hit.add(center.x + anchor.x, center.y + anchor.y, center.z + anchor.z, contacts.totalNormalImpulse(j) * scale);
+                hit.add(
+                        center.x + anchor.x,
+                        center.y + anchor.y,
+                        center.z + anchor.z,
+                        contacts.totalNormalImpulse(j) * scale);
             }
         }
     }
@@ -618,7 +639,8 @@ public final class EntityProxies implements AutoCloseable {
         float entityShare = 1 / (bodyMass + proxy.mass);
         float change = hit.impulse * entityShare;
         Vector3f n = hit.normal;
-        // pushes along one way do not add up (two bodies side by side): each asks for its own, only what is missing is added
+        // pushes along one way do not add up (two bodies side by side): each asks for its own, only what is missing is
+        // added
         float missing = change - n.dot(proxy.pushX, proxy.pushY, proxy.pushZ);
         if (missing > 0) {
             proxy.pushX += missing * n.x;
@@ -636,7 +658,8 @@ public final class EntityProxies implements AutoCloseable {
         float bodyShare = bodyMass * entityShare;
         for (int i = 0; i < hit.points; i++) {
             float back = hit.pointImpulses[i] * bodyShare;
-            other.applyLinearImpulse(back * n.x, back * n.y, back * n.z, hit.pointXs[i], hit.pointYs[i], hit.pointZs[i]);
+            other.applyLinearImpulse(
+                    back * n.x, back * n.y, back * n.z, hit.pointXs[i], hit.pointYs[i], hit.pointZs[i]);
         }
     }
 
@@ -686,11 +709,12 @@ public final class EntityProxies implements AutoCloseable {
             if (!settings.pushEntities || proxy.entity.isRemoved() || proxy.entity.level() != level) {
                 continue;
             }
-            EntityPushedByBodyEvent event = NeoForge.EVENT_BUS.post(new EntityPushedByBodyEvent(proxy.entity, pusher, change,
-                    approach, (float) change.length() * proxy.mass));
+            EntityPushedByBodyEvent event = NeoForge.EVENT_BUS.post(new EntityPushedByBodyEvent(
+                    proxy.entity, pusher, change, approach, (float) change.length() * proxy.mass));
             proxy.pushTick = proxy.entity.tickCount;
             if (event.isCanceled()) {
-                // it did not go that way: next tick it holds there like a wall (readFreedom), rather than the body being
+                // it did not go that way: next tick it holds there like a wall (readFreedom), rather than the body
+                // being
                 // handed back a velocity every tick for a push that is never taken
                 proxy.pushGiven = change;
                 continue;
@@ -704,7 +728,8 @@ public final class EntityProxies implements AutoCloseable {
             }
             proxy.pushGiven = velocity;
             if (EntityAuthority.pushesShowLate(proxy.entity)) {
-                // it moves by it some ticks from now (its client a round trip on; a mod's own schedule): until then it is
+                // it moves by it some ticks from now (its client a round trip on; a mod's own schedule): until then it
+                // is
                 // going away at this push whatever its proxy does (observe), rather than being pushed again by the same
                 // body for the same hit
                 proxy.unechoedX += (float) velocity.x;
@@ -726,12 +751,16 @@ public final class EntityProxies implements AutoCloseable {
                 || !level.noCollision(entity, entity.getBoundingBox().move(0, -0.05, 0));
         proxy.heldX = proxy.heldY = proxy.heldZ = 0;
         if (proxy.pushesShowLate) {
-            // its move of a push comes late (its client's a round trip on; a mod's own schedule): not seen moving is not
+            // its move of a push comes late (its client's a round trip on; a mod's own schedule): not seen moving is
+            // not
             // held. The push it has not shown yet is let go once it shows, or after a while
-            float unechoed = (float) Math.sqrt(proxy.unechoedX * proxy.unechoedX + proxy.unechoedY * proxy.unechoedY
+            float unechoed = (float) Math.sqrt(proxy.unechoedX * proxy.unechoedX
+                    + proxy.unechoedY * proxy.unechoedY
                     + proxy.unechoedZ * proxy.unechoedZ);
-            if (unechoed > 0 && (++proxy.unechoedTicks > UNECHOED_TICKS
-                    || (dx * proxy.unechoedX + dy * proxy.unechoedY + dz * proxy.unechoedZ) / unechoed >= 0.5 * unechoed / 20)) {
+            if (unechoed > 0
+                    && (++proxy.unechoedTicks > UNECHOED_TICKS
+                            || (dx * proxy.unechoedX + dy * proxy.unechoedY + dz * proxy.unechoedZ) / unechoed
+                                    >= 0.5 * unechoed / 20)) {
                 proxy.unechoedX = proxy.unechoedY = proxy.unechoedZ = 0;
             }
             proxy.pushGiven = null;
@@ -767,12 +796,17 @@ public final class EntityProxies implements AutoCloseable {
         Proxy proxy = new Proxy(entity, provider, EntityShapes.massOf(entity, settings.entityDensity));
         Quaternionf rotation = rotationOf(entity, proxy, new Quaternionf());
         // not falling when force-capped (cap): the entity's own movement does that
-        BodyDef def0 = new BodyDef().type(BodyType.KINEMATIC).position(entity.getX(), entity.getY(), entity.getZ())
-                .rotation(rotation).name("entity").gravityScale(0);
+        BodyDef def0 = new BodyDef()
+                .type(BodyType.KINEMATIC)
+                .position(entity.getX(), entity.getY(), entity.getZ())
+                .rotation(rotation)
+                .name("entity")
+                .gravityScale(0);
         proxy.body = world.createBody(def0);
         // said for when it is dynamic (cap): it meets no terrain, and the default would stream terrain in round it
         LevelBodies.setNeedsTerrain(proxy.body, false);
-        // the bodies that never meet this entity (LevelBodies.setIgnoredEntity) never meet its proxy; before the shapes,
+        // the bodies that never meet this entity (LevelBodies.setIgnoredEntity) never meet its proxy; before the
+        // shapes,
         // so none has pairs to find again
         proxy.body.setTag(EntityShapes.tagOf(entity));
         ShapeDef def = new ShapeDef();
@@ -783,7 +817,8 @@ public final class EntityProxies implements AutoCloseable {
         // the tags are asked of a pair only where one of its shapes asks the custom filter: the proxy always does, so a
         // body ignoring this entity is never met whatever its own shapes say (a new pair asks once)
         def.enableCustomFiltering = true;
-        // Box3D's default, said out loud: it reports a touch when either shape asks, and a body that wants to hear about
+        // Box3D's default, said out loud: it reports a touch when either shape asks, and a body that wants to hear
+        // about
         // entities asks itself
         def.enableContactEvents = false;
         // not for the events: pushing the entity back needs normalVelocity (the class notes)
@@ -840,7 +875,10 @@ public final class EntityProxies implements AutoCloseable {
         Quaternionf turn = proxy.body.rotation(new Quaternionf());
         Vector3f moving = proxy.body.linearVelocity(new Vector3f());
         if (proxy.target == null || !proxy.target.isValid()) {
-            proxy.target = world.createBody(new BodyDef().type(BodyType.KINEMATIC).position(at.x, at.y, at.z).rotation(turn)
+            proxy.target = world.createBody(new BodyDef()
+                    .type(BodyType.KINEMATIC)
+                    .position(at.x, at.y, at.z)
+                    .rotation(turn)
                     .name("entity target"));
         } else {
             proxy.target.setTransform(at.x, at.y, at.z, turn);
@@ -854,14 +892,19 @@ public final class EntityProxies implements AutoCloseable {
         proxy.body.setMassData(mass);
         proxy.body.setLinearVelocity(moving.x, moving.y, moving.z);
         float force = settings.strength * proxy.mass;
-        MotorJointDef pull = new MotorJointDef().bodies(proxy.target, proxy.body).linearSpring(PULL_HERTZ, 1, force)
+        MotorJointDef pull = new MotorJointDef()
+                .bodies(proxy.target, proxy.body)
+                .linearSpring(PULL_HERTZ, 1, force)
                 .angularSpring(PULL_HERTZ, 1, force);
         pull.maxVelocityForce = force;
         pull.maxVelocityTorque = force;
         proxy.drive = world.createJoint(pull);
         // upright, turned only about y by the drive: the target's y axis and its own kept parallel
-        proxy.upright = world.createJoint(new MotionLockJointDef().bodies(proxy.target, proxy.body)
-                .localFrameA(0, 0, 0, Z_TO_Y).localFrameB(0, 0, 0, Z_TO_Y).lockAngularXY(true));
+        proxy.upright = world.createJoint(new MotionLockJointDef()
+                .bodies(proxy.target, proxy.body)
+                .localFrameA(0, 0, 0, Z_TO_Y)
+                .localFrameB(0, 0, 0, Z_TO_Y)
+                .lockAngularXY(true));
         proxy.capped = true;
     }
 
@@ -895,19 +938,29 @@ public final class EntityProxies implements AutoCloseable {
      */
     private boolean intoABody(Proxy proxy, Entity entity, double tx, double ty, double tz) {
         AABB box = entity.getBoundingBox();
-        float hx = (float) box.getXsize() / 2 - SKIN, hy = (float) box.getYsize() / 2 - SKIN, hz = (float) box.getZsize() / 2 - SKIN;
+        float hx = (float) box.getXsize() / 2 - SKIN,
+                hy = (float) box.getYsize() / 2 - SKIN,
+                hz = (float) box.getZsize() / 2 - SKIN;
         if (!(hx > 0 && hy > 0 && hz > 0)) {
             return false;
         }
-        int count = world.overlapShape(Geometry.Box.of(hx, hy, hz), (box.minX + box.maxX) / 2 + tx - entity.getX(),
-                (box.minY + box.maxY) / 2 + ty - entity.getY(), (box.minZ + box.maxZ) / 2 + tz - entity.getZ(),
-                UPRIGHT, EntityCollisions.FILTER, overlaps);
+        int count = world.overlapShape(
+                Geometry.Box.of(hx, hy, hz),
+                (box.minX + box.maxX) / 2 + tx - entity.getX(),
+                (box.minY + box.maxY) / 2 + ty - entity.getY(),
+                (box.minZ + box.maxZ) / 2 + tz - entity.getZ(),
+                UPRIGHT,
+                EntityCollisions.FILTER,
+                overlaps);
         long tag = proxy.body.tag();
         for (int i = 0; i < count; i++) {
             Shape shape = overlaps.shape(i);
             Body body = shape == null || shape.isSensor() ? null : shape.body();
-            if (body != null && body.type() == BodyType.DYNAMIC && body.attachment(Proxy.class) == null
-                    && body != proxy.ignoredBase && body.ignoredTag() != tag) {
+            if (body != null
+                    && body.type() == BodyType.DYNAMIC
+                    && body.attachment(Proxy.class) == null
+                    && body != proxy.ignoredBase
+                    && body.ignoredTag() != tag) {
                 return true;
             }
         }
@@ -926,8 +979,15 @@ public final class EntityProxies implements AutoCloseable {
         if (mx * mx + my * my + mz * mz < 1.0e-8) {
             return false;
         }
-        return nearABody(proxy, entity.getBoundingBox(), proxy.targetX - entity.getX(), proxy.targetY - entity.getY(),
-                proxy.targetZ - entity.getZ(), mx, my, mz);
+        return nearABody(
+                proxy,
+                entity.getBoundingBox(),
+                proxy.targetX - entity.getX(),
+                proxy.targetY - entity.getY(),
+                proxy.targetZ - entity.getZ(),
+                mx,
+                my,
+                mz);
     }
 
     /**
@@ -944,9 +1004,14 @@ public final class EntityProxies implements AutoCloseable {
         for (int i = 0; i < movable; i++) {
             Body body = movableBodies[i];
             int o = 6 * i;
-            if (movableBounds[o] <= maxX && movableBounds[o + 3] >= minX && movableBounds[o + 1] <= maxY
-                    && movableBounds[o + 4] >= minY && movableBounds[o + 2] <= maxZ && movableBounds[o + 5] >= minZ
-                    && body != proxy.ignoredBase && body.ignoredTag() != tag) {
+            if (movableBounds[o] <= maxX
+                    && movableBounds[o + 3] >= minX
+                    && movableBounds[o + 1] <= maxY
+                    && movableBounds[o + 4] >= minY
+                    && movableBounds[o + 2] <= maxZ
+                    && movableBounds[o + 5] >= minZ
+                    && body != proxy.ignoredBase
+                    && body.ignoredTag() != tag) {
                 return true;
             }
         }
@@ -1023,24 +1088,30 @@ public final class EntityProxies implements AutoCloseable {
 
     static final class Proxy {
         final Entity entity;
+
         @Nullable
         final EntityShapes.Provider provider;
         /** the entity's size its shapes were made for */
         float width, height;
         /** kg; infinite for an entity no body moves */
         float mass;
+
         Body body;
         /**
          * force-capped ({@link #cap}): dynamic, pulled by this joint after this target and kept upright by the other; the
          * last tick it came onto a body
          */
         boolean capped;
+
         @Nullable
         Joint drive;
+
         @Nullable
         Joint upright;
+
         @Nullable
         Body target;
+
         long pressedTick = Long.MIN_VALUE / 2;
         long lastSeen;
         /** where the entity was at the last update, and where its proxy was driven to */
@@ -1049,6 +1120,7 @@ public final class EntityProxies implements AutoCloseable {
         boolean wasOnGround, stepped;
         /** what this tick's steps pushed the entity by, m/s, and the body that pushed hardest */
         float pushX, pushY, pushZ, strongest, approach;
+
         @Nullable
         Body pusher;
         /** the bodies that ran into it in this tick's steps */
@@ -1058,25 +1130,31 @@ public final class EntityProxies implements AutoCloseable {
         /** the body the entity weighs on this tick, with its weight (N) and where */
         @Nullable
         Body weighs;
+
         float weight;
         double weighX, weighY, weighZ;
         /** the base the proxy does not collide with, and the joint that says so */
         @Nullable
         Body ignoredBase;
+
         @Nullable
         Joint ignoring;
+
         boolean clientMoved;
         /** {@link EntityAuthority#pushesShowLate}: this tick's answer */
         boolean pushesShowLate;
         /** m/s: pushes given to an entity whose pushes show late that it has not shown yet, and for how many ticks */
         float unechoedX, unechoedY, unechoedZ;
+
         int unechoedTicks;
         /** what it can give this tick: standing on something; the way it was held last tick (unit, or zero) */
         boolean supported;
+
         float heldX, heldY, heldZ;
         /** the push it was last given (m/s), and its tick then: whether it went is seen once it has ticked since */
         @Nullable
         Vec3 pushGiven;
+
         int pushTick;
 
         Proxy(Entity entity, @Nullable EntityShapes.Provider provider, float mass) {

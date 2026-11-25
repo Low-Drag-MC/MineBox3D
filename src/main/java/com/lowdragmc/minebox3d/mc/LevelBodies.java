@@ -15,12 +15,10 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class LevelBodies {
 
-    private LevelBodies() {
-    }
+    private LevelBodies() {}
 
     /** null = not set: follows the body's type */
-    private record Wants(@Nullable Boolean terrain, @Nullable Boolean pushedByEntities, boolean synced) {
-    }
+    private record Wants(@Nullable Boolean terrain, @Nullable Boolean pushedByEntities, boolean synced) {}
 
     private static final Wants UNSET = new Wants(null, null, false);
 

@@ -45,7 +45,8 @@ public final class BodyBatch {
      */
     public void setTargetTransforms(double[] transforms, float timeStep) {
         if (transforms.length < ids.length * TRANSFORM) {
-            throw new IllegalArgumentException(transforms.length + " doubles for " + ids.length + " bodies' transforms");
+            throw new IllegalArgumentException(
+                    transforms.length + " doubles for " + ids.length + " bodies' transforms");
         }
         for (int i = 0; i < ids.length; i++) {
             int o = i * TRANSFORM;
@@ -53,7 +54,8 @@ public final class BodyBatch {
             double qx = transforms[o + 3], qy = transforms[o + 4], qz = transforms[o + 5], qw = transforms[o + 6];
             double length = Math.sqrt(qx * qx + qy * qy + qz * qz + qw * qw);
             if (!(length > 1e-6) || !Double.isFinite(length)) {
-                throw new IllegalArgumentException("target rotation has no direction: (" + qx + ", " + qy + ", " + qz + ", " + qw + ")");
+                throw new IllegalArgumentException(
+                        "target rotation has no direction: (" + qx + ", " + qy + ", " + qz + ", " + qw + ")");
             }
         }
         world.enter();

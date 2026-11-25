@@ -28,7 +28,8 @@ public final class NativeLoadGameTest {
             return;
         }
         // the GameTest run deliberately sets no minebox3d.native.path (build.gradle)
-        helper.assertTrue(NativeLibrary.loadedFromJar(),
+        helper.assertTrue(
+                NativeLibrary.loadedFromJar(),
                 "loaded from " + NativeLibrary.loadedFrom() + " rather than the mod's resources");
         helper.assertTrue(B3.isDoublePrecision(), "double precision");
         helper.succeed();
@@ -42,7 +43,8 @@ public final class NativeLoadGameTest {
         try {
             long ground = B3.createBody(world, new BodyDef());
             B3.createBoxShape(ground, new ShapeDef(), 5, 0.5f, 5, 0, 0, 0, 0, 0, 0, 1);
-            long ball = B3.createBody(world, new BodyDef().type(BodyType.DYNAMIC).position(0, 3, 0));
+            long ball =
+                    B3.createBody(world, new BodyDef().type(BodyType.DYNAMIC).position(0, 3, 0));
             B3.createSphereShape(ball, new ShapeDef(), 0, 0, 0, 0.25f);
             for (int i = 0; i < 180; i++) {
                 B3.worldStep(world, 1 / 60f, 4);

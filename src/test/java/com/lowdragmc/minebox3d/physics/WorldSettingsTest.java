@@ -1,13 +1,12 @@
 package com.lowdragmc.minebox3d.physics;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.lowdragmc.minebox3d.internal.B3;
+import java.util.List;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * <b>A world's second round of API</b> (design doc {@code 03-threading-and-api.md} §6.4 item 4): explosions, the

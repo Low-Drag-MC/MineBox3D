@@ -7,12 +7,14 @@ package com.lowdragmc.minebox3d.physics;
 public final class RevoluteJointDef extends JointDef<RevoluteJoint, RevoluteJointDef> {
     /** Radians, -π to π: the angle the spring pulls towards. */
     public float targetAngle;
+
     public boolean enableSpring;
     public float hertz;
     public float dampingRatio;
     public boolean enableLimit;
     /** Radians, Box3D clamps both to ±0.99π. */
     public float lowerAngle, upperAngle;
+
     public boolean enableMotor;
     /** N·m */
     public float maxMotorTorque;

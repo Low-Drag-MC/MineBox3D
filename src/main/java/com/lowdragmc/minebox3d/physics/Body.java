@@ -1,16 +1,15 @@
 package com.lowdragmc.minebox3d.physics;
 
 import com.lowdragmc.minebox3d.internal.B3;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Quaternionfc;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * A rigid body in a {@link PhysicsWorld}: a handle to Box3D's body plus two copies of its transform —
@@ -33,18 +32,23 @@ public final class Body {
     private final List<Joint> joints = new ArrayList<>(0);
     /** [px, py, pz, qx, qy, qz, qw] */
     final double[] current = new double[7];
+
     final double[] previous = new double[7];
     /** whether {@link #current} changed in the current interpolation frame */
     boolean movedThisFrame;
+
     private final float[] state = new float[STATE];
     private boolean boundsKnown, velocityKnown;
     /** the world's {@link PhysicsWorld#motionEpoch} when the velocities were last known */
     private int velocityEpoch;
     /** kept on this side: asked for every tick by the terrain streamer, and only this class changes it */
     private BodyType type;
+
     private final Attachments attachments = new Attachments();
+
     @Nullable
     private final String name;
+
     private final long userData;
     private int shapesRevision;
     private int massRevision;
@@ -151,31 +155,36 @@ public final class Body {
             Checks.shapeDef(def);
             Checks.geometry(geometry);
             geometry = Geometry.asBuilt(geometry);
-            long shapeId = switch (geometry) {
-                case Geometry.Sphere s -> B3.createSphereShape(id, def, s.cx(), s.cy(), s.cz(), s.radius());
-                case Geometry.Capsule c -> B3.createCapsuleShape(id, def, c.ax(), c.ay(), c.az(), c.bx(), c.by(), c.bz(), c.radius());
-                case Geometry.Box b -> B3.createBoxShape(id, def, b.hx(), b.hy(), b.hz(), b.cx(), b.cy(), b.cz(),
-                        b.qx(), b.qy(), b.qz(), b.qw());
-                case Geometry.Hull h -> B3.createHullShape(id, def, h.points(), h.vertexCount());
-                case Geometry.Mesh m -> {
-                    m.data().retain();
-                    try {
-                        yield B3.createMeshShape(id, def, m.data().pointer(), m.sx(), m.sy(), m.sz());
-                    } catch (RuntimeException e) {
-                        m.data().release();
-                        throw e;
-                    }
-                }
-                case Geometry.HeightField f -> {
-                    f.data().retain();
-                    try {
-                        yield B3.createHeightFieldShape(id, def, f.data().pointer());
-                    } catch (RuntimeException e) {
-                        f.data().release();
-                        throw e;
-                    }
-                }
-            };
+            long shapeId =
+                    switch (geometry) {
+                        case Geometry.Sphere s -> B3.createSphereShape(id, def, s.cx(), s.cy(), s.cz(), s.radius());
+                        case Geometry.Capsule c ->
+                            B3.createCapsuleShape(id, def, c.ax(), c.ay(), c.az(), c.bx(), c.by(), c.bz(), c.radius());
+                        case Geometry.Box b ->
+                            B3.createBoxShape(
+                                    id, def, b.hx(), b.hy(), b.hz(), b.cx(), b.cy(), b.cz(), b.qx(), b.qy(), b.qz(),
+                                    b.qw());
+                        case Geometry.Hull h -> B3.createHullShape(id, def, h.points(), h.vertexCount());
+                        case Geometry.Mesh m -> {
+                            m.data().retain();
+                            try {
+                                yield B3.createMeshShape(id, def, m.data().pointer(), m.sx(), m.sy(), m.sz());
+                            } catch (RuntimeException e) {
+                                m.data().release();
+                                throw e;
+                            }
+                        }
+                        case Geometry.HeightField f -> {
+                            f.data().retain();
+                            try {
+                                yield B3.createHeightFieldShape(
+                                        id, def, f.data().pointer());
+                            } catch (RuntimeException e) {
+                                f.data().release();
+                                throw e;
+                            }
+                        }
+                    };
             Shape shape = new Shape(this, shapeId, geometry);
             shapes.add(shape);
             world.registerShape(shape);
@@ -267,11 +276,13 @@ public final class Body {
      * correction is still fading ({@link #addRenderError}), that far off.
      */
     public Vector3d renderPosition(float partial, Vector3d out) {
-        out.set(previous[0] + (current[0] - previous[0]) * partial,
+        out.set(
+                previous[0] + (current[0] - previous[0]) * partial,
                 previous[1] + (current[1] - previous[1]) * partial,
                 previous[2] + (current[2] - previous[2]) * partial);
         if (error != null) {
-            out.add(error.start[0] + (error.end[0] - error.start[0]) * partial,
+            out.add(
+                    error.start[0] + (error.end[0] - error.start[0]) * partial,
                     error.start[1] + (error.end[1] - error.start[1]) * partial,
                     error.start[2] + (error.end[2] - error.start[2]) * partial);
         }
@@ -280,7 +291,9 @@ public final class Body {
 
     public Quaternionf renderRotation(float partial, Quaternionf out) {
         out.set((float) previous[3], (float) previous[4], (float) previous[5], (float) previous[6]);
-        out.slerp(new Quaternionf((float) current[3], (float) current[4], (float) current[5], (float) current[6]), partial);
+        out.slerp(
+                new Quaternionf((float) current[3], (float) current[4], (float) current[5], (float) current[6]),
+                partial);
         if (error != null) {
             out.premul(new Quaternionf(error.turnStart).slerp(error.turnEnd, partial));
         }
@@ -343,7 +356,7 @@ public final class Body {
         System.arraycopy(e.end, 0, e.start, 0, 3);
         e.turnStart.set(e.turnEnd);
         if (e.frames == 0) {
-            error = null;   // the frame that ended on none is drawn: done
+            error = null; // the frame that ended on none is drawn: done
             return false;
         }
         e.frames--;
@@ -393,8 +406,21 @@ public final class Body {
      * simulation run on from here takes the very numbers it took the first time — the velocities, awake or not. Part of
      * the frame's motion, not a teleport: the frame it is drawn from stays.
      */
-    void restore(double x, double y, double z, float qx, float qy, float qz, float qw, float vx, float vy, float vz,
-                 float wx, float wy, float wz, boolean awake) {
+    void restore(
+            double x,
+            double y,
+            double z,
+            float qx,
+            float qy,
+            float qz,
+            float qw,
+            float vx,
+            float vy,
+            float vz,
+            float wx,
+            float wy,
+            float wz,
+            boolean awake) {
         world.enter();
         try {
             checkValid();
@@ -706,9 +732,15 @@ public final class Body {
     // ---- settings -----------------------------------------------------------------------------
 
     // the bridge's numbers (mb3_body.c)
-    private static final int LINEAR_DAMPING = 0, ANGULAR_DAMPING = 1, GRAVITY_SCALE = 2, SLEEP_THRESHOLD = 3,
+    private static final int LINEAR_DAMPING = 0,
+            ANGULAR_DAMPING = 1,
+            GRAVITY_SCALE = 2,
+            SLEEP_THRESHOLD = 3,
             SAFETY_FACTOR = 4;
-    private static final int BULLET = 0, SLEEP_ENABLED = 1, FAST_ROTATION = 2, CONTACT_RECYCLING = 3,
+    private static final int BULLET = 0,
+            SLEEP_ENABLED = 1,
+            FAST_ROTATION = 2,
+            CONTACT_RECYCLING = 3,
             FIXED_ROTATION = 4;
 
     private void setFloat(int param, float value) {
@@ -865,7 +897,8 @@ public final class Body {
     // ---- queries against this body only -------------------------------------------------------
 
     /** The closest of this body's shapes along {@code origin + translation} that {@code filter} lets through. */
-    public boolean castRay(double ox, double oy, double oz, float tx, float ty, float tz, QueryFilter filter, CastResult out) {
+    public boolean castRay(
+            double ox, double oy, double oz, float tx, float ty, float tz, QueryFilter filter, CastResult out) {
         world.enter();
         try {
             checkValid();
@@ -873,7 +906,8 @@ public final class Body {
             Checks.finite(tx, ty, tz, "ray translation");
             CastHits hit = out.hit;
             hit.clear(world);
-            if (B3.bodyCastRay(id, ox, oy, oz, tx, ty, tz, filter.categoryBits(), filter.maskBits(), hit.doubles, hit.longs)) {
+            if (B3.bodyCastRay(
+                    id, ox, oy, oz, tx, ty, tz, filter.categoryBits(), filter.maskBits(), hit.doubles, hit.longs)) {
                 hit.count = 1;
             }
             return hit.count > 0;
@@ -886,8 +920,17 @@ public final class Body {
      * The closest hit of {@code geometry} at {@code (x, y, z)} turned by {@code rotation}, moved by {@code translation},
      * on this body's shapes only; touching at the start hits at fraction 0.
      */
-    public boolean castShape(Geometry geometry, double x, double y, double z, Quaternionfc rotation, float tx, float ty,
-                             float tz, QueryFilter filter, CastResult out) {
+    public boolean castShape(
+            Geometry geometry,
+            double x,
+            double y,
+            double z,
+            Quaternionfc rotation,
+            float tx,
+            float ty,
+            float tz,
+            QueryFilter filter,
+            CastResult out) {
         world.enter();
         try {
             checkValid();
@@ -896,8 +939,21 @@ public final class Body {
             int count = world.queryProxy(geometry, rotation);
             CastHits hit = out.hit;
             hit.clear(world);
-            if (B3.bodyCastShape(id, x, y, z, world.queryPoints, count, world.queryRadius, tx, ty, tz, filter.categoryBits(),
-                    filter.maskBits(), hit.doubles, hit.longs)) {
+            if (B3.bodyCastShape(
+                    id,
+                    x,
+                    y,
+                    z,
+                    world.queryPoints,
+                    count,
+                    world.queryRadius,
+                    tx,
+                    ty,
+                    tz,
+                    filter.categoryBits(),
+                    filter.maskBits(),
+                    hit.doubles,
+                    hit.longs)) {
                 hit.count = 1;
             }
             return hit.count > 0;
@@ -907,14 +963,15 @@ public final class Body {
     }
 
     /** Whether {@code geometry} at {@code (x, y, z)} turned by {@code rotation} overlaps one of this body's shapes. */
-    public boolean overlaps(Geometry geometry, double x, double y, double z, Quaternionfc rotation, QueryFilter filter) {
+    public boolean overlaps(
+            Geometry geometry, double x, double y, double z, Quaternionfc rotation, QueryFilter filter) {
         world.enter();
         try {
             checkValid();
             Checks.finite(x, y, z, "overlap position");
             int count = world.queryProxy(geometry, rotation);
-            return B3.bodyOverlapShape(id, x, y, z, world.queryPoints, count, world.queryRadius, filter.categoryBits(),
-                    filter.maskBits());
+            return B3.bodyOverlapShape(
+                    id, x, y, z, world.queryPoints, count, world.queryRadius, filter.categoryBits(), filter.maskBits());
         } finally {
             world.exit();
         }

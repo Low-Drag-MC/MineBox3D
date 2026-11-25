@@ -36,7 +36,8 @@ public abstract class LocalPlayerMixin {
     private void minebox3d$turnedByItsBase(float partialTick, CallbackInfoReturnable<Float> cir) {
         LocalPlayer self = (LocalPlayer) (Object) this;
         if (!self.isPassenger() && EntityBases.turnsWithItsBase(self)) {
-            cir.setReturnValue(partialTick == 1.0F ? self.getYRot() : Mth.lerp(partialTick, self.yRotO, self.getYRot()));
+            cir.setReturnValue(
+                    partialTick == 1.0F ? self.getYRot() : Mth.lerp(partialTick, self.yRotO, self.getYRot()));
         }
     }
 
@@ -56,7 +57,9 @@ public abstract class LocalPlayerMixin {
         minebox3d$tell((Entity) (Object) this, false);
     }
 
-    @Inject(method = "tick", at = @At(value = "NEW", target = "net/minecraft/network/protocol/game/ServerboundMoveVehiclePacket"))
+    @Inject(
+            method = "tick",
+            at = @At(value = "NEW", target = "net/minecraft/network/protocol/game/ServerboundMoveVehiclePacket"))
     private void minebox3d$vehicleStanding(CallbackInfo ci) {
         minebox3d$tell(((Entity) (Object) this).getRootVehicle(), true);
     }

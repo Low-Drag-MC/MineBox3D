@@ -6,8 +6,7 @@ package com.lowdragmc.minebox3d.physics;
  */
 final class JointParam {
 
-    private JointParam() {
-    }
+    private JointParam() {}
 
     static final int FORCE_THRESHOLD = 0;
     static final int TORQUE_THRESHOLD = 1;

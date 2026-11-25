@@ -6,15 +6,14 @@ import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.MassData;
 import com.lowdragmc.minebox3d.physics.SurfaceMaterial;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * <b>One tick of synced bodies for one player</b> (design doc {@code 04-entities-and-bodies.md} §10): the bodies it
@@ -27,8 +26,15 @@ import java.util.List;
  * on the client thread): a hull is Box3D's to build, and decoding must not need Box3D — the payload is read on the
  * network thread, and a decoding error drops the connection.
  */
-public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] removals, boolean settled, long tick,
-                              int frame, List<Tuning> tunings) implements CustomPacketPayload {
+public record BodySyncPayload(
+        List<Spawn> spawns,
+        List<State> states,
+        int[] removals,
+        boolean settled,
+        long tick,
+        int frame,
+        List<Tuning> tunings)
+        implements CustomPacketPayload {
 
     /** {@link #frame} for a player that predicts nothing. */
     public static final int NO_FRAME = Integer.MIN_VALUE;
@@ -37,13 +43,15 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
      * Nothing changed but this: the client now has the bodies around where its player was last put (a teleport, a respawn,
      * joining), so its player, held there till then (SyncedRiders), may move — and not fall through one still on its way.
      */
-    public static final BodySyncPayload SETTLED = new BodySyncPayload(List.of(), List.of(), new int[0], true, 0, NO_FRAME);
+    public static final BodySyncPayload SETTLED =
+            new BodySyncPayload(List.of(), List.of(), new int[0], true, 0, NO_FRAME);
 
     public BodySyncPayload(List<Spawn> spawns, List<State> states, int[] removals) {
         this(spawns, states, removals, false, 0, NO_FRAME);
     }
 
-    public BodySyncPayload(List<Spawn> spawns, List<State> states, int[] removals, boolean settled, long tick, int frame) {
+    public BodySyncPayload(
+            List<Spawn> spawns, List<State> states, int[] removals, boolean settled, long tick, int frame) {
         this(spawns, states, removals, settled, tick, frame, List.of());
     }
 
@@ -51,10 +59,10 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
      * A body's {@link Dynamics} anew, its damping, gravity scale or fixed rotation changed: put on its replica where it
      * is, rather than the replica made again — a physics character turns its gravity off and on at every jump.
      */
-    public record Tuning(int id, Dynamics dynamics) {
-    }
+    public record Tuning(int id, Dynamics dynamics) {}
 
-    public static final Type<BodySyncPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(MineBox3D.MOD_ID, "bodies"));
+    public static final Type<BodySyncPayload> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(MineBox3D.MOD_ID, "bodies"));
     public static final StreamCodec<FriendlyByteBuf, BodySyncPayload> CODEC =
             StreamCodec.of((buffer, payload) -> payload.write(buffer), BodySyncPayload::read);
 
@@ -63,19 +71,51 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
      * (EntityStudio doc 61 §3.9): {@code whole}, all it touches is what a client has — the blocks, the entities, synced
      * bodies sent whole — and {@code joints}, how many joints hold it, which a client must hold it by as well.
      */
-    public record State(int id, double x, double y, double z, float qx, float qy, float qz, float qw, float vx, float vy,
-                        float vz, float wx, float wy, float wz, boolean whole, int joints) {
+    public record State(
+            int id,
+            double x,
+            double y,
+            double z,
+            float qx,
+            float qy,
+            float qz,
+            float qw,
+            float vx,
+            float vy,
+            float vz,
+            float wx,
+            float wy,
+            float wz,
+            boolean whole,
+            int joints) {
 
         /** A body touching only what a client has, and held by no joint. */
-        public State(int id, double x, double y, double z, float qx, float qy, float qz, float qw, float vx, float vy,
-                     float vz, float wx, float wy, float wz) {
+        public State(
+                int id,
+                double x,
+                double y,
+                double z,
+                float qx,
+                float qy,
+                float qz,
+                float qw,
+                float vx,
+                float vy,
+                float vz,
+                float wx,
+                float wy,
+                float wz) {
             this(id, x, y, z, qx, qy, qz, qw, vx, vy, vz, wx, wy, wz, true, 0);
         }
 
         /** Finite, and a rotation that can be made a unit one: what a replica may be driven to. */
         boolean isUsable() {
             float q = qx * qx + qy * qy + qz * qz + qw * qw;
-            return Double.isFinite(x) && Double.isFinite(y) && Double.isFinite(z) && q > 0.5f && q < 1.5f
+            return Double.isFinite(x)
+                    && Double.isFinite(y)
+                    && Double.isFinite(z)
+                    && q > 0.5f
+                    && q < 1.5f
                     && Float.isFinite(vx + vy + vz + wx + wy + wz);
         }
     }
@@ -85,34 +125,89 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
      * is a sensor (which on the client stays one, rather than becoming a solid box), its surface — what the client's
      * own bodies slide and bounce on it by — and whether entities step up onto it (the client moves its player).
      */
-    public record SyncedShape(byte kind, float[] values, long categoryBits, long maskBits, int groupIndex, boolean sensor,
-                              float friction, float restitution, float rollingResistance, StepUpOn stepUpOn) {
+    public record SyncedShape(
+            byte kind,
+            float[] values,
+            long categoryBits,
+            long maskBits,
+            int groupIndex,
+            boolean sensor,
+            float friction,
+            float restitution,
+            float rollingResistance,
+            StepUpOn stepUpOn) {
 
         static final byte SPHERE = 0, CAPSULE = 1, BOX = 2, HULL = 3;
         private static final StepUpOn[] STEP_UP_ON = StepUpOn.values();
 
         /** Whether a shape of this geometry is sent: not a mesh or height field, whose whole data would be. */
         static boolean isSent(Geometry geometry) {
-            return geometry instanceof Geometry.Sphere || geometry instanceof Geometry.Capsule
-                    || geometry instanceof Geometry.Box || geometry instanceof Geometry.Hull;
+            return geometry instanceof Geometry.Sphere
+                    || geometry instanceof Geometry.Capsule
+                    || geometry instanceof Geometry.Box
+                    || geometry instanceof Geometry.Hull;
         }
 
         /** {@code null} for what is not sent in this version ({@link #isSent}). */
         @Nullable
-        static SyncedShape of(Geometry geometry, long categoryBits, long maskBits, int groupIndex, boolean sensor,
-                              SurfaceMaterial surface, StepUpOn stepUpOn) {
+        static SyncedShape of(
+                Geometry geometry,
+                long categoryBits,
+                long maskBits,
+                int groupIndex,
+                boolean sensor,
+                SurfaceMaterial surface,
+                StepUpOn stepUpOn) {
             return switch (geometry) {
-                case Geometry.Sphere s -> new SyncedShape(SPHERE, new float[]{s.cx(), s.cy(), s.cz(), s.radius()},
-                        categoryBits, maskBits, groupIndex, sensor, surface.friction, surface.restitution,
-                        surface.rollingResistance, stepUpOn);
-                case Geometry.Capsule c -> new SyncedShape(CAPSULE, new float[]{c.ax(), c.ay(), c.az(), c.bx(), c.by(),
-                        c.bz(), c.radius()}, categoryBits, maskBits, groupIndex, sensor, surface.friction,
-                        surface.restitution, surface.rollingResistance, stepUpOn);
-                case Geometry.Box b -> new SyncedShape(BOX, new float[]{b.hx(), b.hy(), b.hz(), b.cx(), b.cy(), b.cz(),
-                        b.qx(), b.qy(), b.qz(), b.qw()}, categoryBits, maskBits, groupIndex, sensor, surface.friction,
-                        surface.restitution, surface.rollingResistance, stepUpOn);
-                case Geometry.Hull h -> new SyncedShape(HULL, h.points().clone(), categoryBits, maskBits, groupIndex, sensor,
-                        surface.friction, surface.restitution, surface.rollingResistance, stepUpOn);
+                case Geometry.Sphere s ->
+                    new SyncedShape(
+                            SPHERE,
+                            new float[] {s.cx(), s.cy(), s.cz(), s.radius()},
+                            categoryBits,
+                            maskBits,
+                            groupIndex,
+                            sensor,
+                            surface.friction,
+                            surface.restitution,
+                            surface.rollingResistance,
+                            stepUpOn);
+                case Geometry.Capsule c ->
+                    new SyncedShape(
+                            CAPSULE,
+                            new float[] {c.ax(), c.ay(), c.az(), c.bx(), c.by(), c.bz(), c.radius()},
+                            categoryBits,
+                            maskBits,
+                            groupIndex,
+                            sensor,
+                            surface.friction,
+                            surface.restitution,
+                            surface.rollingResistance,
+                            stepUpOn);
+                case Geometry.Box b ->
+                    new SyncedShape(
+                            BOX,
+                            new float[] {b.hx(), b.hy(), b.hz(), b.cx(), b.cy(), b.cz(), b.qx(), b.qy(), b.qz(), b.qw()
+                            },
+                            categoryBits,
+                            maskBits,
+                            groupIndex,
+                            sensor,
+                            surface.friction,
+                            surface.restitution,
+                            surface.rollingResistance,
+                            stepUpOn);
+                case Geometry.Hull h ->
+                    new SyncedShape(
+                            HULL,
+                            h.points().clone(),
+                            categoryBits,
+                            maskBits,
+                            groupIndex,
+                            sensor,
+                            surface.friction,
+                            surface.restitution,
+                            surface.rollingResistance,
+                            stepUpOn);
                 default -> null;
             };
         }
@@ -166,8 +261,17 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
      * do not is as heavy as a wall to them; and its damping, gravity scale and fixed rotation, which a client simulating
      * it moves it by. Sent only for a dynamic body.
      */
-    public record Dynamics(float mass, float cx, float cy, float cz, float[] inertia, boolean pushedByEntities,
-                           float linearDamping, float angularDamping, float gravityScale, boolean fixedRotation) {
+    public record Dynamics(
+            float mass,
+            float cx,
+            float cy,
+            float cz,
+            float[] inertia,
+            boolean pushedByEntities,
+            float linearDamping,
+            float angularDamping,
+            float gravityScale,
+            boolean fixedRotation) {
 
         /** Undamped, falling as the world does, free to turn. */
         public Dynamics(float mass, float cx, float cy, float cz, float[] inertia, boolean pushedByEntities) {
@@ -177,8 +281,17 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
         static Dynamics of(MassData data, Body body, boolean pushedByEntities) {
             float[] inertia = new float[9];
             data.inertia.get(inertia);
-            return new Dynamics(data.mass, data.centerX, data.centerY, data.centerZ, inertia, pushedByEntities,
-                    body.linearDamping(), body.angularDamping(), body.gravityScale(), body.isFixedRotation());
+            return new Dynamics(
+                    data.mass,
+                    data.centerX,
+                    data.centerY,
+                    data.centerZ,
+                    inertia,
+                    pushedByEntities,
+                    body.linearDamping(),
+                    body.angularDamping(),
+                    body.gravityScale(),
+                    body.isFixedRotation());
         }
 
         MassData into(MassData out) {
@@ -196,8 +309,11 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
         }
 
         boolean isUsable() {
-            if (!(mass > 0) || !Float.isFinite(mass + cx + cy + cz + gravityScale) || !(linearDamping >= 0)
-                    || !(angularDamping >= 0) || !Float.isFinite(linearDamping + angularDamping)) {
+            if (!(mass > 0)
+                    || !Float.isFinite(mass + cx + cy + cz + gravityScale)
+                    || !(linearDamping >= 0)
+                    || !(angularDamping >= 0)
+                    || !Float.isFinite(linearDamping + angularDamping)) {
                 return false;
             }
             for (float value : inertia) {
@@ -214,9 +330,16 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
      * (an entity it never meets, doc 04 §17); {@code dynamics} for a dynamic one, else {@code null}; {@code centre}, its
      * centre of mass in its own frame, for a dynamic one (a point's speed is its turn about there), else {@code null}.
      */
-    public record Spawn(int id, @Nullable String name, long userData, long tag, long ignoredTag, List<SyncedShape> shapes,
-                        State state, @Nullable Dynamics dynamics, @Nullable Vector3f centre) {
-    }
+    public record Spawn(
+            int id,
+            @Nullable String name,
+            long userData,
+            long tag,
+            long ignoredTag,
+            List<SyncedShape> shapes,
+            State state,
+            @Nullable Dynamics dynamics,
+            @Nullable Vector3f centre) {}
 
     @Override
     public Type<? extends CustomPacketPayload> type() {
@@ -308,8 +431,17 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
         for (int v = 0; v < 9; v++) {
             inertia[v] = buffer.readFloat();
         }
-        return new Dynamics(m, cx, cy, cz, inertia, buffer.readBoolean(), buffer.readFloat(), buffer.readFloat(),
-                buffer.readFloat(), buffer.readBoolean());
+        return new Dynamics(
+                m,
+                cx,
+                cy,
+                cz,
+                inertia,
+                buffer.readBoolean(),
+                buffer.readFloat(),
+                buffer.readFloat(),
+                buffer.readFloat(),
+                buffer.readBoolean());
     }
 
     static BodySyncPayload read(FriendlyByteBuf buffer) {
@@ -327,7 +459,8 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
                 byte kind = buffer.readByte();
                 int length = buffer.readVarInt();
                 int expected = SyncedShape.length(kind);
-                if (expected >= 0 ? length != expected
+                if (expected >= 0
+                        ? length != expected
                         : length < 12 || length % 3 != 0 || length > 3 * Geometry.Hull.MAX_VERTICES) {
                     throw new IllegalArgumentException("a shape of kind " + kind + " with " + length + " numbers");
                 }
@@ -335,14 +468,23 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
                 for (int v = 0; v < length; v++) {
                     values[v] = buffer.readFloat();
                 }
-                shapes.add(new SyncedShape(kind, values, buffer.readLong(), buffer.readLong(), buffer.readInt(),
-                        buffer.readBoolean(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat(),
+                shapes.add(new SyncedShape(
+                        kind,
+                        values,
+                        buffer.readLong(),
+                        buffer.readLong(),
+                        buffer.readInt(),
+                        buffer.readBoolean(),
+                        buffer.readFloat(),
+                        buffer.readFloat(),
+                        buffer.readFloat(),
                         SyncedShape.stepUpOn(buffer.readUnsignedByte())));
             }
             State state = readState(buffer, id);
             Dynamics dynamics = buffer.readBoolean() ? readDynamics(buffer) : null;
             Vector3f centre = buffer.readBoolean()
-                    ? new Vector3f(buffer.readFloat(), buffer.readFloat(), buffer.readFloat()) : null;
+                    ? new Vector3f(buffer.readFloat(), buffer.readFloat(), buffer.readFloat())
+                    : null;
             spawns.add(new Spawn(id, name, userData, tag, ignoredTag, shapes, state, dynamics, centre));
         }
         int stateCount = buffer.readVarInt();
@@ -381,9 +523,22 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
     }
 
     private static State readState(FriendlyByteBuf buffer, int id) {
-        return new State(id, buffer.readDouble(), buffer.readDouble(), buffer.readDouble(), buffer.readFloat(),
-                buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat(),
-                buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), buffer.readBoolean(),
+        return new State(
+                id,
+                buffer.readDouble(),
+                buffer.readDouble(),
+                buffer.readDouble(),
+                buffer.readFloat(),
+                buffer.readFloat(),
+                buffer.readFloat(),
+                buffer.readFloat(),
+                buffer.readFloat(),
+                buffer.readFloat(),
+                buffer.readFloat(),
+                buffer.readFloat(),
+                buffer.readFloat(),
+                buffer.readFloat(),
+                buffer.readBoolean(),
                 buffer.readUnsignedByte());
     }
 }

@@ -6,13 +6,12 @@ import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
-import net.minecraft.client.Minecraft;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * <b>Bodies to try the terrain and entity streaming with</b>, made in the <i>client</i> level's physics
@@ -27,11 +26,12 @@ final class Playground {
 
     private static final Random RANDOM = new Random();
 
-    private Playground() {
-    }
+    private Playground() {}
 
     enum Kind {
-        BOX, SPHERE, CAPSULE
+        BOX,
+        SPHERE,
+        CAPSULE
     }
 
     static int spawn(Kind kind, int count) {
@@ -50,15 +50,20 @@ final class Playground {
         for (int i = 0; i < count; i++) {
             Vec3 at = eye.add(look.scale(2 + 0.6 * i)).add(RANDOM.nextGaussian() * 0.1, 0, RANDOM.nextGaussian() * 0.1);
             Vec3 velocity = look.scale(6);
-            Body body = physics.createBody(new BodyDef().type(BodyType.DYNAMIC).position(at.x, at.y, at.z)
+            Body body = physics.createBody(new BodyDef()
+                    .type(BodyType.DYNAMIC)
+                    .position(at.x, at.y, at.z)
                     .linearVelocity((float) velocity.x, (float) velocity.y, (float) velocity.z)
-                    .angularVelocity((float) RANDOM.nextGaussian(), (float) RANDOM.nextGaussian(), (float) RANDOM.nextGaussian())
+                    .angularVelocity(
+                            (float) RANDOM.nextGaussian(), (float) RANDOM.nextGaussian(), (float) RANDOM.nextGaussian())
                     .name("playground"));
-            body.createShape(shape, switch (kind) {
-                case BOX -> Geometry.Box.of(0.3f, 0.3f, 0.3f);
-                case SPHERE -> new Geometry.Sphere(0, 0, 0, 0.3f);
-                case CAPSULE -> new Geometry.Capsule(0, -0.3f, 0, 0, 0.3f, 0, 0.2f);
-            });
+            body.createShape(
+                    shape,
+                    switch (kind) {
+                        case BOX -> Geometry.Box.of(0.3f, 0.3f, 0.3f);
+                        case SPHERE -> new Geometry.Sphere(0, 0, 0, 0.3f);
+                        case CAPSULE -> new Geometry.Capsule(0, -0.3f, 0, 0, 0.3f, 0, 0.2f);
+                    });
             body.attach(Mark.class, Mark.MARK);
         }
         return count;

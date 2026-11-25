@@ -1,7 +1,6 @@
 package com.lowdragmc.minebox3d.physics;
 
 import com.lowdragmc.minebox3d.internal.B3;
-
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;

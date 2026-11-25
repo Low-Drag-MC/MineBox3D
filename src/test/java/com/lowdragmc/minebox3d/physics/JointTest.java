@@ -1,15 +1,14 @@
 package com.lowdragmc.minebox3d.physics;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.lowdragmc.minebox3d.internal.B3;
+import java.util.List;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * <b>Joints</b> (design doc {@code 03-threading-and-api.md} §6.4): every property of every type reads back what was set
@@ -51,7 +50,8 @@ class JointTest {
             Vector3f v = new Vector3f();
             Quaternionf q = new Quaternionf();
 
-            RevoluteJoint revolute = world.createJoint(new RevoluteJointDef().bodies(a, b).worldFrame(0.5, 0, 0));
+            RevoluteJoint revolute =
+                    world.createJoint(new RevoluteJointDef().bodies(a, b).worldFrame(0.5, 0, 0));
             revolute.setForceThreshold(123);
             assertEquals(123, revolute.forceThreshold());
             revolute.setTorqueThreshold(45);
@@ -89,7 +89,8 @@ class JointTest {
             revolute.setMaxMotorTorque(17);
             assertEquals(17, revolute.maxMotorTorque());
 
-            SphericalJoint spherical = world.createJoint(new SphericalJointDef().bodies(a, b).worldFrame(0.5, 0, 0));
+            SphericalJoint spherical =
+                    world.createJoint(new SphericalJointDef().bodies(a, b).worldFrame(0.5, 0, 0));
             spherical.enableConeLimit(true);
             assertTrue(spherical.isConeLimitEnabled());
             spherical.setConeLimit(0.8f);
@@ -146,7 +147,8 @@ class JointTest {
             motor.setMaxSpringTorque(14);
             assertEquals(14, motor.maxSpringTorque());
 
-            DistanceJoint distance = world.createJoint(new DistanceJointDef().bodies(a, b).length(1));
+            DistanceJoint distance =
+                    world.createJoint(new DistanceJointDef().bodies(a, b).length(1));
             distance.setLength(1.5f);
             assertEquals(1.5f, distance.length());
             distance.enableSpring(true);
@@ -170,7 +172,8 @@ class JointTest {
             distance.setMaxMotorForce(3);
             assertEquals(3, distance.maxMotorForce());
 
-            PrismaticJoint prismatic = world.createJoint(new PrismaticJointDef().bodies(a, b).worldFrame(0.5, 0, 0));
+            PrismaticJoint prismatic =
+                    world.createJoint(new PrismaticJointDef().bodies(a, b).worldFrame(0.5, 0, 0));
             prismatic.enableSpring(true);
             assertTrue(prismatic.isSpringEnabled());
             prismatic.setSpringHertz(1.5f);
@@ -191,7 +194,8 @@ class JointTest {
             prismatic.setMaxMotorForce(21);
             assertEquals(21, prismatic.maxMotorForce());
 
-            WheelJoint wheel = world.createJoint(new WheelJointDef().bodies(a, b).worldFrame(0.5, 0, 0));
+            WheelJoint wheel =
+                    world.createJoint(new WheelJointDef().bodies(a, b).worldFrame(0.5, 0, 0));
             wheel.enableSuspension(false);
             assertFalse(wheel.isSuspensionEnabled());
             wheel.setSuspensionHertz(2.5f);
@@ -242,10 +246,13 @@ class JointTest {
             assertTrue(Float.isFinite(spherical.coneAngle()) && Float.isFinite(spherical.twistAngle()));
             assertTrue(Float.isFinite(spherical.motorTorque(v).x));
             assertTrue(Float.isFinite(distance.currentLength()) && Float.isFinite(distance.motorForce()));
-            assertTrue(Float.isFinite(prismatic.translation()) && Float.isFinite(prismatic.speed())
+            assertTrue(Float.isFinite(prismatic.translation())
+                    && Float.isFinite(prismatic.speed())
                     && Float.isFinite(prismatic.motorForce()));
-            assertTrue(Float.isFinite(wheel.spinSpeed()) && Float.isFinite(wheel.spinTorque())
-                    && Float.isFinite(wheel.steeringAngle()) && Float.isFinite(wheel.steeringTorque()));
+            assertTrue(Float.isFinite(wheel.spinSpeed())
+                    && Float.isFinite(wheel.spinTorque())
+                    && Float.isFinite(wheel.steeringAngle())
+                    && Float.isFinite(wheel.steeringTorque()));
             assertTrue(Float.isFinite(revolute.linearSeparation()) && Float.isFinite(revolute.angularSeparation()));
             assertTrue(Float.isFinite(weld.constraintForce(v).x) && Float.isFinite(weld.constraintTorque(v).x));
             assertTrue(revolute.isAwake());
@@ -452,14 +459,17 @@ class JointTest {
             assertEquals(-1.02f, h.lowerSteeringLimit());
             assertEquals(1.03f, h.upperSteeringLimit());
 
-            ParallelJoint l = world.createJoint(new ParallelJointDef().bodies(a, b).spring(1.11f, 1.12f, 1.13f));
+            ParallelJoint l =
+                    world.createJoint(new ParallelJointDef().bodies(a, b).spring(1.11f, 1.12f, 1.13f));
             assertEquals(1.11f, l.springHertz());
             assertEquals(1.12f, l.springDampingRatio());
             assertEquals(1.13f, l.maxTorque());
 
             // and the frames, from the base table
             Quaternionf turned = new Quaternionf().rotateZ(0.4f);
-            FilterJoint f = world.createJoint(new FilterJointDef().bodies(a, b).localFrameA(1.21f, 1.22f, 1.23f, turned)
+            FilterJoint f = world.createJoint(new FilterJointDef()
+                    .bodies(a, b)
+                    .localFrameA(1.21f, 1.22f, 1.23f, turned)
                     .localFrameB(-1.24f, 1.25f, -1.26f, turned));
             assertEquals(new Vector3f(1.21f, 1.22f, 1.23f), f.localPositionA(v));
             assertEquals(new Vector3f(-1.24f, 1.25f, -1.26f), f.localPositionB(v));
@@ -474,8 +484,11 @@ class JointTest {
             Body a = box(world, 0, 0, 0, 0.2f, 0.2f, 0.2f);
             Body b = box(world, 1, 0, 0, 0.2f, 0.2f, 0.2f);
             Quaternionf typed = new Quaternionf(0, 0.7071f, 0, 0.7071f); // |q|² = 0.99998: Box3D's assert says no
-            SphericalJoint joint = world.createJoint(new SphericalJointDef().bodies(a, b).localFrameA(0, 0, 0, typed)
-                    .localFrameB(0, 0, 0, typed).spring(1, 1, typed));
+            SphericalJoint joint = world.createJoint(new SphericalJointDef()
+                    .bodies(a, b)
+                    .localFrameA(0, 0, 0, typed)
+                    .localFrameB(0, 0, 0, typed)
+                    .spring(1, 1, typed));
             joint.setLocalFrameA(0.5f, 0, 0, typed);
             joint.setTargetRotation(typed);
             Quaternionf read = joint.localRotationA(new Quaternionf());
@@ -492,8 +505,11 @@ class JointTest {
             Body b = box(world, 1, 0, 0, 0.2f, 0.2f, 0.2f);
             RevoluteJoint revolute = world.createJoint(new RevoluteJointDef().bodies(a, b));
             float[] out = new float[4];
-            assertThrows(IllegalArgumentException.class, () -> B3.jointGet(revolute.id(), JointParam.SPHERICAL_HERTZ, out));
-            assertThrows(IllegalArgumentException.class, () -> B3.jointSet(revolute.id(), JointParam.WHEEL_SPIN_MOTOR_SPEED, 1, 0, 0, 0));
+            assertThrows(
+                    IllegalArgumentException.class, () -> B3.jointGet(revolute.id(), JointParam.SPHERICAL_HERTZ, out));
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> B3.jointSet(revolute.id(), JointParam.WHEEL_SPIN_MOTOR_SPEED, 1, 0, 0, 0));
             assertThrows(IllegalArgumentException.class, () -> B3.jointGet(revolute.id(), 9999, out));
             // the base ones work on any joint
             assertEquals(1, B3.jointGet(revolute.id(), JointParam.FORCE_THRESHOLD, out));
@@ -527,8 +543,8 @@ class JointTest {
         try (PhysicsWorld world = world(-10)) {
             Body pivot = anchor(world, 0, 5, 0);
             Body box = box(world, 0, 4.5, 0, 0.1f, 0.5f, 0.1f);
-            SphericalJoint joint = world.createJoint(new SphericalJointDef().bodies(pivot, box)
-                    .worldFrame(0, 5, 0, new Quaternionf().rotateX(PI / 2)));
+            SphericalJoint joint = world.createJoint(
+                    new SphericalJointDef().bodies(pivot, box).worldFrame(0, 5, 0, new Quaternionf().rotateX(PI / 2)));
             if (limited) {
                 joint.enableConeLimit(true);
                 joint.setConeLimit(0.3f);
@@ -559,7 +575,9 @@ class JointTest {
             Body hub = anchor(world, 0, 0, 0);
             Body plank = world.createBody(new BodyDef().type(BodyType.DYNAMIC));
             plank.createShape(new ShapeDef().density(1000), Geometry.Box.of(1, 0.1f, 0.1f, 1, 0, 0));
-            RevoluteJoint hinge = world.createJoint(new RevoluteJointDef().bodies(hub, plank).worldFrame(0, 0, 0)
+            RevoluteJoint hinge = world.createJoint(new RevoluteJointDef()
+                    .bodies(hub, plank)
+                    .worldFrame(0, 0, 0)
                     .motor(1.0e5f, 2));
             steps(world, 30);
             Vector3f w = plank.angularVelocity(new Vector3f());
@@ -605,8 +623,10 @@ class JointTest {
             Body rail = anchor(world, 0, 5, 0);
             Body slider = box(world, 0, 5, 0, 0.2f, 0.2f, 0.2f);
             // frame x pointing down: gravity slides it along the axis
-            PrismaticJoint joint = world.createJoint(new PrismaticJointDef().bodies(rail, slider)
-                    .worldFrame(0, 5, 0, new Quaternionf().rotateZ(-PI / 2)).limits(0, 1));
+            PrismaticJoint joint = world.createJoint(new PrismaticJointDef()
+                    .bodies(rail, slider)
+                    .worldFrame(0, 5, 0, new Quaternionf().rotateZ(-PI / 2))
+                    .limits(0, 1));
             slider.setLinearVelocity(3, 0, 2);
             steps(world, 120);
             assertEquals(1, joint.translation(), 0.02, "slid down to the limit");
@@ -623,7 +643,8 @@ class JointTest {
         try (PhysicsWorld world = world(-10)) {
             Body pivot = anchor(world, 0, 5, 0);
             Body bob = box(world, 2, 5, 0, 0.1f, 0.1f, 0.1f);
-            DistanceJoint rod = world.createJoint(new DistanceJointDef().bodies(pivot, bob).length(2));
+            DistanceJoint rod =
+                    world.createJoint(new DistanceJointDef().bodies(pivot, bob).length(2));
             for (int i = 0; i < 120; i++) {
                 steps(world, 1);
                 assertEquals(2, rod.currentLength(), 0.02, "a rod keeps its length while it swings");
@@ -632,8 +653,11 @@ class JointTest {
         try (PhysicsWorld world = world(-10)) {
             Body pivot = anchor(world, 0, 5, 0);
             Body bob = box(world, 0, 4, 0, 0.1f, 0.1f, 0.1f);
-            DistanceJoint rope = world.createJoint(new DistanceJointDef().bodies(pivot, bob).length(1)
-                    .spring(0, 0).limits(0.5f, 2.5f));
+            DistanceJoint rope = world.createJoint(new DistanceJointDef()
+                    .bodies(pivot, bob)
+                    .length(1)
+                    .spring(0, 0)
+                    .limits(0.5f, 2.5f));
             float longest = 0;
             for (int i = 0; i < 120; i++) {
                 steps(world, 1);
@@ -649,8 +673,10 @@ class JointTest {
         try (PhysicsWorld world = world(0)) {
             Body base = anchor(world, 0, 0, 0);
             Body puppet = box(world, 0, 0, 0, 0.2f, 0.2f, 0.2f);
-            MotorJoint motor = world.createJoint(new MotorJointDef().bodies(base, puppet)
-                    .linearSpring(4, 1, 1.0e5f).angularSpring(4, 1, 1.0e5f)
+            MotorJoint motor = world.createJoint(new MotorJointDef()
+                    .bodies(base, puppet)
+                    .linearSpring(4, 1, 1.0e5f)
+                    .angularSpring(4, 1, 1.0e5f)
                     .localFrameA(3, 0, 0, new Quaternionf()));
             steps(world, 180);
             assertEquals(0, puppet.position(new Vector3d()).distance(3, 0, 0), 0.05, "at the target");
@@ -667,7 +693,9 @@ class JointTest {
             Body chassis = anchor(world, 0, 0, 0);
             Body wheel = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(1, 0, 0));
             wheel.createShape(new ShapeDef().density(1000), new Geometry.Sphere(0, 0, 0, 0.3f));
-            WheelJoint joint = world.createJoint(new WheelJointDef().bodies(chassis, wheel).worldFrame(1, 0, 0)
+            WheelJoint joint = world.createJoint(new WheelJointDef()
+                    .bodies(chassis, wheel)
+                    .worldFrame(1, 0, 0)
                     .spinMotor(1.0e4f, 5));
             steps(world, 60);
             assertEquals(5, joint.spinSpeed(), 0.05);
@@ -698,8 +726,8 @@ class JointTest {
     void aParallelJointStandsATiltedBodyBackUp() {
         try (PhysicsWorld world = world(0)) {
             Body ground = anchor(world, 0, 0, 0);
-            Body post = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 1, 0)
-                    .rotation(new Quaternionf().rotateX(0.5f)));
+            Body post = world.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(0, 1, 0).rotation(new Quaternionf().rotateX(0.5f)));
             post.createShape(new ShapeDef().density(1000), Geometry.Box.of(0.1f, 0.1f, 0.5f));
             world.createJoint(new ParallelJointDef().bodies(ground, post).spring(2, 1, 1.0e5f));
             Vector3f z = new Vector3f();
@@ -716,11 +744,14 @@ class JointTest {
         try (PhysicsWorld world = world(0)) {
             double x = 12_345_678.25, z = -9_876_543.5;
             Body a = box(world, x, 64, z, 0.3f, 0.3f, 0.3f);
-            Body b = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(x + 1.5, 64.25, z)
+            Body b = world.createBody(new BodyDef()
+                    .type(BodyType.DYNAMIC)
+                    .position(x + 1.5, 64.25, z)
                     .rotation(new Quaternionf().rotateY(0.7f)));
             b.createShape(new ShapeDef().density(1000), Geometry.Box.of(0.3f, 0.3f, 0.3f));
             Quaternionf frame = new Quaternionf().rotateX(0.3f).rotateZ(1.1f);
-            WeldJoint weld = world.createJoint(new WeldJointDef().bodies(a, b).worldFrame(x + 0.75, 64.1, z + 0.2, frame));
+            WeldJoint weld =
+                    world.createJoint(new WeldJointDef().bodies(a, b).worldFrame(x + 0.75, 64.1, z + 0.2, frame));
             steps(world, 1);
             assertEquals(0, weld.linearSeparation(), 1e-4);
             assertEquals(0, weld.angularSeparation(), 1e-4);
@@ -735,8 +766,8 @@ class JointTest {
             Body a = anchor(world, 0, 0, 0);
             Body b = box(world, 0, 0, 0, 0.2f, 0.2f, 0.2f);
             // the axis along the world's z
-            PrismaticJoint slide = world.createJoint(new PrismaticJointDef().bodies(a, b)
-                    .worldFrame(0, 0, 0, new Quaternionf().rotateY(-PI / 2)));
+            PrismaticJoint slide = world.createJoint(
+                    new PrismaticJointDef().bodies(a, b).worldFrame(0, 0, 0, new Quaternionf().rotateY(-PI / 2)));
             b.setTransform(0.3, 0.4, 7, new Quaternionf());
             assertEquals(7, slide.translation(), 1e-4, "along the frame's axis");
             assertEquals(0.5, slide.linearSeparation(), 1e-4, "off it, both ways across");
@@ -744,8 +775,8 @@ class JointTest {
 
             Body c = world.createBody(new BodyDef().type(BodyType.DYNAMIC).rotation(new Quaternionf().rotateX(1)));
             c.createShape(new ShapeDef(), Geometry.Box.of(0.2f, 0.2f, 0.2f));
-            RevoluteJoint hinge = world.createJoint(new RevoluteJointDef().bodies(a, c)
-                    .worldFrame(0, 0, 0, new Quaternionf().rotateY(0.6f)));
+            RevoluteJoint hinge = world.createJoint(
+                    new RevoluteJointDef().bodies(a, c).worldFrame(0, 0, 0, new Quaternionf().rotateY(0.6f)));
             assertEquals(0, hinge.angularSeparation(), 1e-4, "frames coincide though the bodies are turned");
             WheelJoint wheel = world.createJoint(new WheelJointDef().bodies(a, c));
             assertEquals(0, wheel.angularSeparation(), "Box3D has no measure for a wheel: 0, not a failed check");
@@ -767,7 +798,9 @@ class JointTest {
         try (PhysicsWorld world = world(0)) {
             Body hub = anchor(world, 0, 0, 0);
             Body wheel = box(world, 0, 0, 0, 0.5f, 0.5f, 0.1f);
-            RevoluteJoint hinge = world.createJoint(new RevoluteJointDef().bodies(hub, wheel).worldFrame(0, 0, 0)
+            RevoluteJoint hinge = world.createJoint(new RevoluteJointDef()
+                    .bodies(hub, wheel)
+                    .worldFrame(0, 0, 0)
                     .motor(1.0e5f, 10));
             float worst = 0;
             for (int i = 0; i < 120; i++) { // over three turns
@@ -775,7 +808,8 @@ class JointTest {
                 worst = Math.max(worst, hinge.angularSeparation());
             }
             assertTrue(worst < 0.01f, "off its axis by " + worst);
-            ParallelJoint upright = world.createJoint(new ParallelJointDef().bodies(hub, wheel).spring(0, 0, 0));
+            ParallelJoint upright =
+                    world.createJoint(new ParallelJointDef().bodies(hub, wheel).spring(0, 0, 0));
             assertTrue(upright.angularSeparation() < 0.01f, "spun about the shared z: still parallel");
         }
     }
@@ -785,7 +819,9 @@ class JointTest {
         try (PhysicsWorld world = world(-10)) {
             Body pivot = anchor(world, 0, 5, 0);
             Body box = box(world, 0, 4.5, 0, 0.1f, 0.5f, 0.1f); // 40 kg: 400 N on the joint
-            SphericalJoint joint = world.createJoint(new SphericalJointDef().bodies(pivot, box).worldFrame(0, 5, 0)
+            SphericalJoint joint = world.createJoint(new SphericalJointDef()
+                    .bodies(pivot, box)
+                    .worldFrame(0, 5, 0)
                     .thresholds(1000, Float.MAX_VALUE));
             steps(world, 10);
             assertTrue(world.events().jointEvents().isEmpty(), "under its threshold");
@@ -829,7 +865,9 @@ class JointTest {
 
             bc.destroy(false);
             assertFalse(bc.isValid());
-            assertTrue(b.joints().isEmpty() && c.joints().isEmpty() && world.joints().isEmpty());
+            assertTrue(b.joints().isEmpty()
+                    && c.joints().isEmpty()
+                    && world.joints().isEmpty());
 
             WeldJoint again = world.createJoint(new WeldJointDef().bodies(b, c));
             world.close();
@@ -839,7 +877,8 @@ class JointTest {
 
     @Test
     void whatBox3DWouldStoreAndAssertOnIsRefusedFirst() {
-        try (PhysicsWorld world = world(0); PhysicsWorld other = world(0)) {
+        try (PhysicsWorld world = world(0);
+                PhysicsWorld other = world(0)) {
             Body a = box(world, 0, 0, 0, 0.2f, 0.2f, 0.2f);
             Body b = box(world, 1, 0, 0, 0.2f, 0.2f, 0.2f);
             Body elsewhere = box(other, 0, 0, 0, 0.2f, 0.2f, 0.2f);
@@ -850,7 +889,8 @@ class JointTest {
                     () -> world.createJoint(new WeldJointDef().bodies(a, a)),
                     () -> world.createJoint(new WeldJointDef().bodies(a, elsewhere)),
                     () -> other.createJoint(new WeldJointDef().bodies(a, b)),
-                    () -> world.createJoint(new WeldJointDef().bodies(a, b).localFrameA(0, 0, 0, new Quaternionf(0, 0, 0, 2))),
+                    () -> world.createJoint(
+                            new WeldJointDef().bodies(a, b).localFrameA(0, 0, 0, new Quaternionf(0, 0, 0, 2))),
                     () -> world.createJoint(new SphericalJointDef().bodies(a, b).coneLimit(2)),
                     () -> world.createJoint(new RevoluteJointDef().bodies(a, b).limits(1, -1)),
                     () -> world.createJoint(new DistanceJointDef().bodies(a, b).length(0)),
@@ -874,11 +914,12 @@ class JointTest {
     /** Box3D kept warm starting a motor part its solve no longer ran: a puppet let go stayed held. */
     @Test
     void aMotorPartTurnedOffLetsGo() {
-        for (boolean byHertz : new boolean[]{false, true}) {
+        for (boolean byHertz : new boolean[] {false, true}) {
             try (PhysicsWorld world = world(-10)) {
                 Body base = anchor(world, 0, 0, 0);
                 Body puppet = box(world, 0, 0, 0, 0.2f, 0.2f, 0.2f);
-                MotorJoint motor = world.createJoint(new MotorJointDef().bodies(base, puppet).linearSpring(8, 1, 1.0e5f));
+                MotorJoint motor = world.createJoint(
+                        new MotorJointDef().bodies(base, puppet).linearSpring(8, 1, 1.0e5f));
                 steps(world, 60);
                 assertEquals(0, puppet.position(new Vector3d()).y, 0.05, "held at the target");
                 if (byHertz) {
@@ -888,7 +929,9 @@ class JointTest {
                 }
                 motor.wakeBodies();
                 steps(world, 30);
-                assertTrue(puppet.position(new Vector3d()).y < -1, "falls once let go: " + puppet.position(new Vector3d()));
+                assertTrue(
+                        puppet.position(new Vector3d()).y < -1,
+                        "falls once let go: " + puppet.position(new Vector3d()));
                 assertEquals(0, motor.constraintForce(new Vector3f()).length(), 1e-3);
             }
         }
@@ -900,22 +943,32 @@ class JointTest {
         try (PhysicsWorld world = world(-10)) {
             Body anchor = anchor(world, 0, 0, 0);
             Body hinged = box(world, 0.5, 0, 0, 0.5f, 0.05f, 0.05f);
-            RevoluteJoint hinge = world.createJoint(new RevoluteJointDef().bodies(anchor, hinged).worldFrame(0, 0, 0)
+            RevoluteJoint hinge = world.createJoint(new RevoluteJointDef()
+                    .bodies(anchor, hinged)
+                    .worldFrame(0, 0, 0)
                     .spring(8, 1, 0));
             Body ball = box(world, 0.5, 0, 10, 0.5f, 0.05f, 0.05f);
             Body ballAnchor = anchor(world, 0, 0, 10);
-            SphericalJoint socket = world.createJoint(new SphericalJointDef().bodies(ballAnchor, ball)
-                    .worldFrame(0, 0, 10, new Quaternionf().rotateY(PI / 2)).spring(8, 1, new Quaternionf()));
+            SphericalJoint socket = world.createJoint(new SphericalJointDef()
+                    .bodies(ballAnchor, ball)
+                    .worldFrame(0, 0, 10, new Quaternionf().rotateY(PI / 2))
+                    .spring(8, 1, new Quaternionf()));
             Body slider = box(world, 0, 0, 20, 0.2f, 0.2f, 0.2f);
-            PrismaticJoint slide = world.createJoint(new PrismaticJointDef().bodies(anchor(world, 0, 0, 20), slider)
-                    .worldFrame(0, 0, 20, new Quaternionf().rotateZ(-PI / 2)).spring(8, 1, 0));
+            PrismaticJoint slide = world.createJoint(new PrismaticJointDef()
+                    .bodies(anchor(world, 0, 0, 20), slider)
+                    .worldFrame(0, 0, 20, new Quaternionf().rotateZ(-PI / 2))
+                    .spring(8, 1, 0));
             Body hanging = box(world, 0, -1, 30, 0.2f, 0.2f, 0.2f);
-            DistanceJoint rope = world.createJoint(new DistanceJointDef().bodies(anchor(world, 0, 0, 30), hanging)
-                    .length(1).spring(8, 1));
+            DistanceJoint rope = world.createJoint(new DistanceJointDef()
+                    .bodies(anchor(world, 0, 0, 30), hanging)
+                    .length(1)
+                    .spring(8, 1));
             Body wheel = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, -1, 40));
             wheel.createShape(new ShapeDef().density(1000), new Geometry.Sphere(0, 0, 0, 0.3f));
-            WheelJoint axle = world.createJoint(new WheelJointDef().bodies(anchor(world, 0, 0, 40), wheel)
-                    .worldFrame(0, -1, 40, new Quaternionf().rotateZ(-PI / 2)).suspension(8, 1));
+            WheelJoint axle = world.createJoint(new WheelJointDef()
+                    .bodies(anchor(world, 0, 0, 40), wheel)
+                    .worldFrame(0, -1, 40, new Quaternionf().rotateZ(-PI / 2))
+                    .suspension(8, 1));
             steps(world, 60);
             assertEquals(0, hinge.angle(), 0.05, "each held where its spring wants it");
             assertEquals(0, socket.coneAngle(), 0.05);
@@ -943,14 +996,16 @@ class JointTest {
     /** The parallel joint had both: no max torque, or a spring of zero hertz, kept its last impulse. */
     @Test
     void aParallelJointTurnedOffLetsGo() {
-        for (boolean byHertz : new boolean[]{false, true}) {
+        for (boolean byHertz : new boolean[] {false, true}) {
             try (PhysicsWorld world = world(-10)) {
                 Body anchor = anchor(world, 0, 0, 0);
                 Body bar = box(world, 0.5, 0, 0, 0.5f, 0.05f, 0.05f);
                 world.createJoint(new SphericalJointDef().bodies(anchor, bar).worldFrame(0, 0, 0));
                 // free to turn about frame z, here the bar's own axis, so it holds the bar level
-                ParallelJoint level = world.createJoint(new ParallelJointDef().bodies(anchor, bar)
-                        .worldFrame(0, 0, 0, new Quaternionf().rotateY(PI / 2)).spring(8, 1, 1.0e5f));
+                ParallelJoint level = world.createJoint(new ParallelJointDef()
+                        .bodies(anchor, bar)
+                        .worldFrame(0, 0, 0, new Quaternionf().rotateY(PI / 2))
+                        .spring(8, 1, 1.0e5f));
                 steps(world, 60);
                 assertEquals(0, tilt(bar), 0.05, "held level");
                 if (byHertz) {
@@ -975,8 +1030,11 @@ class JointTest {
     void aDistanceLimitTurnedOffLetsGo() {
         try (PhysicsWorld world = world(-10)) {
             Body hanging = box(world, 0, -1, 0, 0.2f, 0.2f, 0.2f);
-            DistanceJoint rope = world.createJoint(new DistanceJointDef().bodies(anchor(world, 0, 0, 0), hanging)
-                    .length(1).spring(0.5f, 1).limits(0.5f, 1.2f));
+            DistanceJoint rope = world.createJoint(new DistanceJointDef()
+                    .bodies(anchor(world, 0, 0, 0), hanging)
+                    .length(1)
+                    .spring(0.5f, 1)
+                    .limits(0.5f, 1.2f));
             steps(world, 120);
             assertEquals(1.2, rope.currentLength(), 0.02, "the weak spring stretches to the limit");
             rope.enableLimit(false);
@@ -996,8 +1054,11 @@ class JointTest {
             Body pivot = anchor(world, 0, 0, 0);
             Body bar = box(world, 0, 0, 0.5, 0.05f, 0.05f, 0.5f);
             bar.setAngularDamping(5);
-            SphericalJoint joint = world.createJoint(new SphericalJointDef().bodies(pivot, bar).worldFrame(0, 0, 0)
-                    .coneLimit(0.3f).twistLimits(-0.2f, 0.2f));
+            SphericalJoint joint = world.createJoint(new SphericalJointDef()
+                    .bodies(pivot, bar)
+                    .worldFrame(0, 0, 0)
+                    .coneLimit(0.3f)
+                    .twistLimits(-0.2f, 0.2f));
             for (int i = 0; i < 240; i++) {
                 bar.applyTorque(20, 0, 2);
                 steps(world, 1);
@@ -1024,7 +1085,10 @@ class JointTest {
             for (int i = 0; i < count; i++) {
                 double angle = 2 * Math.PI * i / count;
                 satellites[i] = box(world, 2 * Math.cos(angle), 0, 2 * Math.sin(angle), 0.05f, 0.05f, 0.05f);
-                world.createJoint(new DistanceJointDef().bodies(hub, satellites[i]).length(2).thresholds(1, Float.MAX_VALUE));
+                world.createJoint(new DistanceJointDef()
+                        .bodies(hub, satellites[i])
+                        .length(2)
+                        .thresholds(1, Float.MAX_VALUE));
             }
             for (int i = 0; i < count; i++) {
                 Vector3d p = satellites[i].position(new Vector3d());
@@ -1032,7 +1096,12 @@ class JointTest {
             }
             world.beginInterpolationFrame();
             world.step(1 / 60f, 4);
-            assertEquals(count, world.events().jointEvents().stream().map(WorldEvents.JointEvent::joint).distinct().count(),
+            assertEquals(
+                    count,
+                    world.events().jointEvents().stream()
+                            .map(WorldEvents.JointEvent::joint)
+                            .distinct()
+                            .count(),
                     "every joint pulled past its threshold is reported");
         }
     }

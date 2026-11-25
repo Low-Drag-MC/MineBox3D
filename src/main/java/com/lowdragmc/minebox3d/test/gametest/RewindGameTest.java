@@ -10,6 +10,8 @@ import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import com.lowdragmc.minebox3d.physics.WorldDef;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.Vec3;
@@ -17,9 +19,6 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * <b>A level's physics rolled back and simulated again</b> ({@link LevelRewind}): the ticks run again end where the first
@@ -31,8 +30,7 @@ import java.util.List;
 @GameTestHolder(MineBox3D.MOD_ID)
 public final class RewindGameTest {
 
-    private RewindGameTest() {
-    }
+    private RewindGameTest() {}
 
     /** A private physics with a floor and a stack of crates high over the test, watched round them. */
     private static final class Stage implements AutoCloseable {
@@ -41,7 +39,8 @@ public final class RewindGameTest {
         final List<Body> crates = new ArrayList<>();
 
         Stage(GameTestHelper helper) {
-            LevelPhysics created = LevelPhysics.create(helper.getLevel(), new WorldDef().gravity(0, LevelPhysics.GRAVITY, 0));
+            LevelPhysics created =
+                    LevelPhysics.create(helper.getLevel(), new WorldDef().gravity(0, LevelPhysics.GRAVITY, 0));
             if (created == null) {
                 throw new IllegalStateException("Box3D is not available");
             }
@@ -112,7 +111,8 @@ public final class RewindGameTest {
     @PrefixGameTestTemplate(false)
     public static void aKickGivenAgainForAPastTickEndsWhereAKickThenEnds(GameTestHelper helper) {
         int kickTick = 20;
-        try (Stage kickedThen = new Stage(helper); Stage kickedAgain = new Stage(helper)) {
+        try (Stage kickedThen = new Stage(helper);
+                Stage kickedAgain = new Stage(helper)) {
             Body thenCrate = kickedThen.crates.get(3), againCrate = kickedAgain.crates.get(3);
             // the first: kicked on tick 20 as it happens
             kickedThen.physics.addTickListener(new LevelPhysics.TickListener() {
@@ -140,7 +140,8 @@ public final class RewindGameTest {
             Vector3d then = thenCrate.position(new Vector3d()), again = againCrate.position(new Vector3d());
             double off = then.distance(again);
             double moved = unkicked.distance(then);
-            helper.assertTrue(moved > 0.3 && moved < Body.ERROR_SNAP, "the kick took it somewhere, short of a snap: " + moved);
+            helper.assertTrue(
+                    moved > 0.3 && moved < Body.ERROR_SNAP, "the kick took it somewhere, short of a snap: " + moved);
             helper.assertTrue(off < 0.01, "where the run kicked then left it: " + off + " off");
             // drawn where it was, the gap fading over six frames
             Vector3d gap = againCrate.renderError(new Vector3d());
@@ -148,7 +149,8 @@ public final class RewindGameTest {
             for (int frame = 0; frame < 6; frame++) {
                 kickedAgain.ticks(helper, 1);
             }
-            helper.assertTrue(againCrate.renderError(new Vector3d()).length() < 1e-9, "and drawn where it is six frames on");
+            helper.assertTrue(
+                    againCrate.renderError(new Vector3d()).length() < 1e-9, "and drawn where it is six frames on");
         }
         helper.succeed();
     }
@@ -174,7 +176,8 @@ public final class RewindGameTest {
             });
             helper.assertTrue(stage.physics.rewind().resimulate(last - 3), "run again");
             helper.assertTrue(slider.renderError(new Vector3d()).length() == 0, "not smoothed");
-            helper.assertTrue(slider.renderPosition(0, new Vector3d()).equals(slider.position(new Vector3d())),
+            helper.assertTrue(
+                    slider.renderPosition(0, new Vector3d()).equals(slider.position(new Vector3d())),
                     "drawn where it is from the frame's start");
         }
         helper.succeed();
@@ -192,9 +195,12 @@ public final class RewindGameTest {
             Vector3f going = far.linearVelocity(new Vector3f());
             int contacts = stage.physics.world().events().contactBegins().size();
             helper.assertTrue(stage.physics.rewind().resimulate(stage.physics.ticks() - 5), "run again");
-            helper.assertTrue(far.position(new Vector3d()).equals(where), "outside, where it was: " + far.position(new Vector3d()));
+            helper.assertTrue(
+                    far.position(new Vector3d()).equals(where),
+                    "outside, where it was: " + far.position(new Vector3d()));
             helper.assertTrue(far.linearVelocity(new Vector3f()).equals(going), "and going as it was");
-            helper.assertTrue(stage.physics.world().events().contactBegins().size() <= contacts,
+            helper.assertTrue(
+                    stage.physics.world().events().contactBegins().size() <= contacts,
                     "what the run again set off dropped");
             stage.ticks(helper, 1);
             helper.assertTrue(far.position(new Vector3d()).y < where.y, "and falling on after");
@@ -207,13 +213,15 @@ public final class RewindGameTest {
     @PrefixGameTestTemplate(false)
     public static void aLongDeckReachingInIsHeldByWhereItReaches(GameTestHelper helper) {
         try (Stage stage = new Stage(helper)) {
-            Body deck = stage.physics.createBody(new BodyDef().type(BodyType.KINEMATIC)
+            Body deck = stage.physics.createBody(new BodyDef()
+                    .type(BodyType.KINEMATIC)
                     .position(stage.centre.x + 14, stage.centre.y + 5, stage.centre.z));
             deck.createShape(new ShapeDef(), Geometry.Box.of(15, 0.25f, 2));
             stage.physics.rewind().watch("test", () -> stage.centre);
             stage.ticks(helper, 3);
             long now = stage.physics.ticks();
-            helper.assertTrue(stage.physics.rewind().history().position(now, deck, new Vector3d()) != null,
+            helper.assertTrue(
+                    stage.physics.rewind().history().position(now, deck, new Vector3d()) != null,
                     "held: it reaches to within the bubble, its middle fourteen blocks off");
         }
         helper.succeed();
@@ -229,9 +237,11 @@ public final class RewindGameTest {
             stage.ticks(helper, 30);
             long old = stage.physics.ticks() - LevelRewind.HISTORY_TICKS - 2;
             Vector3d now = slider.position(new Vector3d());
-            helper.assertTrue(!stage.physics.rewind().know(old, slider, now.x - 3, now.y, now.z, 0, 0, 0, 1, 0, 0, 0,
-                    0, 0, 0), "not held");
-            helper.assertTrue(slider.position(new Vector3d()).equals(now), "nor put there: " + slider.position(new Vector3d()));
+            helper.assertTrue(
+                    !stage.physics.rewind().know(old, slider, now.x - 3, now.y, now.z, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0),
+                    "not held");
+            helper.assertTrue(
+                    slider.position(new Vector3d()).equals(now), "nor put there: " + slider.position(new Vector3d()));
             helper.assertTrue(!stage.physics.rewind().canResimulateFrom(old + 1), "and not to be run again from");
             helper.assertTrue(stage.physics.rewind().canResimulateFrom(stage.physics.ticks() - 5), "a recent one is");
         }
@@ -248,7 +258,8 @@ public final class RewindGameTest {
             stage.physics.rewind().watch("test", () -> stage.centre);
             stage.ticks(helper, 30);
             long now = stage.physics.ticks();
-            helper.assertTrue(!stage.physics.rewind().resimulate(now - LevelRewind.HISTORY_TICKS), "a second back is too far");
+            helper.assertTrue(
+                    !stage.physics.rewind().resimulate(now - LevelRewind.HISTORY_TICKS), "a second back is too far");
             helper.assertTrue(stage.physics.rewind().resimulate(now - LevelRewind.HISTORY_TICKS + 2), "less is held");
             stage.physics.rewind().unwatch("test");
             stage.ticks(helper, 1);

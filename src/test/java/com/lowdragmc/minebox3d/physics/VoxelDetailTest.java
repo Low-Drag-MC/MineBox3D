@@ -1,21 +1,20 @@
 package com.lowdragmc.minebox3d.physics;
 
+import static com.lowdragmc.minebox3d.physics.VoxelTerrainTest.FULL;
+import static com.lowdragmc.minebox3d.physics.VoxelTerrainTest.area;
+import static com.lowdragmc.minebox3d.physics.VoxelTerrainTest.faces;
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.lowdragmc.minebox3d.physics.VoxelTerrainTest.Face;
 import com.lowdragmc.minebox3d.physics.VoxelTerrainTest.Terrain;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.junit.jupiter.api.Test;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import static com.lowdragmc.minebox3d.physics.VoxelTerrainTest.FULL;
-import static com.lowdragmc.minebox3d.physics.VoxelTerrainTest.area;
-import static com.lowdragmc.minebox3d.physics.VoxelTerrainTest.faces;
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * <b>Voxel terrain in the corners</b>: every neighbour direction, far coordinates, rays in every direction, query
@@ -47,7 +46,7 @@ class VoxelDetailTest {
                 for (int e = 0; e < 3; e++) {
                     Vector3f m = face.midpoints()[e];
                     int onRim = 0;
-                    for (float c : new float[]{m.x, m.y, m.z}) {
+                    for (float c : new float[] {m.x, m.y, m.z}) {
                         if (Math.abs(c + 1) < 1e-4f || Math.abs(c - 2) < 1e-4f) {
                             onRim++;
                         }
@@ -87,9 +86,12 @@ class VoxelDetailTest {
     @Test
     void bodiesRestAndSlideOnTerrainFarFromTheOrigin() {
         // ten million blocks out, and next to Minecraft's border (30 million), where a float steps by 2
-        for (int x0 : new int[]{10_000_000, 29_999_984}) {
-            Geometry[] shapes = {Geometry.Box.of(0.25f, 0.25f, 0.25f), new Geometry.Sphere(0, 0, 0, 0.25f),
-                    new Geometry.Capsule(-0.3f, 0, 0, 0.3f, 0, 0, 0.25f)};
+        for (int x0 : new int[] {10_000_000, 29_999_984}) {
+            Geometry[] shapes = {
+                Geometry.Box.of(0.25f, 0.25f, 0.25f),
+                new Geometry.Sphere(0, 0, 0, 0.25f),
+                new Geometry.Capsule(-0.3f, 0, 0, 0.3f, 0, 0, 0.25f)
+            };
             for (Geometry shape : shapes) {
                 try (Terrain t = new Terrain()) {
                     t.floor(x0 - 16, x0 + 32, 0, 16, 0, (x, z) -> t.full);
@@ -130,7 +132,7 @@ class VoxelDetailTest {
             assertNotNull(east);
             assertEquals(3, east.x(), 1e-4);
             assertEquals(-1, east.normalX(), 1e-4);
-            assertArrayEquals(new int[]{3, 2, 2}, cell(east));
+            assertArrayEquals(new int[] {3, 2, 2}, cell(east));
 
             CastHit west = t.world.castRayClosest(20, 1.5, 2.5, -40, 0, 0, QueryFilter.ALL);
             assertNotNull(west);
@@ -141,7 +143,7 @@ class VoxelDetailTest {
             assertNotNull(south);
             assertEquals(6, south.z(), 1e-4);
             assertEquals(-1, south.normalZ(), 1e-4);
-            assertArrayEquals(new int[]{2, 3, 6}, cell(south));
+            assertArrayEquals(new int[] {2, 3, 6}, cell(south));
 
             CastHit north = t.world.castRayClosest(2.5, 1.5, 30, 0, 0, -40, QueryFilter.ALL);
             assertNotNull(north);
@@ -155,7 +157,7 @@ class VoxelDetailTest {
             assertEquals(1.7, diagonal.x(), 1e-4);
             assertEquals(1.3, diagonal.z(), 1e-4);
             assertEquals(1, diagonal.normalY(), 1e-4);
-            assertArrayEquals(new int[]{1, 0, 1}, cell(diagonal));
+            assertArrayEquals(new int[] {1, 0, 1}, cell(diagonal));
 
             // every shape along the way, closest first (one hit per shape: a section is one shape); a box above the
             // column at (3, 1..3, 2), the room for one hit to start with
@@ -175,7 +177,7 @@ class VoxelDetailTest {
 
     private static int[] cell(CastHit hit) {
         assertTrue(hit.terrain(), "a hit on terrain");
-        return new int[]{hit.cellX(), hit.cellY(), hit.cellZ()};
+        return new int[] {hit.cellX(), hit.cellY(), hit.cellZ()};
     }
 
     // ---- query filters --------------------------------------------------------------------------
@@ -222,7 +224,10 @@ class VoxelDetailTest {
             assertEquals(section, overlaps.shapeId(0));
             assertEquals(1, world.overlapShape(touching, 4.5, 1.25, 4.5, QueryFilter.only(ENTITY), overlaps));
             assertSame(box, overlaps.shape(0));
-            assertEquals(2, world.overlapShape(touching, 4.5, 1.25, 4.5, QueryFilter.ALL, new Overlaps(1)), "grown to fit both");
+            assertEquals(
+                    2,
+                    world.overlapShape(touching, 4.5, 1.25, 4.5, QueryFilter.ALL, new Overlaps(1)),
+                    "grown to fit both");
 
             // a capsule from the ground up into the box
             MoverPlanes planes = new MoverPlanes(1);
@@ -249,7 +254,8 @@ class VoxelDetailTest {
             // with friction: a frictionless stack drifts apart by itself in Box3D, on any ground
             int stone = t.grid.addCollider(FULL, 1, t.grid.addMaterial(new SurfaceMaterial().friction(0.6f)));
             t.floor(0, 8, 0, 8, 0, (x, z) -> stone);
-            Body bottom = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(3.5, 2, 3.5));
+            Body bottom =
+                    t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(3.5, 2, 3.5));
             bottom.createShape(new ShapeDef().friction(0.6f), Geometry.Box.of(0.4f, 0.4f, 0.4f));
             Body top = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(3.5, 3, 3.5));
             top.createShape(new ShapeDef().friction(0.6f), Geometry.Box.of(0.2f, 0.2f, 0.2f));
@@ -303,10 +309,12 @@ class VoxelDetailTest {
 
             ShapeDef preSolve = new ShapeDef();
             preSolve.enablePreSolveEvents = true;
-            Body toPane = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(5, 1.5, 1.5));
+            Body toPane =
+                    t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(5, 1.5, 1.5));
             toPane.createShape(preSolve, new Geometry.Sphere(0, 0, 0, 0.1f));
             toPane.setLinearVelocity(120, 0, 0);
-            Body toWall = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(1.5, 1.5, 10));
+            Body toWall =
+                    t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(1.5, 1.5, 10));
             toWall.createShape(preSolve, new Geometry.Sphere(0, 0, 0, 0.1f));
             toWall.setLinearVelocity(0, 0, 120);
             t.step(60);
@@ -337,7 +345,9 @@ class VoxelDetailTest {
                     }
                     // on the stairs' upper halves between stone, or on their treads between slabs
                     double top = scene == 0 ? 1 : 0.5, lane = scene == 0 ? 2.25 : 2.75;
-                    Body box = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(ox + 1.5, oy + 1 + top + 0.21, lane)
+                    Body box = t.world.createBody(new BodyDef()
+                            .type(BodyType.DYNAMIC)
+                            .position(ox + 1.5, oy + 1 + top + 0.21, lane)
                             .enableSleep(false));
                     box.createShape(new ShapeDef().friction(0).density(500), Geometry.Box.of(0.2f, 0.2f, 0.2f));
                     t.step(30);
@@ -471,17 +481,18 @@ class VoxelDetailTest {
             t.floor(0, 4, 0, 4, 0, (x, z) -> t.full);
             float[] v = new float[9 * 64];
             byte[] flags = new byte[64];
-            int count = t.grid.exposedTriangles(0, 0, 0, new float[]{0.2f, 0.5f, 0.2f, 0.8f, 1.5f, 0.8f}, v, flags);
+            int count = t.grid.exposedTriangles(0, 0, 0, new float[] {0.2f, 0.5f, 0.2f, 0.8f, 1.5f, 0.8f}, v, flags);
             assertEquals(2, count, "the top of cell (0, 0, 0) and nothing else");
             for (int i = 0; i < count; i++) {
-                float cx = (v[9 * i] + v[9 * i + 3] + v[9 * i + 6]) / 3, cz = (v[9 * i + 2] + v[9 * i + 5] + v[9 * i + 8]) / 3;
+                float cx = (v[9 * i] + v[9 * i + 3] + v[9 * i + 6]) / 3,
+                        cz = (v[9 * i + 2] + v[9 * i + 5] + v[9 * i + 8]) / 3;
                 assertTrue(cx < 1 && cz < 1);
             }
 
             // room for four triangles' vertices but three flags: three are written
             float[] room = new float[9 * 4];
             Arrays.fill(room, 27, 36, 42);
-            int all = t.grid.exposedTriangles(0, 0, 0, new float[]{0, 0, 0, 16, 16, 16}, room, new byte[3]);
+            int all = t.grid.exposedTriangles(0, 0, 0, new float[] {0, 0, 0, 16, 16, 16}, room, new byte[3]);
             assertTrue(all > 3, "the whole count: " + all);
             for (int i = 27; i < 36; i++) {
                 assertEquals(42, room[i], "only three triangles' worth written");
@@ -499,7 +510,7 @@ class VoxelDetailTest {
      */
     @Test
     void aBoxOnStairsIsHeldUpUnderAllFourCornersUpToAWholeSection() {
-        for (float half : new float[]{3, 5, 6, 7}) {
+        for (float half : new float[] {3, 5, 6, 7}) {
             try (Terrain t = new Terrain()) {
                 t.floor(0, 16, 0, 16, 0, (x, z) -> t.stairs);
                 Body slab = t.body(Geometry.Box.of(half, 0.5f, half), 8, 3, 8);
@@ -517,7 +528,9 @@ class VoxelDetailTest {
                         quadrants[(ax > 0 ? 1 : 0) + (az > 0 ? 2 : 0)] = true;
                     }
                 }
-                assertArrayEquals(new boolean[]{true, true, true, true}, quadrants,
+                assertArrayEquals(
+                        new boolean[] {true, true, true, true},
+                        quadrants,
                         "touching near every corner, far rows included, " + 2 * half + " wide");
             }
         }
@@ -533,9 +546,11 @@ class VoxelDetailTest {
             int belt = t.grid.addCollider(FULL, 1, t.grid.addMaterial(conveyor));
             int stone = t.grid.addCollider(FULL, 1, t.grid.addMaterial(new SurfaceMaterial().friction(1)));
             t.floor(0, 16, 0, 4, 0, (x, z) -> z < 2 ? belt : stone);
-            Body onBelt = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(4, 1.26, 1));
+            Body onBelt =
+                    t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(4, 1.26, 1));
             onBelt.createShape(new ShapeDef().friction(1), Geometry.Box.of(0.25f, 0.25f, 0.25f));
-            Body onStone = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(4, 1.26, 3));
+            Body onStone =
+                    t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(4, 1.26, 3));
             onStone.createShape(new ShapeDef().friction(1), Geometry.Box.of(0.25f, 0.25f, 0.25f));
             t.step(60);
             assertTrue(onBelt.position(new Vector3d()).x > 5, "carried along +x: " + onBelt.position(new Vector3d()));

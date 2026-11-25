@@ -1,14 +1,13 @@
 package com.lowdragmc.minebox3d.physics;
 
-import com.lowdragmc.minebox3d.internal.B3;
-import org.junit.jupiter.api.Test;
-import org.joml.Quaternionf;
-import org.joml.Vector3d;
+import static org.junit.jupiter.api.Assertions.*;
 
+import com.lowdragmc.minebox3d.internal.B3;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.joml.Quaternionf;
+import org.joml.Vector3d;
+import org.junit.jupiter.api.Test;
 
 class PhysicsWorldTest {
 
@@ -53,7 +52,10 @@ class PhysicsWorldTest {
             world.beginInterpolationFrame();
             world.step(1 / 60f, 4);
             assertFalse(world.movedBodies().contains(ball), "a sleeping body does not move");
-            assertEquals(ball.renderPosition(0, new Vector3d()).y, ball.renderPosition(1, new Vector3d()).y, 1e-12,
+            assertEquals(
+                    ball.renderPosition(0, new Vector3d()).y,
+                    ball.renderPosition(1, new Vector3d()).y,
+                    1e-12,
                     "a body that did not move this frame draws still");
         }
     }
@@ -61,7 +63,8 @@ class PhysicsWorldTest {
     @Test
     void aCorrectionAfterAStepIsDrawnAsMotionATeleportIsNot() {
         try (PhysicsWorld world = world()) {
-            Body box = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 3, 0).gravityScale(0));
+            Body box = world.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(0, 3, 0).gravityScale(0));
             box.createShape(new ShapeDef(), Geometry.Box.of(0.5f, 0.5f, 0.5f));
             world.beginInterpolationFrame();
             world.step(1 / 60f, 4);
@@ -96,7 +99,9 @@ class PhysicsWorldTest {
             // the world is idle: refused all the same, not only when two threads happen to meet
             assertInstanceOf(WrongThreadException.class, onAnotherThread(() -> box.setLinearVelocity(1, 0, 0)));
             assertInstanceOf(WrongThreadException.class, onAnotherThread(() -> world.step(1 / 60f, 4)));
-            assertInstanceOf(WrongThreadException.class, onAnotherThread(() -> world.castRayClosest(0, 5, 0, 0, -10, 0, QueryFilter.ALL)));
+            assertInstanceOf(
+                    WrongThreadException.class,
+                    onAnotherThread(() -> world.castRayClosest(0, 5, 0, 0, -10, 0, QueryFilter.ALL)));
             assertInstanceOf(WrongThreadException.class, onAnotherThread(world::use));
             assertInstanceOf(WrongThreadException.class, onAnotherThread(world::close));
             assertTrue(world.isOpen(), "a refused close closed nothing");
@@ -160,7 +165,8 @@ class PhysicsWorldTest {
                     ground(world);
                     Body[] boxes = new Body[20];
                     for (int i = 0; i < boxes.length; i++) {
-                        boxes[i] = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 1 + i * 0.6, 0));
+                        boxes[i] = world.createBody(
+                                new BodyDef().type(BodyType.DYNAMIC).position(0, 1 + i * 0.6, 0));
                         boxes[i].createShape(new ShapeDef(), Geometry.Box.of(0.25f, 0.25f, 0.25f));
                     }
                     for (int s = 0; s < 400; s++) {
@@ -212,7 +218,8 @@ class PhysicsWorldTest {
         try (PhysicsWorld world = world()) {
             Body floor = world.createBody(new BodyDef());
             assertThrows(IllegalStateException.class, () -> floor.createShape(new ShapeDef(), Geometry.Mesh.of(mesh)));
-            // the first refusal must not have counted it back up: a second try reaching Box3D would hand it freed memory
+            // the first refusal must not have counted it back up: a second try reaching Box3D would hand it freed
+            // memory
             assertThrows(IllegalStateException.class, () -> floor.createShape(new ShapeDef(), Geometry.Mesh.of(mesh)));
         }
     }
@@ -245,7 +252,8 @@ class PhysicsWorldTest {
     @Test
     void aKinematicBodyDrivenToATargetPushesWhatIsInTheWay() {
         try (PhysicsWorld world = PhysicsWorld.create(new WorldDef().gravity(0, 0, 0))) {
-            Body pusher = world.createBody(new BodyDef().type(BodyType.KINEMATIC).position(-2, 0, 0));
+            Body pusher =
+                    world.createBody(new BodyDef().type(BodyType.KINEMATIC).position(-2, 0, 0));
             pusher.createShape(new ShapeDef(), Geometry.Box.of(0.5f, 0.5f, 0.5f));
             Body crate = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 0, 0));
             crate.createShape(new ShapeDef(), Geometry.Box.of(0.25f, 0.25f, 0.25f));
@@ -257,7 +265,9 @@ class PhysicsWorldTest {
                 }
             }
             assertEquals(2.0, pusher.position(new Vector3d()).x, 0.02, "the kinematic body reached its target");
-            assertTrue(crate.position(new Vector3d()).x > 2.5, "and shoved the crate ahead of it: " + crate.position(new Vector3d()));
+            assertTrue(
+                    crate.position(new Vector3d()).x > 2.5,
+                    "and shoved the crate ahead of it: " + crate.position(new Vector3d()));
         }
     }
 }

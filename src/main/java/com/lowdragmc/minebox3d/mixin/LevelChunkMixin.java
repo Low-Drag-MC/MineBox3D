@@ -25,8 +25,8 @@ public abstract class LevelChunkMixin {
     Level level;
 
     @Inject(method = "setBlockState", at = @At("RETURN"))
-    private void minebox3d$onSetBlockState(BlockPos pos, BlockState state, boolean isMoving,
-                                           CallbackInfoReturnable<BlockState> cir) {
+    private void minebox3d$onSetBlockState(
+            BlockPos pos, BlockState state, boolean isMoving, CallbackInfoReturnable<BlockState> cir) {
         BlockState previous = cir.getReturnValue();
         BlockState current = ((LevelChunk) (Object) this).getBlockState(pos);
         // null is "nothing changed" (the state was already there), or "the old block's onRemove changed it again",

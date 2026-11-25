@@ -57,8 +57,16 @@ public final class EntityBlockedGameTest {
     }
 
     /** A body of one box at a point relative to the test. */
-    private static Body box(GameTestHelper helper, BodyType type, double x, double y, double z, float hx, float hy, float hz,
-                            ShapeDef def) {
+    private static Body box(
+            GameTestHelper helper,
+            BodyType type,
+            double x,
+            double y,
+            double z,
+            float hx,
+            float hy,
+            float hz,
+            ShapeDef def) {
         Vec3 at = helper.absoluteVec(new Vec3(x, y, z));
         Body body = physics(helper).createBody(new BodyDef().type(type).position(at.x, at.y, at.z));
         body.createShape(def, Geometry.Box.of(hx, hy, hz));
@@ -116,7 +124,8 @@ public final class EntityBlockedGameTest {
                 .thenExecute(() -> stand.setDeltaMovement(1.5, 0, 0))
                 .thenExecuteAfter(30, () -> {
                     double face = relative(helper, stand).x + 0.25;
-                    helper.assertTrue(face <= 5.0 && face > 4.9, "slid up to the wall's face and stopped there: " + face);
+                    helper.assertTrue(
+                            face <= 5.0 && face > 4.9, "slid up to the wall's face and stopped there: " + face);
                     helper.assertTrue(Math.abs(relative(helper, stand).z - 1.5) < 0.01, "along its line");
                     wall.destroy();
                     stand.discard();
@@ -159,7 +168,8 @@ public final class EntityBlockedGameTest {
         Body second = box(helper, BodyType.STATIC, 6, 0.25, 1.5, 2, 0.25f, 1, new ShapeDef());
         ArmorStand stand = stand(helper, 2, 0.6, 1.5);
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(ticking(helper, stand) && stand.onGround(), "the stand ticks, on the first"))
+                .thenWaitUntil(() ->
+                        helper.assertTrue(ticking(helper, stand) && stand.onGround(), "the stand ticks, on the first"))
                 .thenExecute(() -> stand.setDeltaMovement(1.2, 0, 0))
                 .thenExecuteAfter(30, () -> {
                     Vec3 at = relative(helper, stand);
@@ -190,8 +200,9 @@ public final class EntityBlockedGameTest {
                 .thenExecuteAfter(30, () -> {
                     double crateMoved = relative(helper, crate).x - 4, ironMoved = relative(helper, iron).x - 4;
                     helper.assertTrue(crateMoved > 0.4, "the stand pushed the light crate along: " + crateMoved);
-                    helper.assertTrue(relative(helper, light).x > 3.7, "going on past where the crate was: "
-                            + relative(helper, light).x);
+                    helper.assertTrue(
+                            relative(helper, light).x > 3.7,
+                            "going on past where the crate was: " + relative(helper, light).x);
                     helper.assertTrue(Math.abs(ironMoved) < 0.05, "the iron hardly moved: " + ironMoved);
                     // a body stops the stand at its face; it keeps 54 / (54 + 1944) of its speed, so it goes on only as
                     // far as the iron gives
@@ -251,7 +262,8 @@ public final class EntityBlockedGameTest {
         ArmorStand stand = EntityAuthorityGameTest.pushingNothing(stand(helper, 3.2, 0, 1.5));
         stand.getAttribute(Attributes.STEP_HEIGHT).setBaseValue(0.6);
         float[] fastest = new float[1];
-        helper.onEachTick(() -> fastest[0] = Math.max(fastest[0], crate.linearVelocity(new Vector3f()).length()));
+        helper.onEachTick(() -> fastest[0] =
+                Math.max(fastest[0], crate.linearVelocity(new Vector3f()).length()));
         helper.startSequence()
                 .thenWaitUntil(() -> helper.assertTrue(ticking(helper, stand), "the stand ticks"))
                 .thenExecute(() -> {
@@ -262,8 +274,9 @@ public final class EntityBlockedGameTest {
                     Vec3 at = relative(helper, stand);
                     helper.assertTrue(at.y > 0.39 && at.y < 0.42, "up on the crate: y = " + at.y);
                     helper.assertTrue(fastest[0] < 1, "the crate stayed: fastest " + fastest[0] + " m/s");
-                    helper.assertTrue(relative(helper, crate).distance(4.5, 0.2, 1.5) < 0.05, "where it was: "
-                            + relative(helper, crate));
+                    helper.assertTrue(
+                            relative(helper, crate).distance(4.5, 0.2, 1.5) < 0.05,
+                            "where it was: " + relative(helper, crate));
                     crate.destroy();
                     stand.discard();
                     done(helper, 8, 4);
@@ -282,7 +295,9 @@ public final class EntityBlockedGameTest {
         helper.onEachTick(() -> {
             for (int i = 0; i < crates.length; i++) {
                 if (crates[i] != null && crates[i].isValid()) {
-                    fastest[i] = Math.max(fastest[i], crates[i].linearVelocity(new org.joml.Vector3f()).length());
+                    fastest[i] = Math.max(
+                            fastest[i],
+                            crates[i].linearVelocity(new org.joml.Vector3f()).length());
                 }
             }
         });
@@ -291,15 +306,25 @@ public final class EntityBlockedGameTest {
                 .thenExecute(() -> {
                     for (int i = 0; i < offsets.length; i++) {
                         // 5 kg against the stand's 54
-                        crates[i] = box(helper, BodyType.DYNAMIC, 3, 0.3, 1.5 + 2.5 * i, 0.3f, 0.3f, 0.3f,
+                        crates[i] = box(
+                                helper,
+                                BodyType.DYNAMIC,
+                                3,
+                                0.3,
+                                1.5 + 2.5 * i,
+                                0.3f,
+                                0.3f,
+                                0.3f,
                                 new ShapeDef().density(23));
                         stands[i] = stand(helper, 3 - offsets[i], 1.5, 1.5 + 2.5 * i);
                     }
                 })
                 .thenExecuteAfter(60, () -> {
                     for (int i = 0; i < offsets.length; i++) {
-                        helper.assertTrue(fastest[i] < 3, "the crate under a stand landing " + offsets[i]
-                                + " off its middle never went faster than 3 m/s: " + fastest[i]);
+                        helper.assertTrue(
+                                fastest[i] < 3,
+                                "the crate under a stand landing " + offsets[i]
+                                        + " off its middle never went faster than 3 m/s: " + fastest[i]);
                     }
                     for (int i = 0; i < offsets.length; i++) {
                         crates[i].destroy();
@@ -331,14 +356,17 @@ public final class EntityBlockedGameTest {
             }
         });
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(ticking(helper, onTop, shover) && onTop.onGround(), "the stands tick"))
+                .thenWaitUntil(
+                        () -> helper.assertTrue(ticking(helper, onTop, shover) && onTop.onGround(), "the stands tick"))
                 .thenExecuteAfter(40, () -> {
                     double top = relative(helper, under).y + 0.3, feet = relative(helper, onTop).y;
                     helper.assertTrue(feet - top > 0 && feet - top < 0.01, "on the crate, not in it: " + (feet - top));
                     double into = relative(helper, shover).x + 0.25 - (relative(helper, pinned).x - 0.3);
                     helper.assertTrue(into < 0.01, "against the pinned crate, not through it: " + into + " in");
-                    helper.assertTrue(relative(helper, pinned).x < 6.05, "the crate pinned at the wall: " + relative(helper, pinned).x);
-                    for (Body body : new Body[]{under, pinned, wall}) {
+                    helper.assertTrue(
+                            relative(helper, pinned).x < 6.05,
+                            "the crate pinned at the wall: " + relative(helper, pinned).x);
+                    for (Body body : new Body[] {under, pinned, wall}) {
                         body.destroy();
                     }
                     onTop.discard();
@@ -368,7 +396,8 @@ public final class EntityBlockedGameTest {
                     float plankTurn = Math.abs(EntityBases.yawOf(plank.rotation(new Quaternionf())));
                     helper.assertTrue(relative(helper, crate).x - 4 > 0.3, "the crate went along");
                     helper.assertTrue(crateTurn < Math.toRadians(2), "straight: " + Math.toDegrees(crateTurn) + "°");
-                    helper.assertTrue(plankTurn > Math.toRadians(5), "the plank turned: " + Math.toDegrees(plankTurn) + "°");
+                    helper.assertTrue(
+                            plankTurn > Math.toRadians(5), "the plank turned: " + Math.toDegrees(plankTurn) + "°");
                     crate.destroy();
                     plank.destroy();
                     straight.discard();
@@ -396,7 +425,8 @@ public final class EntityBlockedGameTest {
                 .thenWaitUntil(() -> helper.assertTrue(ticking(helper, shover), "the stand ticks"))
                 .thenExecute(() -> {
                     // the crate's face 4 mm inside the stand's front, the wall right behind it
-                    bodies[0] = box(helper, BodyType.DYNAMIC, 5.046, 0.3, 1.5, 0.3f, 0.3f, 0.3f, new ShapeDef().density(23));
+                    bodies[0] = box(
+                            helper, BodyType.DYNAMIC, 5.046, 0.3, 1.5, 0.3f, 0.3f, 0.3f, new ShapeDef().density(23));
                     bodies[1] = box(helper, BodyType.STATIC, 5.596, 1, 1.5, 0.25f, 1, 1, new ShapeDef());
                 })
                 .thenExecuteAfter(20, () -> {
@@ -425,7 +455,9 @@ public final class EntityBlockedGameTest {
                     bodies[1] = box(helper, BodyType.STATIC, 1.35, 1, 3, 0.35f, 1, 0.5f, new ShapeDef());
                 })
                 .thenExecuteAfter(3, () -> {
-                    helper.assertFalse(EntityCollisions.anyBodyIn(helper.getLevel(), stand.getBoundingBox().deflate(0.02)),
+                    helper.assertFalse(
+                            EntityCollisions.anyBodyIn(
+                                    helper.getLevel(), stand.getBoundingBox().deflate(0.02)),
                             "in neither body: " + relative(helper, stand));
                     for (Body body : bodies) {
                         body.destroy();
@@ -449,11 +481,12 @@ public final class EntityBlockedGameTest {
         ArmorStand onBall = stand(helper, 1.5, 3, 1.5);
         ArmorStand onLog = stand(helper, 5.5, 2, 1.5);
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(ticking(helper, onBall, onLog) && onBall.onGround() && onLog.onGround(),
-                        "the stands landed"))
+                .thenWaitUntil(() -> helper.assertTrue(
+                        ticking(helper, onBall, onLog) && onBall.onGround() && onLog.onGround(), "the stands landed"))
                 .thenExecuteAfter(60, () -> {
                     double ballFeet = relative(helper, onBall).y - 2, logFeet = relative(helper, onLog).y - 1;
-                    helper.assertTrue(ballFeet > 0 && ballFeet < 0.01, "on the ball's top three seconds on: " + ballFeet);
+                    helper.assertTrue(
+                            ballFeet > 0 && ballFeet < 0.01, "on the ball's top three seconds on: " + ballFeet);
                     helper.assertTrue(logFeet > 0 && logFeet < 0.01, "on the log's top three seconds on: " + logFeet);
                     ball.destroy();
                     log.destroy();
@@ -474,16 +507,21 @@ public final class EntityBlockedGameTest {
                 .thenExecute(() -> {
                     // kinematic: nothing in Box3D stops it, and entity proxies do not touch it
                     Vec3 at = helper.absoluteVec(new Vec3(1, 1.05, 1.5));
-                    pusher[0] = physics(helper).createBody(new BodyDef().type(BodyType.KINEMATIC).position(at.x, at.y, at.z)
-                            .linearVelocity(3, 0, 0));
+                    pusher[0] = physics(helper)
+                            .createBody(new BodyDef()
+                                    .type(BodyType.KINEMATIC)
+                                    .position(at.x, at.y, at.z)
+                                    .linearVelocity(3, 0, 0));
                     pusher[0].createShape(new ShapeDef(), Geometry.Box.of(0.5f, 1, 1));
                 })
                 .thenExecuteAfter(30, () -> {
                     double front = relative(helper, pusher[0]).x + 0.5;
                     double back = relative(helper, stand).x - 0.25;
                     helper.assertTrue(front > 5, "the body went on: its front at " + front);
-                    helper.assertTrue(back > front - 0.2, "the stand kept ahead of it, not inside: its back at " + back
-                            + ", the body's front at " + front);
+                    helper.assertTrue(
+                            back > front - 0.2,
+                            "the stand kept ahead of it, not inside: its back at " + back + ", the body's front at "
+                                    + front);
                     helper.assertTrue(Math.abs(relative(helper, stand).z - 1.5) < 0.01, "pushed straight on");
                     pusher[0].destroy();
                     stand.discard();
@@ -507,7 +545,8 @@ public final class EntityBlockedGameTest {
         ArmorStand floating = stand(helper, 4, 5, 3.5);
         floating.setNoGravity(true);
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(ticking(helper, perched) && perched.onGround(), "the stand perched"))
+                .thenWaitUntil(
+                        () -> helper.assertTrue(ticking(helper, perched) && perched.onGround(), "the stand perched"))
                 .thenExecute(() -> {
                     helper.assertTrue(EntityCollisions.isBodyUnder(perched), "a body under the perched stand");
                     // ⚠️ the broad phase hands out the perch and the wall too, millions out (floats a block apart)
@@ -517,8 +556,10 @@ public final class EntityBlockedGameTest {
                     Vec3 from = helper.absoluteVec(new Vec3(2, 1, 1.5));
                     Geometry.Box turned = new Geometry.Box(0.5f, 0.5f, 0.25f, 0, 0, 0, 0, 0.7071068f, 0, 0.7071068f);
                     CastResult hit = new CastResult();
-                    helper.assertTrue(EntityCollisions.sweep(helper.getLevel(), turned, from.x, from.y, from.z,
-                            new Quaternionf(), 6, 0, 0, hit), "the sweep meets something");
+                    helper.assertTrue(
+                            EntityCollisions.sweep(
+                                    helper.getLevel(), turned, from.x, from.y, from.z, new Quaternionf(), 6, 0, 0, hit),
+                            "the sweep meets something");
                     helper.assertTrue(hit.body() == wall, "the wall, not the sensor before it");
                     // turned a quarter, the box's half-depth along x is 0.25: its front at the face, a few mm short
                     double front = from.x + 6 * hit.fraction() + 0.25 - helper.absoluteVec(Vec3.ZERO).x;
@@ -526,12 +567,32 @@ public final class EntityBlockedGameTest {
 
                     // standing on the perch, a sweep along its top meets nothing
                     Vec3 feet = perched.position();
-                    helper.assertFalse(EntityCollisions.sweep(helper.getLevel(), Geometry.Box.of(0.25f, 0.5f, 0.25f), feet.x,
-                            feet.y + 0.5, feet.z, new Quaternionf(), 0, 0, 0.2f, hit), "sliding along what it stands on");
+                    helper.assertFalse(
+                            EntityCollisions.sweep(
+                                    helper.getLevel(),
+                                    Geometry.Box.of(0.25f, 0.5f, 0.25f),
+                                    feet.x,
+                                    feet.y + 0.5,
+                                    feet.z,
+                                    new Quaternionf(),
+                                    0,
+                                    0,
+                                    0.2f,
+                                    hit),
+                            "sliding along what it stands on");
                     // a round one could not stop short of a mesh body: refused whatever is near
                     try {
-                        EntityCollisions.sweep(helper.getLevel(), new Geometry.Sphere(0, 0, 0, 0.3f), from.x, from.y, from.z,
-                                new Quaternionf(), 1, 0, 0, hit);
+                        EntityCollisions.sweep(
+                                helper.getLevel(),
+                                new Geometry.Sphere(0, 0, 0, 0.3f),
+                                from.x,
+                                from.y,
+                                from.z,
+                                new Quaternionf(),
+                                1,
+                                0,
+                                0,
+                                hit);
                         helper.fail("a sphere was swept");
                     } catch (IllegalArgumentException expected) {
                         // refused
@@ -558,10 +619,12 @@ public final class EntityBlockedGameTest {
         helper.startSequence()
                 .thenWaitUntil(() -> helper.assertTrue(ticking(helper, onSensor, onGhost), "the stands tick"))
                 .thenExecuteAfter(40, () -> {
-                    helper.assertTrue(relative(helper, onSensor).y < 0.01, "through the sensor to the floor: "
-                            + relative(helper, onSensor).y);
-                    helper.assertTrue(relative(helper, onGhost).y < 0.01, "through the shape that masks out entities: "
-                            + relative(helper, onGhost).y);
+                    helper.assertTrue(
+                            relative(helper, onSensor).y < 0.01,
+                            "through the sensor to the floor: " + relative(helper, onSensor).y);
+                    helper.assertTrue(
+                            relative(helper, onGhost).y < 0.01,
+                            "through the shape that masks out entities: " + relative(helper, onGhost).y);
                     sensor.destroy();
                     ghost.destroy();
                     onSensor.discard();

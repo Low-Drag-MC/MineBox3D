@@ -4,11 +4,6 @@ import com.lowdragmc.minebox3d.internal.B3;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import org.jetbrains.annotations.Nullable;
-import org.joml.Quaternionf;
-import org.joml.Quaternionfc;
-import org.joml.Vector3f;
-
 import java.lang.ref.Cleaner;
 import java.lang.ref.Reference;
 import java.util.ArrayList;
@@ -19,6 +14,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import org.jetbrains.annotations.Nullable;
+import org.joml.Quaternionf;
+import org.joml.Quaternionfc;
+import org.joml.Vector3f;
 
 /**
  * <b>A Box3D world</b>: bodies, their shapes, stepping, queries, events.
@@ -66,6 +65,7 @@ public final class PhysicsWorld implements AutoCloseable {
     private volatile Thread owner;
     /** {@link ThreadMode#EXCLUSIVE}: the thread between {@link #use()} and its close, if any */
     private final AtomicReference<Thread> holder = new AtomicReference<>();
+
     private int useDepth;
     private final Use use = new Use();
     private final NativeState nativeState;
@@ -78,14 +78,18 @@ public final class PhysicsWorld implements AutoCloseable {
     private final Set<Body> fellAsleep = new LinkedHashSet<>();
     /** Bodies drawn off where they are while a correction fades ({@link Body#addRenderError}) */
     private final Set<Body> withRenderError = new LinkedHashSet<>();
+
     private final WorldEvents events = new WorldEvents();
     /** shapes destroyed since the last step: Box3D reports their end events after the next one */
     private final Long2ObjectOpenHashMap<Shape> goneSinceStep = new Long2ObjectOpenHashMap<>();
+
     private boolean framesUsed;
     /** bumped by calls that change bodies other than their own (putting an island to sleep): cached velocities are old */
     int motionEpoch;
+
     private final List<VoxelGrid> grids = new ArrayList<>();
     private boolean open = true;
+
     @Nullable
     private Box3DException fault;
     /** What shapes let go of in this faulted world were made of: Box3D's shapes still read it until the world goes */
@@ -113,14 +117,17 @@ public final class PhysicsWorld implements AutoCloseable {
     final float[] jointValues = new float[7];
     /** one constraint joint's targets or state */
     final float[] constraintValues = new float[ConstraintJointBatch.TARGET];
+
     final long[] oneJoint = new long[1];
     final float[] massValues = new float[13];
     final double[] point = new double[3];
     private final float[] profileValues = new float[Profile.FIELDS];
+
     @Nullable
     private SurfaceMaterial scratchMaterial;
     /** the query shape {@link #queryProxy} built: up to a hull's vertices */
     final float[] queryPoints = new float[3 * Geometry.Hull.MAX_VERTICES];
+
     float queryRadius;
     private final Vector3f queryCorner = new Vector3f();
     private final Quaternionf queryRotation = new Quaternionf();
@@ -166,7 +173,8 @@ public final class PhysicsWorld implements AutoCloseable {
     /** Hands an {@link ThreadMode#OWNER_THREAD} world to another thread. Only the owner may. */
     public void transferTo(Thread thread) {
         if (threadMode != ThreadMode.OWNER_THREAD) {
-            throw new IllegalStateException("PhysicsWorld " + id + " is " + threadMode + ": use() it instead of handing it on");
+            throw new IllegalStateException(
+                    "PhysicsWorld " + id + " is " + threadMode + ": use() it instead of handing it on");
         }
         enter();
         owner = thread;
@@ -190,8 +198,8 @@ public final class PhysicsWorld implements AutoCloseable {
         }
         if (!holder.compareAndSet(null, current)) {
             Thread other = holder.get();
-            throw new WrongThreadException("PhysicsWorld " + id + " is in use by " + (other == null ? "another thread" : other.getName())
-                    + ", not free for " + current.getName());
+            throw new WrongThreadException("PhysicsWorld " + id + " is in use by "
+                    + (other == null ? "another thread" : other.getName()) + ", not free for " + current.getName());
         }
         useDepth = 1;
         return use;
@@ -220,8 +228,7 @@ public final class PhysicsWorld implements AutoCloseable {
 
     /** Holding a world: {@link #close()} lets it go. */
     public final class Use implements AutoCloseable {
-        private Use() {
-        }
+        private Use() {}
 
         @Override
         public void close() {
@@ -229,7 +236,8 @@ public final class PhysicsWorld implements AutoCloseable {
                 return;
             }
             if (holder.get() != Thread.currentThread()) {
-                throw new WrongThreadException("PhysicsWorld " + id + " is not held by " + Thread.currentThread().getName());
+                throw new WrongThreadException("PhysicsWorld " + id + " is not held by "
+                        + Thread.currentThread().getName());
             }
             if (--useDepth == 0) {
                 holder.set(null);
@@ -242,12 +250,14 @@ public final class PhysicsWorld implements AutoCloseable {
         Thread current = Thread.currentThread();
         if (threadMode == ThreadMode.OWNER_THREAD) {
             if (current != owner) {
-                throw new WrongThreadException("PhysicsWorld " + id + " belongs to " + owner.getName() + ", not " + current.getName());
+                throw new WrongThreadException(
+                        "PhysicsWorld " + id + " belongs to " + owner.getName() + ", not " + current.getName());
             }
         } else if (holder.get() != current) {
             Thread other = holder.get();
-            throw new WrongThreadException("PhysicsWorld " + id + " is " + (other == null ? "not held: use() it first" : "held by "
-                    + other.getName()) + ", not by " + current.getName());
+            throw new WrongThreadException("PhysicsWorld " + id + " is "
+                    + (other == null ? "not held: use() it first" : "held by " + other.getName()) + ", not by "
+                    + current.getName());
         }
     }
 
@@ -419,7 +429,8 @@ public final class PhysicsWorld implements AutoCloseable {
     void unregisterShape(Shape shape) {
         shapes.remove(shape.id);
         if (goneSinceStep.size() >= MAX_GONE) {
-            // a world not stepped for a long while: its end events would name nothing (null) rather than hold all forever
+            // a world not stepped for a long while: its end events would name nothing (null) rather than hold all
+            // forever
             goneSinceStep.clear();
         }
         goneSinceStep.put(shape.id, shape);
@@ -596,9 +607,23 @@ public final class PhysicsWorld implements AutoCloseable {
         for (int i = 0; i < hits; i++) {
             long a = hitIds[4 * i], b = hitIds[4 * i + 1];
             int d = 11 * i;
-            events.contactHits.add(new WorldEvents.ContactHit(eventShape(a), eventShape(b), a, b, hitData[d], hitData[d + 1],
-                    hitData[d + 2], (float) hitData[d + 3], (float) hitData[d + 4], (float) hitData[d + 5], (float) hitData[d + 6],
-                    hitIds[4 * i + 2], hitIds[4 * i + 3], (int) hitData[d + 7], (int) hitData[d + 8], (int) hitData[d + 9],
+            events.contactHits.add(new WorldEvents.ContactHit(
+                    eventShape(a),
+                    eventShape(b),
+                    a,
+                    b,
+                    hitData[d],
+                    hitData[d + 1],
+                    hitData[d + 2],
+                    (float) hitData[d + 3],
+                    (float) hitData[d + 4],
+                    (float) hitData[d + 5],
+                    (float) hitData[d + 6],
+                    hitIds[4 * i + 2],
+                    hitIds[4 * i + 3],
+                    (int) hitData[d + 7],
+                    (int) hitData[d + 8],
+                    (int) hitData[d + 9],
                     (int) hitData[d + 10]));
         }
     }
@@ -783,7 +808,8 @@ public final class PhysicsWorld implements AutoCloseable {
      *
      * @param maskBits the categories it reaches
      */
-    public void explode(double x, double y, double z, float radius, float falloff, float impulsePerArea, long maskBits) {
+    public void explode(
+            double x, double y, double z, float radius, float falloff, float impulsePerArea, long maskBits) {
         enter();
         try {
             checkOpen();
@@ -843,8 +869,8 @@ public final class PhysicsWorld implements AutoCloseable {
      * The closest shape along {@code origin + translation} that {@code filter} lets through, into {@code out}; false for
      * none. A shape the ray starts inside or on is ignored (Box3D's closest ray).
      */
-    public boolean castRayClosest(double ox, double oy, double oz, float tx, float ty, float tz, QueryFilter filter,
-                                  CastResult out) {
+    public boolean castRayClosest(
+            double ox, double oy, double oz, float tx, float ty, float tz, QueryFilter filter, CastResult out) {
         enter();
         try {
             checkOpen();
@@ -852,8 +878,8 @@ public final class PhysicsWorld implements AutoCloseable {
             Checks.finite(tx, ty, tz, "ray translation");
             CastHits hit = out.hit;
             hit.clear(this);
-            if (B3.worldCastRayClosest(id, ox, oy, oz, tx, ty, tz, filter.categoryBits(), filter.maskBits(), hit.doubles,
-                    hit.longs)) {
+            if (B3.worldCastRayClosest(
+                    id, ox, oy, oz, tx, ty, tz, filter.categoryBits(), filter.maskBits(), hit.doubles, hit.longs)) {
                 hit.count = 1;
             }
             return hit.count > 0;
@@ -872,19 +898,42 @@ public final class PhysicsWorld implements AutoCloseable {
      * Every shape along {@code origin + translation} that {@code filter} lets through, closest first, into {@code out}: one
      * hit per shape, its closest; a section of voxel terrain is one shape.
      */
-    public int castRay(double ox, double oy, double oz, float tx, float ty, float tz, QueryFilter filter, CastHits out) {
+    public int castRay(
+            double ox, double oy, double oz, float tx, float ty, float tz, QueryFilter filter, CastHits out) {
         enter();
         try {
             checkOpen();
             Checks.finite(ox, oy, oz, "ray origin");
             Checks.finite(tx, ty, tz, "ray translation");
             out.clear(this);
-            int count = B3.worldCastRay(id, ox, oy, oz, tx, ty, tz, filter.categoryBits(), filter.maskBits(), out.doubles,
-                    out.longs, out.capacity());
+            int count = B3.worldCastRay(
+                    id,
+                    ox,
+                    oy,
+                    oz,
+                    tx,
+                    ty,
+                    tz,
+                    filter.categoryBits(),
+                    filter.maskBits(),
+                    out.doubles,
+                    out.longs,
+                    out.capacity());
             if (count > out.capacity()) {
                 out.ensureCapacity(count);
-                count = B3.worldCastRay(id, ox, oy, oz, tx, ty, tz, filter.categoryBits(), filter.maskBits(), out.doubles,
-                        out.longs, out.capacity());
+                count = B3.worldCastRay(
+                        id,
+                        ox,
+                        oy,
+                        oz,
+                        tx,
+                        ty,
+                        tz,
+                        filter.categoryBits(),
+                        filter.maskBits(),
+                        out.doubles,
+                        out.longs,
+                        out.capacity());
             }
             out.count = Math.min(count, out.capacity());
             return out.count;
@@ -898,8 +947,17 @@ public final class PhysicsWorld implements AutoCloseable {
      * {@code translation}, into {@code out}; false for none. Unlike the ray, a shape already touching something hits it at
      * fraction 0. Terrain is hit only on the open side of a block face. Not for meshes.
      */
-    public boolean castShapeClosest(Geometry geometry, double x, double y, double z, Quaternionfc rotation, float tx, float ty,
-                                    float tz, QueryFilter filter, CastResult out) {
+    public boolean castShapeClosest(
+            Geometry geometry,
+            double x,
+            double y,
+            double z,
+            Quaternionfc rotation,
+            float tx,
+            float ty,
+            float tz,
+            QueryFilter filter,
+            CastResult out) {
         enter();
         try {
             checkOpen();
@@ -908,8 +966,21 @@ public final class PhysicsWorld implements AutoCloseable {
             int count = queryProxy(geometry, rotation);
             CastHits hit = out.hit;
             hit.clear(this);
-            if (B3.worldCastShapeClosest(id, x, y, z, queryPoints, count, queryRadius, tx, ty, tz, filter.categoryBits(),
-                    filter.maskBits(), hit.doubles, hit.longs)) {
+            if (B3.worldCastShapeClosest(
+                    id,
+                    x,
+                    y,
+                    z,
+                    queryPoints,
+                    count,
+                    queryRadius,
+                    tx,
+                    ty,
+                    tz,
+                    filter.categoryBits(),
+                    filter.maskBits(),
+                    hit.doubles,
+                    hit.longs)) {
                 hit.count = 1;
             }
             return hit.count > 0;
@@ -932,9 +1003,21 @@ public final class PhysicsWorld implements AutoCloseable {
      * @param ignore      a body not met at all, or {@code null} — the base a box is being carried with, which moved first
      *                    (Unreal's {@code MOVECOMP_IgnoreBases})
      */
-    public boolean sweepBox(double x, double y, double z, Quaternionfc rotation, float hx, float hy, float hz, float tx,
-                            float ty, float tz, QueryFilter filter, boolean ignoreExits, @Nullable Body ignore,
-                            BoxSweep out) {
+    public boolean sweepBox(
+            double x,
+            double y,
+            double z,
+            Quaternionfc rotation,
+            float hx,
+            float hy,
+            float hz,
+            float tx,
+            float ty,
+            float tz,
+            QueryFilter filter,
+            boolean ignoreExits,
+            @Nullable Body ignore,
+            BoxSweep out) {
         return sweepBox(x, y, z, rotation, hx, hy, hz, tx, ty, tz, filter, ignoreExits, ignore, 0L, out);
     }
 
@@ -943,9 +1026,22 @@ public final class PhysicsWorld implements AutoCloseable {
      * for a box that is something ({@link Body#setTag}): the bodies that never meet it ({@link Body#setIgnoredTag}) are not
      * met either — an entity's own ragdoll, to the entity's mover. 0 is nothing.
      */
-    public boolean sweepBox(double x, double y, double z, Quaternionfc rotation, float hx, float hy, float hz, float tx,
-                            float ty, float tz, QueryFilter filter, boolean ignoreExits, @Nullable Body ignore, long tag,
-                            BoxSweep out) {
+    public boolean sweepBox(
+            double x,
+            double y,
+            double z,
+            Quaternionfc rotation,
+            float hx,
+            float hy,
+            float hz,
+            float tx,
+            float ty,
+            float tz,
+            QueryFilter filter,
+            boolean ignoreExits,
+            @Nullable Body ignore,
+            long tag,
+            BoxSweep out) {
         enter();
         try {
             checkOpen();
@@ -953,8 +1049,27 @@ public final class PhysicsWorld implements AutoCloseable {
             Checks.finite(tx, ty, tz, "sweep translation");
             out.clear(this);
             long ignored = ignore != null && ignore.world() == this && ignore.isValid() ? ignore.id : 0L;
-            out.hit = B3.worldSweepBox(id, x, y, z, rotation.x(), rotation.y(), rotation.z(), rotation.w(), hx, hy, hz,
-                    tx, ty, tz, filter.categoryBits(), filter.maskBits(), ignoreExits, ignored, tag, out.doubles,
+            out.hit = B3.worldSweepBox(
+                    id,
+                    x,
+                    y,
+                    z,
+                    rotation.x(),
+                    rotation.y(),
+                    rotation.z(),
+                    rotation.w(),
+                    hx,
+                    hy,
+                    hz,
+                    tx,
+                    ty,
+                    tz,
+                    filter.categoryBits(),
+                    filter.maskBits(),
+                    ignoreExits,
+                    ignored,
+                    tag,
+                    out.doubles,
                     out.longs);
             return out.hit;
         } finally {
@@ -967,8 +1082,18 @@ public final class PhysicsWorld implements AutoCloseable {
      * for something ({@link Body#setTag}): the bodies that never meet it ({@link Body#setIgnoredTag}) are passed through —
      * an entity's own ragdoll, to the ground query its mover stands by. 0 is nothing.
      */
-    public boolean castShapeClosest(Geometry geometry, double x, double y, double z, Quaternionfc rotation, float tx, float ty,
-                                    float tz, QueryFilter filter, long tag, CastResult out) {
+    public boolean castShapeClosest(
+            Geometry geometry,
+            double x,
+            double y,
+            double z,
+            Quaternionfc rotation,
+            float tx,
+            float ty,
+            float tz,
+            QueryFilter filter,
+            long tag,
+            CastResult out) {
         if (tag == 0L) {
             return castShapeClosest(geometry, x, y, z, rotation, tx, ty, tz, filter, out);
         }
@@ -994,8 +1119,16 @@ public final class PhysicsWorld implements AutoCloseable {
     }
 
     /** {@link #castShapeClosest(Geometry, double, double, double, Quaternionfc, float, float, float, QueryFilter, CastResult)}, unturned. */
-    public boolean castShapeClosest(Geometry geometry, double x, double y, double z, float tx, float ty, float tz,
-                                    QueryFilter filter, CastResult out) {
+    public boolean castShapeClosest(
+            Geometry geometry,
+            double x,
+            double y,
+            double z,
+            float tx,
+            float ty,
+            float tz,
+            QueryFilter filter,
+            CastResult out) {
         return castShapeClosest(geometry, x, y, z, IDENTITY, tx, ty, tz, filter, out);
     }
 
@@ -1004,8 +1137,17 @@ public final class PhysicsWorld implements AutoCloseable {
      * {@link #castShapeClosest(Geometry, double, double, double, Quaternionfc, float, float, float, QueryFilter, CastResult)}
      * — that {@code filter} lets through, closest first, into {@code out}: one hit per shape, its first.
      */
-    public int castShape(Geometry geometry, double x, double y, double z, Quaternionfc rotation, float tx, float ty, float tz,
-                         QueryFilter filter, CastHits out) {
+    public int castShape(
+            Geometry geometry,
+            double x,
+            double y,
+            double z,
+            Quaternionfc rotation,
+            float tx,
+            float ty,
+            float tz,
+            QueryFilter filter,
+            CastHits out) {
         enter();
         try {
             checkOpen();
@@ -1013,12 +1155,40 @@ public final class PhysicsWorld implements AutoCloseable {
             Checks.finite(tx, ty, tz, "cast translation");
             int points = queryProxy(geometry, rotation);
             out.clear(this);
-            int count = B3.worldCastShape(id, x, y, z, queryPoints, points, queryRadius, tx, ty, tz, filter.categoryBits(),
-                    filter.maskBits(), out.doubles, out.longs, out.capacity());
+            int count = B3.worldCastShape(
+                    id,
+                    x,
+                    y,
+                    z,
+                    queryPoints,
+                    points,
+                    queryRadius,
+                    tx,
+                    ty,
+                    tz,
+                    filter.categoryBits(),
+                    filter.maskBits(),
+                    out.doubles,
+                    out.longs,
+                    out.capacity());
             if (count > out.capacity()) {
                 out.ensureCapacity(count);
-                count = B3.worldCastShape(id, x, y, z, queryPoints, points, queryRadius, tx, ty, tz, filter.categoryBits(),
-                        filter.maskBits(), out.doubles, out.longs, out.capacity());
+                count = B3.worldCastShape(
+                        id,
+                        x,
+                        y,
+                        z,
+                        queryPoints,
+                        points,
+                        queryRadius,
+                        tx,
+                        ty,
+                        tz,
+                        filter.categoryBits(),
+                        filter.maskBits(),
+                        out.doubles,
+                        out.longs,
+                        out.capacity());
             }
             out.count = Math.min(count, out.capacity());
             return out.count;
@@ -1029,29 +1199,48 @@ public final class PhysicsWorld implements AutoCloseable {
 
     /** The closest hit of a shape cast as a new value. */
     @Nullable
-    public CastHit castShapeClosest(Geometry geometry, double x, double y, double z, Quaternionfc rotation, float tx, float ty,
-                                    float tz, QueryFilter filter) {
-        return castShapeClosest(geometry, x, y, z, rotation, tx, ty, tz, filter, scratchResult) ? scratchResult.toHit() : null;
+    public CastHit castShapeClosest(
+            Geometry geometry,
+            double x,
+            double y,
+            double z,
+            Quaternionfc rotation,
+            float tx,
+            float ty,
+            float tz,
+            QueryFilter filter) {
+        return castShapeClosest(geometry, x, y, z, rotation, tx, ty, tz, filter, scratchResult)
+                ? scratchResult.toHit()
+                : null;
     }
 
     /**
      * Every shape overlapping {@code geometry} placed at {@code (x, y, z)} turned by {@code rotation} that {@code filter}
      * lets through, into {@code out}. Voxel terrain counts as its sections. Not for meshes.
      */
-    public int overlapShape(Geometry geometry, double x, double y, double z, Quaternionfc rotation, QueryFilter filter,
-                            Overlaps out) {
+    public int overlapShape(
+            Geometry geometry, double x, double y, double z, Quaternionfc rotation, QueryFilter filter, Overlaps out) {
         enter();
         try {
             checkOpen();
             Checks.finite(x, y, z, "overlap position");
             int count = queryProxy(geometry, rotation);
             out.world = this;
-            int found = B3.worldOverlapShape(id, x, y, z, queryPoints, count, queryRadius, filter.categoryBits(), filter.maskBits(),
-                    out.ids);
+            int found = B3.worldOverlapShape(
+                    id, x, y, z, queryPoints, count, queryRadius, filter.categoryBits(), filter.maskBits(), out.ids);
             if (found > out.ids.length) {
                 out.ensureCapacity(found);
-                found = B3.worldOverlapShape(id, x, y, z, queryPoints, count, queryRadius, filter.categoryBits(),
-                        filter.maskBits(), out.ids);
+                found = B3.worldOverlapShape(
+                        id,
+                        x,
+                        y,
+                        z,
+                        queryPoints,
+                        count,
+                        queryRadius,
+                        filter.categoryBits(),
+                        filter.maskBits(),
+                        out.ids);
             }
             out.count = Math.min(found, out.ids.length);
             return out.count;
@@ -1065,24 +1254,31 @@ public final class PhysicsWorld implements AutoCloseable {
      * {@code out}: Box3D's broad phase, so candidates — a shape's bounds are fattened and kept in float, and a shape found
      * may not touch the box at all — for a precise query to look at next. Cheap: no shape is tested.
      */
-    public int overlapAABB(double minX, double minY, double minZ, double maxX, double maxY, double maxZ, QueryFilter filter,
-                           Overlaps out) {
+    public int overlapAABB(
+            double minX,
+            double minY,
+            double minZ,
+            double maxX,
+            double maxY,
+            double maxZ,
+            QueryFilter filter,
+            Overlaps out) {
         enter();
         try {
             checkOpen();
             Checks.finite(minX, minY, minZ, "box min");
             Checks.finite(maxX, maxY, maxZ, "box max");
             if (minX > maxX || minY > maxY || minZ > maxZ) {
-                throw new IllegalArgumentException("box min above its max: (" + minX + ", " + minY + ", " + minZ + ") > ("
-                        + maxX + ", " + maxY + ", " + maxZ + ")");
+                throw new IllegalArgumentException("box min above its max: (" + minX + ", " + minY + ", " + minZ
+                        + ") > (" + maxX + ", " + maxY + ", " + maxZ + ")");
             }
             out.world = this;
-            int found = B3.worldOverlapAABB(id, minX, minY, minZ, maxX, maxY, maxZ, filter.categoryBits(), filter.maskBits(),
-                    out.ids);
+            int found = B3.worldOverlapAABB(
+                    id, minX, minY, minZ, maxX, maxY, maxZ, filter.categoryBits(), filter.maskBits(), out.ids);
             if (found > out.ids.length) {
                 out.ensureCapacity(found);
-                found = B3.worldOverlapAABB(id, minX, minY, minZ, maxX, maxY, maxZ, filter.categoryBits(), filter.maskBits(),
-                        out.ids);
+                found = B3.worldOverlapAABB(
+                        id, minX, minY, minZ, maxX, maxY, maxZ, filter.categoryBits(), filter.maskBits(), out.ids);
             }
             out.count = Math.min(found, out.ids.length);
             return out.count;
@@ -1100,8 +1296,19 @@ public final class PhysicsWorld implements AutoCloseable {
      * The collision planes around a capsule — Box3D's character mover — with ends {@code a} and {@code b} relative to
      * {@code origin}, into {@code out}.
      */
-    public int collideMover(double ox, double oy, double oz, float ax, float ay, float az, float bx, float by, float bz,
-                            float radius, QueryFilter filter, MoverPlanes out) {
+    public int collideMover(
+            double ox,
+            double oy,
+            double oz,
+            float ax,
+            float ay,
+            float az,
+            float bx,
+            float by,
+            float bz,
+            float radius,
+            QueryFilter filter,
+            MoverPlanes out) {
         enter();
         try {
             checkOpen();
@@ -1111,8 +1318,23 @@ public final class PhysicsWorld implements AutoCloseable {
             Checks.positive(radius, "mover radius");
             out.world = this;
             while (true) {
-                int count = B3.worldCollideMover(id, ox, oy, oz, ax, ay, az, bx, by, bz, radius, filter.categoryBits(),
-                        filter.maskBits(), out.floats, out.shapes, out.cells);
+                int count = B3.worldCollideMover(
+                        id,
+                        ox,
+                        oy,
+                        oz,
+                        ax,
+                        ay,
+                        az,
+                        bx,
+                        by,
+                        bz,
+                        radius,
+                        filter.categoryBits(),
+                        filter.maskBits(),
+                        out.floats,
+                        out.shapes,
+                        out.cells);
                 if (count < out.capacity()) {
                     out.count = count;
                     return count;
@@ -1145,7 +1367,10 @@ public final class PhysicsWorld implements AutoCloseable {
                 queryRadius = 0;
                 queryRotation.set(b.qx(), b.qy(), b.qz(), b.qw());
                 for (int i = 0; i < 8; i++) {
-                    queryCorner.set((i & 1) == 0 ? -b.hx() : b.hx(), (i & 2) == 0 ? -b.hy() : b.hy(), (i & 4) == 0 ? -b.hz() : b.hz());
+                    queryCorner.set(
+                            (i & 1) == 0 ? -b.hx() : b.hx(),
+                            (i & 2) == 0 ? -b.hy() : b.hy(),
+                            (i & 4) == 0 ? -b.hz() : b.hz());
                     queryRotation.transform(queryCorner).add(b.cx(), b.cy(), b.cz());
                     putQueryPoint(i, rotation.transform(queryCorner));
                 }
@@ -1155,12 +1380,15 @@ public final class PhysicsWorld implements AutoCloseable {
                 queryRadius = 0;
                 float[] points = h.points();
                 for (int i = 0; i < h.vertexCount(); i++) {
-                    putQueryPoint(i, rotation.transform(queryCorner.set(points[3 * i], points[3 * i + 1], points[3 * i + 2])));
+                    putQueryPoint(
+                            i,
+                            rotation.transform(queryCorner.set(points[3 * i], points[3 * i + 1], points[3 * i + 2])));
                 }
                 return h.vertexCount();
             }
             case Geometry.Mesh m -> throw new IllegalArgumentException("queries take convex shapes, not meshes");
-            case Geometry.HeightField f -> throw new IllegalArgumentException("queries take convex shapes, not height fields");
+            case Geometry.HeightField f ->
+                throw new IllegalArgumentException("queries take convex shapes, not height fields");
         }
     }
 

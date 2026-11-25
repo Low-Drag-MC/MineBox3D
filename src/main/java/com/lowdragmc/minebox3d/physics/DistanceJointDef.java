@@ -11,6 +11,7 @@ public final class DistanceJointDef extends JointDef<DistanceJoint, DistanceJoin
     public boolean enableSpring;
     /** N: how much the spring may pull (negative) and push. */
     public float lowerSpringForce, upperSpringForce;
+
     public float hertz;
     public float dampingRatio;
     public boolean enableLimit;

@@ -1,8 +1,6 @@
 package com.lowdragmc.minebox3d.physics;
 
-import org.joml.Quaternionf;
-import org.joml.Vector3d;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,8 +10,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.joml.Quaternionf;
+import org.joml.Vector3d;
+import org.junit.jupiter.api.Test;
 
 /** <b>How worlds are shared between threads</b> (design doc 03 §4.2): bound to an owner, or used by one thread at a time. */
 class ThreadModeTest {
@@ -94,11 +93,20 @@ class ThreadModeTest {
             List<Runnable> calls = List.of(
                     () -> shape.setFriction(0.5f),
                     () -> shape.bounds(new float[6]),
-                    () -> shape.castShape(Geometry.Box.of(0.1f, 0.1f, 0.1f), 0, 2, 0, new Quaternionf(), 0, -2, 0, true,
+                    () -> shape.castShape(
+                            Geometry.Box.of(0.1f, 0.1f, 0.1f),
+                            0,
+                            2,
+                            0,
+                            new Quaternionf(),
+                            0,
+                            -2,
+                            0,
+                            true,
                             new CastResult()),
                     () -> joint.setCollideConnected(true),
                     () -> joint.destroy(false),
-                    () -> grid.setCells(new int[]{0, 0, 0, 0}, 1),
+                    () -> grid.setCells(new int[] {0, 0, 0, 0}, 1),
                     grid::close);
             for (int i = 0; i < calls.size(); i++) {
                 assertInstanceOf(WrongThreadException.class, onAnotherThread(calls.get(i)), "call " + i);
@@ -134,7 +142,8 @@ class ThreadModeTest {
             PhysicsWorld world = exclusive();
             try (PhysicsWorld.Use use = world.use()) {
                 world.createBody(new BodyDef()).createShape(new ShapeDef(), Geometry.Box.of(5, 0.5f, 5));
-                Body ball = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 3, 0));
+                Body ball =
+                        world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 3, 0));
                 ball.createShape(new ShapeDef(), new Geometry.Sphere(0, 0, 0, 0.25f));
                 balls.add(ball);
             }
@@ -161,7 +170,8 @@ class ThreadModeTest {
         }
         for (int i = 0; i < worlds; i++) {
             try (PhysicsWorld.Use use = all.get(i).use()) {
-                assertEquals(0.75, balls.get(i).position(new Vector3d()).y, 0.02, "world " + i + " stepped every frame");
+                assertEquals(
+                        0.75, balls.get(i).position(new Vector3d()).y, 0.02, "world " + i + " stepped every frame");
                 all.get(i).close();
             }
         }

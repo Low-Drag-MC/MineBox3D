@@ -18,10 +18,18 @@ public final class MineBox3D {
         if (NativeLibrary.tryLoad()) {
             int[] version = new int[3];
             B3.getVersion(version);
-            LOGGER.info("Box3D {}.{}.{} loaded for {} (double precision, up to {} worlds)",
-                    version[0], version[1], version[2], NativeLibrary.platform(), B3.getMaxWorlds());
+            LOGGER.info(
+                    "Box3D {}.{}.{} loaded for {} (double precision, up to {} worlds)",
+                    version[0],
+                    version[1],
+                    version[2],
+                    NativeLibrary.platform(),
+                    B3.getMaxWorlds());
         } else {
-            LOGGER.error("Box3D is unavailable on {}: physics is disabled", NativeLibrary.platform(), NativeLibrary.failure());
+            LOGGER.error(
+                    "Box3D is unavailable on {}: physics is disabled",
+                    NativeLibrary.platform(),
+                    NativeLibrary.failure());
         }
         modBus.addListener(SyncedBodies::registerPayloads);
         EntityShapes.registerAttachments(modBus);

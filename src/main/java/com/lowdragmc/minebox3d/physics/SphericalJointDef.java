@@ -10,15 +10,19 @@ public final class SphericalJointDef extends JointDef<SphericalJoint, SphericalJ
     public boolean enableSpring;
     /** Spring towards {@link #targetRotationX the target rotation}, Hz (Box3D may clamp it for stability). */
     public float hertz;
+
     public float dampingRatio;
     /** Frame B relative to frame A that the spring pulls towards. */
     public float targetRotationX, targetRotationY, targetRotationZ, targetRotationW;
+
     public boolean enableConeLimit;
     /** Radians, 0 to π/2: the widest swing of frame B's z axis away from frame A's. */
     public float coneAngle;
+
     public boolean enableTwistLimit;
     /** Radians, Box3D clamps both to ±0.99π. */
     public float lowerTwistAngle, upperTwistAngle;
+
     public boolean enableMotor;
     /** N·m */
     public float maxMotorTorque;

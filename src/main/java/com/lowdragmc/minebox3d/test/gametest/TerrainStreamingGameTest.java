@@ -15,6 +15,12 @@ import com.lowdragmc.minebox3d.physics.PhysicsWorld;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import com.lowdragmc.minebox3d.physics.ThreadMode;
 import com.lowdragmc.minebox3d.physics.WorldDef;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.gametest.framework.GameTest;
@@ -31,13 +37,6 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 /**
  * <b>The terrain streamer's own work</b> (design doc {@code 01-voxel-terrain.md} §8): what reaches the grid when a taller
@@ -85,8 +84,9 @@ public final class TerrainStreamingGameTest {
             LevelChunk chunk = helper.getLevel().getChunkAt(at);
             chunk.getSection(chunk.getSectionIndex(at.getY()))
                     .setBlockState(at.getX() & 15, at.getY() & 15, at.getZ() & 15, Blocks.AIR.defaultBlockState());
-            pool.submit(() -> physics.terrain.onBlockChanged(at, Blocks.STONE.defaultBlockState(),
-                    Blocks.AIR.defaultBlockState())).get(10, TimeUnit.SECONDS);
+            pool.submit(() -> physics.terrain.onBlockChanged(
+                            at, Blocks.STONE.defaultBlockState(), Blocks.AIR.defaultBlockState()))
+                    .get(10, TimeUnit.SECONDS);
             box.setAwake(true);
             physics.ticks(40);
             physics.near(0.25, physics.relative(box).y, 0.02, "the stone gone from the grid: down on the floor");
@@ -158,12 +158,15 @@ public final class TerrainStreamingGameTest {
         TestArea.clear(helper, -1, 0, -1, 6, 8, 6);
         for (int x = 0; x < 5; x++) {
             for (int z = 0; z < 5; z++) {
-                helper.setBlock(new BlockPos(x, 0, z), Blocks.STONE_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.BOTTOM));
+                helper.setBlock(
+                        new BlockPos(x, 0, z),
+                        Blocks.STONE_SLAB.defaultBlockState().setValue(SlabBlock.TYPE, SlabType.BOTTOM));
             }
         }
         try (PrivatePhysics physics = new PrivatePhysics(helper)) {
             // about 60 m/s at the bottom: three blocks a tick, through four sections. Landing that hard with friction,
-            // Box3D skids it sideways by up to a block (on any ground, a box shape too: doc 01 §12.6), hence the 5 × 5 slabs
+            // Box3D skids it sideways by up to a block (on any ground, a box shape too: doc 01 §12.6), hence the 5 × 5
+            // slabs
             Body box = physics.box(2.5, 60, 2.5, 0.2f);
             physics.ticks(80);
             Vector3d at = physics.relative(box);
@@ -191,7 +194,8 @@ public final class TerrainStreamingGameTest {
             helper.assertFalse(physics.terrain.isLoaded(under), "no terrain wanted, none loaded");
             LevelBodies.setNeedsTerrain(box, null);
             physics.terrain.update();
-            helper.assertTrue(physics.terrain.isLoaded(under), "back to the default for a dynamic body: the section under it");
+            helper.assertTrue(
+                    physics.terrain.isLoaded(under), "back to the default for a dynamic body: the section under it");
 
             // gone keepTicks updates after the last body that wanted it
             box.destroy();
@@ -211,7 +215,8 @@ public final class TerrainStreamingGameTest {
             helper.assertTrue(physics.terrain.grid().cell(at.getX(), at.getY(), at.getZ()) == 0, "air");
             helper.setBlock(high, Blocks.STONE);
             physics.terrain.update();
-            helper.assertTrue(physics.terrain.grid().cell(at.getX(), at.getY(), at.getZ()) != 0,
+            helper.assertTrue(
+                    physics.terrain.grid().cell(at.getX(), at.getY(), at.getZ()) != 0,
                     "the stone placed into the empty section is in the grid");
             for (int i = 0; i < 3 + 5; i++) {
                 physics.terrain.update();
@@ -238,7 +243,8 @@ public final class TerrainStreamingGameTest {
             BlockPos stone = helper.absolutePos(new BlockPos(1, 1, 1));
             physics.terrain.onChunkUnloaded(new ChunkPos(stone));
             helper.assertTrue(physics.terrain.isParked(box) && !box.isEnabled(), "parked before its ground went");
-            helper.assertFalse(physics.terrain.isLoaded(SectionPos.asLong(stone)), "the chunk's sections left the grid");
+            helper.assertFalse(
+                    physics.terrain.isLoaded(SectionPos.asLong(stone)), "the chunk's sections left the grid");
             for (int i = 0; i < 60; i++) {
                 physics.world.step(1 / 60f, 4);
             }
@@ -265,9 +271,11 @@ public final class TerrainStreamingGameTest {
         try (PrivatePhysics physics = new PrivatePhysics(helper)) {
             Body near = physics.box(1.5, 2.5, 1.5, 0.25f);
             Body far = physics.box(3000.5, 80, 1.5, 0.25f); // over a chunk nobody loaded
-            Joint rope = physics.world.createJoint(new DistanceJointDef().bodies(near, far).length(2999));
+            Joint rope = physics.world.createJoint(
+                    new DistanceJointDef().bodies(near, far).length(2999));
             physics.ticks(10);
-            helper.assertTrue(physics.terrain.isParked(far) && physics.terrain.isParked(near) && !near.isEnabled(),
+            helper.assertTrue(
+                    physics.terrain.isParked(far) && physics.terrain.isParked(near) && !near.isEnabled(),
                     "the pair waits for the far one's chunk");
             physics.near(2.5, physics.relative(near).y, 1e-9, "the near one did not fall");
 
@@ -286,7 +294,8 @@ public final class TerrainStreamingGameTest {
             physics.terrain.onChunkUnloaded(new ChunkPos(helper.absolutePos(new BlockPos(1, 1, 1))));
             helper.assertTrue(physics.terrain.isParked(near), "parked as its chunk goes");
             physics.ticks(2);
-            helper.assertTrue(!physics.terrain.isParked(near) && !near.isEnabled(), "let back, and off as its maker left it");
+            helper.assertTrue(
+                    !physics.terrain.isParked(near) && !near.isEnabled(), "let back, and off as its maker left it");
         }
         helper.succeed();
     }
@@ -297,11 +306,13 @@ public final class TerrainStreamingGameTest {
      */
     @GameTest(template = "empty", batch = "minebox3d_exclusive", timeoutTicks = 20)
     @PrefixGameTestTemplate(false)
-    public static void aPrivateWorldSteppedOnAPoolTakesChunkEventsAtItsNextPrepare(GameTestHelper helper) throws Exception {
+    public static void aPrivateWorldSteppedOnAPoolTakesChunkEventsAtItsNextPrepare(GameTestHelper helper)
+            throws Exception {
         TestArea.clear(helper, -1, 0, -1, 6, 8, 5);
         helper.setBlock(new BlockPos(1, 1, 1), Blocks.STONE);
         BlockPos stone = helper.absolutePos(new BlockPos(1, 1, 1));
-        LevelPhysics physics = LevelPhysics.create(helper.getLevel(),
+        LevelPhysics physics = LevelPhysics.create(
+                helper.getLevel(),
                 new WorldDef().gravity(0, LevelPhysics.GRAVITY, 0).threadMode(ThreadMode.EXCLUSIVE));
         helper.assertTrue(physics != null, "Box3D is available");
         PhysicsWorld world = physics.world();
@@ -318,20 +329,23 @@ public final class TerrainStreamingGameTest {
                     physics.prepare();
                 }
                 pool.submit(() -> {
-                    try (PhysicsWorld.Use use = world.use()) {
-                        physics.step();
-                    }
-                }).get(10, TimeUnit.SECONDS);
+                            try (PhysicsWorld.Use use = world.use()) {
+                                physics.step();
+                            }
+                        })
+                        .get(10, TimeUnit.SECONDS);
             }
             try (PhysicsWorld.Use use = world.use()) {
-                double y = box.position(new Vector3d()).y - helper.absolutePos(BlockPos.ZERO).getY();
+                double y = box.position(new Vector3d()).y
+                        - helper.absolutePos(BlockPos.ZERO).getY();
                 helper.assertTrue(Math.abs(y - 2.25) < 0.02, "stepped on the pool onto the stone: y = " + y);
             }
 
             // the world is free and the chunk goes: the event does not take it (a worker could be about to), it waits
             long section = SectionPos.asLong(stone);
             physics.terrain().onChunkUnloaded(new ChunkPos(stone));
-            helper.assertTrue(physics.terrain().isLoaded(section), "a free exclusive world is not taken by a chunk event");
+            helper.assertTrue(
+                    physics.terrain().isLoaded(section), "a free exclusive world is not taken by a chunk event");
             helper.assertTrue(world.owner() == null, "and nobody holds it");
 
             // the terrain is read on the level's thread only, holding the world or not
@@ -380,8 +394,10 @@ public final class TerrainStreamingGameTest {
      */
     @GameTest(template = "empty", batch = "minebox3d_close_held", timeoutTicks = 20)
     @PrefixGameTestTemplate(false)
-    public static void aPhysicsClosedWhileAnotherThreadHoldsItStopsListeningAnyway(GameTestHelper helper) throws Exception {
-        LevelPhysics physics = LevelPhysics.create(helper.getLevel(),
+    public static void aPhysicsClosedWhileAnotherThreadHoldsItStopsListeningAnyway(GameTestHelper helper)
+            throws Exception {
+        LevelPhysics physics = LevelPhysics.create(
+                helper.getLevel(),
                 new WorldDef().gravity(0, LevelPhysics.GRAVITY, 0).threadMode(ThreadMode.EXCLUSIVE));
         helper.assertTrue(physics != null, "Box3D is available");
         ExecutorService pool = Executors.newSingleThreadExecutor();
@@ -433,8 +449,10 @@ public final class TerrainStreamingGameTest {
             onStone.setLinearVelocity(8, 0, 0);
             physics.ticks(60);
             Vector3d ice = physics.relative(onIce), stone = physics.relative(onStone);
-            // friction 0.6 against 0.6 on stone, against 0.03 on ice (Minecraft's slipperiness 0.98): about 1.7 m and 7 m
-            helper.assertTrue(stone.x - 1.5 > 1 && stone.x - 1.5 < 2.5, "slid about 1.7 m on stone: " + (stone.x - 1.5));
+            // friction 0.6 against 0.6 on stone, against 0.03 on ice (Minecraft's slipperiness 0.98): about 1.7 m and 7
+            // m
+            helper.assertTrue(
+                    stone.x - 1.5 > 1 && stone.x - 1.5 < 2.5, "slid about 1.7 m on stone: " + (stone.x - 1.5));
             helper.assertTrue(ice.x - 1.5 > 5, "slid much further on ice: " + (ice.x - 1.5));
         }
         helper.succeed();
@@ -474,7 +492,8 @@ public final class TerrainStreamingGameTest {
         try (PrivatePhysics physics = new PrivatePhysics(helper)) {
             Body onSlime = physics.box(1.5, 4, 1.5, 0.25f);
             Body onStone = physics.box(1.5, 4, 3.5, 0.25f);
-            // the first time it goes up, and how high it gets before it comes down again; a bounce is over within a tick,
+            // the first time it goes up, and how high it gets before it comes down again; a bounce is over within a
+            // tick,
             // so it is told by the velocity, not by a height it was seen at
             double[] peak = {0, 0};
             int[] phase = {0, 0};

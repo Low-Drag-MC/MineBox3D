@@ -7,6 +7,10 @@ import com.lowdragmc.minebox3d.mc.entity.EntityCollisions;
 import com.lowdragmc.minebox3d.physics.Body;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import java.util.ArrayList;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
@@ -21,11 +25,6 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-
-import java.util.ArrayList;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * <b>Entities on synced bodies, over the network</b> (design doc {@code 04-entities-and-bodies.md} §11.2 #1 / #3):
@@ -64,6 +63,7 @@ public final class SyncedRiders {
     private static final double LAG = 0.5;
     /** Pushes a client may tell a tick, and the fastest a push may move a player's mass: m/s. */
     private static final int MAX_PUSHES = 8;
+
     private static final float MAX_PUSH_SPEED = 20;
     /** How far from the player a push may be: blocks. */
     private static final double PUSH_REACH = 3;
@@ -76,9 +76,11 @@ public final class SyncedRiders {
 
     // ---- the server ----
     /** what each client was last told of each rider */
-    private final Map<ServerGamePacketListenerImpl, Int2ObjectOpenHashMap<RiderPayload.Rider>> told = new IdentityHashMap<>();
+    private final Map<ServerGamePacketListenerImpl, Int2ObjectOpenHashMap<RiderPayload.Rider>> told =
+            new IdentityHashMap<>();
     /** per connection: what it said it stands on before its next move packet ([player, vehicle]); its pushes this tick */
     private static final Map<ServerGamePacketListenerImpl, StandingPayload[]> STANDING = new IdentityHashMap<>();
+
     private static final Map<ServerGamePacketListenerImpl, int[]> PUSHES = new IdentityHashMap<>();
     /** the players put somewhere whose clients wait to hear that the bodies around are sent, and since when */
     private static final Map<ServerGamePacketListenerImpl, Integer> SETTLING = new IdentityHashMap<>();
@@ -126,7 +128,8 @@ public final class SyncedRiders {
             return null;
         }
         Entity mover = vehicle ? player.getRootVehicle() : player;
-        if (vehicle ? mover == player || mover.getControllingPassenger() != player
+        if (vehicle
+                ? mover == player || mover.getControllingPassenger() != player
                 : player.isPassenger() || player.isSpectator() || player.isSleeping() || player.isDeadOrDying()) {
             return null;
         }
@@ -136,12 +139,16 @@ public final class SyncedRiders {
         LevelPhysics physics = LevelPhysics.existing(player.serverLevel());
         Body body = physics == null ? null : physics.sync().serverBody(standing.body());
         double lx = standing.x(), ly = standing.y(), lz = standing.z();
-        if (body == null || !physics.sync().knows(player, standing.body()) || !Double.isFinite(lx + ly + lz)
+        if (body == null
+                || !physics.sync().knows(player, standing.body())
+                || !Double.isFinite(lx + ly + lz)
                 || lx * lx + ly * ly + lz * lz > MAX_LOCAL * MAX_LOCAL) {
             EntityBases.release(mover);
             return null;
         }
-        Vector3d at = body.rotation(new Quaternionf()).transform(new Vector3d(lx, ly, lz)).add(body.position(new Vector3d()));
+        Vector3d at = body.rotation(new Quaternionf())
+                .transform(new Vector3d(lx, ly, lz))
+                .add(body.position(new Vector3d()));
         // the replica is behind by what the body travels in the lag, its turn swinging the point round too
         Vector3f v = body.linearVelocity(new Vector3f()), w = body.angularVelocity(new Vector3f());
         double allowed = SLACK + LAG * (v.length() + w.length() * Math.sqrt(lx * lx + ly * ly + lz * lz));
@@ -173,7 +180,9 @@ public final class SyncedRiders {
             return; // a client that should not have pushed: the server moves it, or its moves push nothing
         }
         LevelPhysics physics = LevelPhysics.existing(player.serverLevel());
-        if (physics == null || physics.isStopped() || !player.serverLevel().tickRateManager().runsNormally()) {
+        if (physics == null
+                || physics.isStopped()
+                || !player.serverLevel().tickRateManager().runsNormally()) {
             return; // frozen pushes would pile up into one launch on the next step
         }
         Body body = physics.sync().serverBody(payload.body());
@@ -183,11 +192,15 @@ public final class SyncedRiders {
         float ix = payload.ix(), iy = payload.iy(), iz = payload.iz();
         double lx = payload.x(), ly = payload.y(), lz = payload.z();
         float impulse = (float) Math.sqrt(ix * ix + iy * iy + iz * iz);
-        if (!Float.isFinite(impulse) || impulse == 0 || !Double.isFinite(lx + ly + lz)
+        if (!Float.isFinite(impulse)
+                || impulse == 0
+                || !Double.isFinite(lx + ly + lz)
                 || lx * lx + ly * ly + lz * lz > MAX_LOCAL * MAX_LOCAL) {
             return;
         }
-        Vector3d at = body.rotation(new Quaternionf()).transform(new Vector3d(lx, ly, lz)).add(body.position(new Vector3d()));
+        Vector3d at = body.rotation(new Quaternionf())
+                .transform(new Vector3d(lx, ly, lz))
+                .add(body.position(new Vector3d()));
         if (!player.getBoundingBox().inflate(PUSH_REACH).contains(at.x, at.y, at.z)
                 || EntityCollisions.isPinned(body, ix / impulse, iy / impulse, iz / impulse)) {
             return; // out of reach, or held from beyond: the client's replica cannot tell, the server can
@@ -195,10 +208,13 @@ public final class SyncedRiders {
         // no harder than a player's pace can: the body's own speed that way up to MAX_PUSH_SPEED at most, and no more
         // than the player's mass at that speed
         // the faster of the point and the whole: a tumbling body's point may lag its centre
-        Vector3f there = body.pointVelocity(at.x, at.y, at.z, new Vector3f()), whole = body.linearVelocity(new Vector3f());
-        float along = Math.max(there.x * ix + there.y * iy + there.z * iz, whole.x * ix + whole.y * iy + whole.z * iz) / impulse;
+        Vector3f there = body.pointVelocity(at.x, at.y, at.z, new Vector3f()),
+                whole = body.linearVelocity(new Vector3f());
+        float along = Math.max(there.x * ix + there.y * iy + there.z * iz, whole.x * ix + whole.y * iy + whole.z * iz)
+                / impulse;
         float playerMass = physics.entities().massOf(player);
-        float most = Math.min(body.mass(), Float.isFinite(playerMass) ? playerMass : 0) * Math.max(0, MAX_PUSH_SPEED - along);
+        float most = Math.min(body.mass(), Float.isFinite(playerMass) ? playerMass : 0)
+                * Math.max(0, MAX_PUSH_SPEED - along);
         if (impulse > most) {
             float scale = most / impulse;
             ix *= scale;
@@ -290,11 +306,22 @@ public final class SyncedRiders {
             }
             body.position(p);
             body.rotation(q);
-            Vector3d local = q.transformInverse(new Vector3d(entity.getX() - p.x, entity.getY() - p.y, entity.getZ() - p.z));
+            Vector3d local =
+                    q.transformInverse(new Vector3d(entity.getX() - p.x, entity.getY() - p.y, entity.getZ() - p.z));
             float turn = (float) Math.toDegrees(EntityBases.yawOf(q));
             float bodyYaw = entity instanceof LivingEntity living ? living.yBodyRot : entity.getYRot();
-            riders.add(new Rider(entity, new RiderPayload.Rider(entity.getId(), id, (float) local.x, (float) local.y,
-                    (float) local.z, entity.getYRot() + turn, entity.getYHeadRot() + turn, bodyYaw + turn, entity.getXRot())));
+            riders.add(new Rider(
+                    entity,
+                    new RiderPayload.Rider(
+                            entity.getId(),
+                            id,
+                            (float) local.x,
+                            (float) local.y,
+                            (float) local.z,
+                            entity.getYRot() + turn,
+                            entity.getYHeadRot() + turn,
+                            bodyYaw + turn,
+                            entity.getXRot())));
         });
         told.keySet().removeIf(connection -> connection.player.isRemoved() || connection.player.serverLevel() != level);
         if (riders.isEmpty() && told.isEmpty()) {
@@ -310,8 +337,10 @@ public final class SyncedRiders {
             seen.clear();
             for (Rider rider : riders) {
                 Entity entity = rider.entity;
-                if (entity == player || entity.getControllingPassenger() == player
-                        || !physics.sync().knows(player, rider.told.body()) || !tracks(player, entity)) {
+                if (entity == player
+                        || entity.getControllingPassenger() == player
+                        || !physics.sync().knows(player, rider.told.body())
+                        || !tracks(player, entity)) {
                     continue;
                 }
                 seen.add(entity.getId());
@@ -338,8 +367,7 @@ public final class SyncedRiders {
         }
     }
 
-    private record Rider(Entity entity, RiderPayload.Rider told) {
-    }
+    private record Rider(Entity entity, RiderPayload.Rider told) {}
 
     /**
      * Whether the player's client tracks the entity, as near as the server's tracking goes ({@code ChunkMap.TrackedEntity}):
@@ -349,7 +377,8 @@ public final class SyncedRiders {
         double range = player.server.getScaledTrackingDistance(entity.getType().clientTrackingRange() * 16);
         double dx = entity.getX() - player.getX(), dz = entity.getZ() - player.getZ();
         ChunkPos chunk = entity.chunkPosition();
-        return dx * dx + dz * dz <= range * range && entity.broadcastToPlayer(player)
+        return dx * dx + dz * dz <= range * range
+                && entity.broadcastToPlayer(player)
                 && player.getChunkTrackingView().contains(chunk.x, chunk.z)
                 && !player.connection.chunkSender.isPending(chunk.toLong());
     }
@@ -374,7 +403,8 @@ public final class SyncedRiders {
                 riders.placed.put(rider.entity(), new Placed(rider));
             } else {
                 place.step = place.rider.body() == rider.body()
-                        ? (float) Math.sqrt(sq(rider.x() - place.rider.x()) + sq(rider.z() - place.rider.z())) : 0;
+                        ? (float) Math.sqrt(sq(rider.x() - place.rider.x()) + sq(rider.z() - place.rider.z()))
+                        : 0;
                 place.rider = rider;
             }
         }
@@ -428,9 +458,11 @@ public final class SyncedRiders {
         int id = base == null ? -1 : SyncedBodies.networkId(base);
         int which = vehicle ? 1 : 0;
         if (id >= 0) {
-            Vector3d local = base.rotation(new Quaternionf()).transformInverse(base.position(new Vector3d())
-                    .negate().add(mover.getX(), mover.getY(), mover.getZ()));
-            PacketDistributor.sendToServer(new StandingPayload(id, (float) local.x, (float) local.y, (float) local.z, vehicle));
+            Vector3d local = base.rotation(new Quaternionf())
+                    .transformInverse(
+                            base.position(new Vector3d()).negate().add(mover.getX(), mover.getY(), mover.getZ()));
+            PacketDistributor.sendToServer(
+                    new StandingPayload(id, (float) local.x, (float) local.y, (float) local.z, vehicle));
         } else if (reported[which] >= 0) {
             PacketDistributor.sendToServer(StandingPayload.off(vehicle));
         }
@@ -444,8 +476,8 @@ public final class SyncedRiders {
         if (id < 0) {
             return;
         }
-        Vector3d local = replica.rotation(new Quaternionf()).transformInverse(replica.position(new Vector3d()).negate()
-                .add(at.x, at.y, at.z));
+        Vector3d local = replica.rotation(new Quaternionf())
+                .transformInverse(replica.position(new Vector3d()).negate().add(at.x, at.y, at.z));
         pushes.add(new PushPayload(id, ix, iy, iz, (float) local.x, (float) local.y, (float) local.z));
     }
 
@@ -487,7 +519,8 @@ public final class SyncedRiders {
             RiderPayload.Rider rider = place.rider;
             replica.position(p);
             replica.rotation(q);
-            Vector3d at = q.transform(new Vector3d(rider.x(), rider.y(), rider.z())).add(p);
+            Vector3d at =
+                    q.transform(new Vector3d(rider.x(), rider.y(), rider.z())).add(p);
             entity.setPos(at.x, at.y, at.z);
             float turn = (float) Math.toDegrees(EntityBases.yawOf(q));
             entity.setYRot(rider.yaw() - turn);
@@ -540,7 +573,7 @@ public final class SyncedRiders {
         if (place == null) {
             return false;
         }
-        place.missed = new double[]{x, y, z, yaw, pitch};
+        place.missed = new double[] {x, y, z, yaw, pitch};
         return true;
     }
 
@@ -578,6 +611,7 @@ public final class SyncedRiders {
         /** Minecraft's last movement for it while placed: x, y, z, yaw, pitch; and its head's turn (NaN for none) */
         @Nullable
         double[] missed;
+
         float missedHead = Float.NaN;
 
         Placed(RiderPayload.Rider rider) {

@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 public final class ShapeDef {
     @Nullable
     public String name;
+
     public long userData;
     /**
      * Per-triangle materials for mesh and height-field shapes, indexed by the triangle's material index (an index past
@@ -26,10 +27,12 @@ public final class ShapeDef {
     public float density;
     /** How strongly {@code b3World_Explode} pushes this shape. */
     public float explosionScale;
+
     public Filter filter = new Filter();
     public boolean enableCustomFiltering;
     /** Overlap events only, never a collision response. */
     public boolean sensor;
+
     public boolean enableSensorEvents;
     public boolean enableContactEvents;
     public boolean enableHitEvents;
@@ -38,6 +41,7 @@ public final class ShapeDef {
     public boolean invokeContactCreation;
     /** ⚠️ If false, set the body's mass yourself before stepping. */
     public boolean updateBodyMass;
+
     public boolean enableSpeculativeContact;
 
     public ShapeDef() {

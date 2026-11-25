@@ -21,17 +21,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPacketListener.class)
 public abstract class ClientPacketListenerMixin {
 
-    @WrapOperation(method = {"handleTeleportEntity", "handleMoveEntity"}, at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/entity/Entity;lerpTo(DDDFFI)V"))
-    private void minebox3d$keepPlaced(Entity entity, double x, double y, double z, float yRot, float xRot, int steps,
-                                      Operation<Void> original) {
+    @WrapOperation(
+            method = {"handleTeleportEntity", "handleMoveEntity"},
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;lerpTo(DDDFFI)V"))
+    private void minebox3d$keepPlaced(
+            Entity entity, double x, double y, double z, float yRot, float xRot, int steps, Operation<Void> original) {
         if (!SyncedRiders.keepsPlaced(entity, x, y, z, yRot, xRot)) {
             original.call(entity, x, y, z, yRot, xRot, steps);
         }
     }
 
-    @WrapOperation(method = "handleRotateMob", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/entity/Entity;lerpHeadTo(FI)V"))
+    @WrapOperation(
+            method = "handleRotateMob",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/Entity;lerpHeadTo(FI)V"))
     private void minebox3d$keepPlacedHead(Entity entity, float yaw, int steps, Operation<Void> original) {
         if (!SyncedRiders.keepsPlacedHead(entity, yaw)) {
             original.call(entity, yaw, steps);

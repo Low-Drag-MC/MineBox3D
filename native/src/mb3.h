@@ -10,14 +10,14 @@
 //     turned into a Box3DException when the call returns (MB3_RETURN / mb3_check).
 #pragma once
 
+#include "box3d/box3d.h"
+#include "box3d/collision.h"
+#include "box3d/math_functions.h"
+
 #include <jni.h>
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
-
-#include "box3d/box3d.h"
-#include "box3d/collision.h"
-#include "box3d/math_functions.h"
 
 // MB3_JNI( jint, createWorld )( JNIEnv* env, jclass type, ... ) declares B3.createWorld
 #define MB3_JNI( type, name ) JNIEXPORT type JNICALL Java_com_lowdragmc_minebox3d_internal_B3_##name
@@ -85,12 +85,12 @@ static inline jlong mb3_pack_joint( b3JointId id )
 
 static inline b3Vec3 mb3_vec3( jfloat x, jfloat y, jfloat z )
 {
-	return ( b3Vec3 ){ x, y, z };
+	return (b3Vec3){ x, y, z };
 }
 
 static inline b3Pos mb3_pos( jdouble x, jdouble y, jdouble z )
 {
-	return ( b3Pos ){ x, y, z };
+	return (b3Pos){ x, y, z };
 }
 
 // Normalised: Box3D asserts unit length to 20 float epsilons, far tighter than a rotation typed in or composed in Java
@@ -107,7 +107,7 @@ static inline b3Quat mb3_quat( jfloat x, jfloat y, jfloat z, jfloat w )
 		z *= inverse;
 		w *= inverse;
 	}
-	return ( b3Quat ){ { x, y, z }, w };
+	return (b3Quat){ { x, y, z }, w };
 }
 
 // The same for a rotation read straight into a Box3D struct.
@@ -167,8 +167,9 @@ bool mb3_material_from_java( JNIEnv* env, jobject source, b3SurfaceMaterial* mat
 
 // ---- material combine modes (mb3_materials.c) -----------------------------------------------------------------------
 // Box3D's friction and restitution callbacks take no context, so a surface's combine modes ride in the top byte of its
-// userMaterialId: bits 56–58 friction, 59–61 restitution, each SurfaceMaterial.Combine's ordinal + 1, 0 for Box3D's own.
-// Java never sees the byte: the bridge packs it on the way in and masks it off every userMaterialId on the way out.
+// userMaterialId: bits 56–58 friction, 59–61 restitution, each SurfaceMaterial.Combine's ordinal + 1, 0 for Box3D's
+// own. Java never sees the byte: the bridge packs it on the way in and masks it off every userMaterialId on the way
+// out.
 #define MB3_USER_MATERIAL_BITS 0x00FFFFFFFFFFFFFFull
 
 uint64_t mb3_material_pack( uint64_t userMaterialId, int frictionCombine, int restitutionCombine );

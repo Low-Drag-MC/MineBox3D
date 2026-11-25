@@ -11,10 +11,10 @@ import com.lowdragmc.minebox3d.physics.ConstraintMotion;
 import com.lowdragmc.minebox3d.physics.DistanceJointDef;
 import com.lowdragmc.minebox3d.physics.Filter;
 import com.lowdragmc.minebox3d.physics.JointDef;
+import com.lowdragmc.minebox3d.physics.MotionLockJointDef;
 import com.lowdragmc.minebox3d.physics.MotorJointDef;
 import com.lowdragmc.minebox3d.physics.MoverJointDef;
 import com.lowdragmc.minebox3d.physics.ParallelJointDef;
-import com.lowdragmc.minebox3d.physics.MotionLockJointDef;
 import com.lowdragmc.minebox3d.physics.PogoJointDef;
 import com.lowdragmc.minebox3d.physics.PrismaticJointDef;
 import com.lowdragmc.minebox3d.physics.RevoluteJointDef;
@@ -45,38 +45,37 @@ import org.jetbrains.annotations.ApiStatus;
 @ApiStatus.Internal
 public final class B3 {
 
-    private B3() {
-    }
+    private B3() {}
 
     /** The classes the bridge reads fields of, in the order of {@code enum mb3_class} in mb3.h. */
     public static Class<?>[] boundClasses() {
-        return new Class<?>[]{
-                Box3DException.class,
-                WorldDef.class,
-                BodyDef.class,
-                ShapeDef.class,
-                Filter.class,
-                SurfaceMaterial.class,
-                JointDef.class,
-                DistanceJointDef.class,
-                MotorJointDef.class,
-                ParallelJointDef.class,
-                PrismaticJointDef.class,
-                RevoluteJointDef.class,
-                SphericalJointDef.class,
-                WeldJointDef.class,
-                WheelJointDef.class,
-                MoverJointDef.class,
-                PogoJointDef.class,
-                MotionLockJointDef.class,
-                ConstraintJointDef.class,
-                ConstraintJointSettings.class,
-                ConstraintDrive.class,
-                ConstraintLimitResponse.class,
-                ConstraintMotion.class,
-                SwingLimitShape.class,
-                AngularDriveMode.class,
-                SurfaceMaterial.Combine.class,
+        return new Class<?>[] {
+            Box3DException.class,
+            WorldDef.class,
+            BodyDef.class,
+            ShapeDef.class,
+            Filter.class,
+            SurfaceMaterial.class,
+            JointDef.class,
+            DistanceJointDef.class,
+            MotorJointDef.class,
+            ParallelJointDef.class,
+            PrismaticJointDef.class,
+            RevoluteJointDef.class,
+            SphericalJointDef.class,
+            WeldJointDef.class,
+            WheelJointDef.class,
+            MoverJointDef.class,
+            PogoJointDef.class,
+            MotionLockJointDef.class,
+            ConstraintJointDef.class,
+            ConstraintJointSettings.class,
+            ConstraintDrive.class,
+            ConstraintLimitResponse.class,
+            ConstraintMotion.class,
+            SwingLimitShape.class,
+            AngularDriveMode.class,
+            SurfaceMaterial.Combine.class,
         };
     }
 
@@ -142,8 +141,8 @@ public final class B3 {
     public static native void worldSetContactTuning(int world, float hertz, float dampingRatio, float contactSpeed);
 
     /** Box3D's explosion: an outward impulse per area facing {@code (x, y, z)}, to shapes in {@code maskBits}. */
-    public static native void worldExplode(int world, double x, double y, double z, float radius, float falloff,
-                                           float impulsePerArea, long maskBits);
+    public static native void worldExplode(
+            int world, double x, double y, double z, float radius, float falloff, float impulsePerArea, long maskBits);
 
     /** The last step's time per phase in milliseconds, the 23 fields of {@code b3Profile} in order. */
     public static native void worldGetProfile(int world, float[] out);
@@ -157,8 +156,8 @@ public final class B3 {
      * maxX, maxY, maxZ, vx, vy, vz, wx, wy, wz]}) and whether it fell asleep this step. Returns the total, which may be
      * more than was written; the events stay valid until the next step.
      */
-    public static native int worldGetBodyMoveEvents(int world, long[] ids, double[] transforms, float[] states,
-                                                    boolean[] fellAsleep, int capacity);
+    public static native int worldGetBodyMoveEvents(
+            int world, long[] ids, double[] transforms, float[] states, boolean[] fellAsleep, int capacity);
 
     /**
      * Contact events of the last step: 2 shape ids per begin and end; per hit 4 longs {@code [shapeA, shapeB,
@@ -166,8 +165,8 @@ public final class B3 {
      * (terrain side 0 = neither, 1 = A, 2 = B is voxel terrain, with the cell). {@code counts} gets the totals
      * {@code [begins, ends, hits]}; only what fits is written.
      */
-    public static native void worldGetContactEvents(int world, long[] begins, long[] ends, long[] hitIds, double[] hitData,
-                                                    int[] counts);
+    public static native void worldGetContactEvents(
+            int world, long[] begins, long[] ends, long[] hitIds, double[] hitData, int[] counts);
 
     /** Sensor events of the last step: {@code [sensor, visitor]} each; {@code counts} gets {@code [begins, ends]}. */
     public static native void worldGetSensorEvents(int world, long[] begins, long[] ends, int[] counts);
@@ -176,32 +175,78 @@ public final class B3 {
      * Closest hit along {@code origin + translation}: 11 doubles {@code [px, py, pz, fraction, nx, ny, nz, terrain,
      * cx, cy, cz]} and 2 longs {@code [shape, userMaterialId]}. False for none.
      */
-    public static native boolean worldCastRayClosest(int world, double ox, double oy, double oz, float tx, float ty, float tz,
-                                                     long categoryBits, long maskBits, double[] doubles, long[] longs);
+    public static native boolean worldCastRayClosest(
+            int world,
+            double ox,
+            double oy,
+            double oz,
+            float tx,
+            float ty,
+            float tz,
+            long categoryBits,
+            long maskBits,
+            double[] doubles,
+            long[] longs);
 
     /**
      * Every hit along {@code origin + translation}, closest first, 11 doubles and 2 longs each as
      * {@link #worldCastRayClosest}. Returns how many there are; more than {@code capacity} writes nothing.
      */
-    public static native int worldCastRay(int world, double ox, double oy, double oz, float tx, float ty, float tz,
-                                          long categoryBits, long maskBits, double[] doubles, long[] longs, int capacity);
+    public static native int worldCastRay(
+            int world,
+            double ox,
+            double oy,
+            double oz,
+            float tx,
+            float ty,
+            float tz,
+            long categoryBits,
+            long maskBits,
+            double[] doubles,
+            long[] longs,
+            int capacity);
 
     /**
      * Closest hit of a shape ({@code count} points {@code [x, y, z]} relative to the origin, swept with
      * {@code radius}) moved by {@code translation}; outputs as {@link #worldCastRayClosest}. A shape touching
      * something at the start hits it at fraction 0.
      */
-    public static native boolean worldCastShapeClosest(int world, double ox, double oy, double oz, float[] points, int count,
-                                                       float radius, float tx, float ty, float tz, long categoryBits,
-                                                       long maskBits, double[] doubles, long[] longs);
+    public static native boolean worldCastShapeClosest(
+            int world,
+            double ox,
+            double oy,
+            double oz,
+            float[] points,
+            int count,
+            float radius,
+            float tx,
+            float ty,
+            float tz,
+            long categoryBits,
+            long maskBits,
+            double[] doubles,
+            long[] longs);
 
     /**
      * Every hit of a swept shape (as {@link #worldCastShapeClosest}), closest first, one per shape, 11 doubles and 2 longs
      * each as {@link #worldCastRayClosest}. Returns how many there are; more than {@code capacity} writes nothing.
      */
-    public static native int worldCastShape(int world, double ox, double oy, double oz, float[] points, int count, float radius,
-                                            float tx, float ty, float tz, long categoryBits, long maskBits, double[] doubles,
-                                            long[] longs, int capacity);
+    public static native int worldCastShape(
+            int world,
+            double ox,
+            double oy,
+            double oz,
+            float[] points,
+            int count,
+            float radius,
+            float tx,
+            float ty,
+            float tz,
+            long categoryBits,
+            long maskBits,
+            double[] doubles,
+            long[] longs,
+            int capacity);
 
     /**
      * A box of half sizes {@code (hx, hy, hz)} at {@code (cx, cy, cz)} turned by {@code q}, swept exactly by
@@ -209,29 +254,79 @@ public final class B3 {
      * startPenetrating]}, {@code longs} {@code [shape]}. Not terrain, compounds or sensors, nor the shapes of
      * {@code ignoreBody} (0 for none), nor those of the bodies that never meet {@code tag} (0 for none).
      */
-    public static native boolean worldSweepBox(int world, double cx, double cy, double cz, float qx, float qy, float qz,
-                                               float qw, float hx, float hy, float hz, float tx, float ty, float tz,
-                                               long categoryBits, long maskBits, boolean ignoreExits, long ignoreBody,
-                                               long tag, double[] doubles, long[] longs);
+    public static native boolean worldSweepBox(
+            int world,
+            double cx,
+            double cy,
+            double cz,
+            float qx,
+            float qy,
+            float qz,
+            float qw,
+            float hx,
+            float hy,
+            float hz,
+            float tx,
+            float ty,
+            float tz,
+            long categoryBits,
+            long maskBits,
+            boolean ignoreExits,
+            long ignoreBody,
+            long tag,
+            double[] doubles,
+            long[] longs);
 
     /**
      * Shapes whose broad-phase bounds may overlap the box (candidates, not exact): ids into {@code shapeIds}; returns
      * how many there are (may exceed the array).
      */
-    public static native int worldOverlapAABB(int world, double minX, double minY, double minZ, double maxX, double maxY,
-                                              double maxZ, long categoryBits, long maskBits, long[] shapeIds);
+    public static native int worldOverlapAABB(
+            int world,
+            double minX,
+            double minY,
+            double minZ,
+            double maxX,
+            double maxY,
+            double maxZ,
+            long categoryBits,
+            long maskBits,
+            long[] shapeIds);
 
     /** Shapes overlapping the query shape: ids into {@code shapeIds}; returns how many (may exceed the array). */
-    public static native int worldOverlapShape(int world, double ox, double oy, double oz, float[] points, int count,
-                                               float radius, long categoryBits, long maskBits, long[] shapeIds);
+    public static native int worldOverlapShape(
+            int world,
+            double ox,
+            double oy,
+            double oz,
+            float[] points,
+            int count,
+            float radius,
+            long categoryBits,
+            long maskBits,
+            long[] shapeIds);
 
     /**
      * Collision planes around a capsule mover relative to the origin: {@code [nx, ny, nz, offset, px, py, pz]} per
      * plane, its shape and {@code [terrain, x, y, z]}; returns the count, at most {@code shapeIds.length}.
      */
-    public static native int worldCollideMover(int world, double ox, double oy, double oz, float x1, float y1, float z1,
-                                               float x2, float y2, float z2, float radius, long categoryBits, long maskBits,
-                                               float[] planes, long[] shapeIds, int[] cells);
+    public static native int worldCollideMover(
+            int world,
+            double ox,
+            double oy,
+            double oz,
+            float x1,
+            float y1,
+            float z1,
+            float x2,
+            float y2,
+            float z2,
+            float radius,
+            long categoryBits,
+            long maskBits,
+            float[] planes,
+            long[] shapeIds,
+            int[] cells);
 
     /**
      * {@code [bodies, shapes, contacts, joints, islands, awake contacts]} into {@code out}; returns the
@@ -253,8 +348,8 @@ public final class B3 {
     /** Seven doubles per body into {@code out}, in the order of {@code bodies}. */
     public static native void bodiesGetTransforms(long[] bodies, int count, double[] out);
 
-    public static native void bodySetTransform(long body, double px, double py, double pz,
-                                               float qx, float qy, float qz, float qw);
+    public static native void bodySetTransform(
+            long body, double px, double py, double pz, float qx, float qy, float qz, float qw);
 
     public static native void bodyGetLinearVelocity(long body, float[] out);
 
@@ -274,12 +369,21 @@ public final class B3 {
     public static native void bodySetType(long body, int type);
 
     /** Moves a kinematic body to the target over {@code timeStep} by velocity, pushing what it meets. */
-    public static native void bodySetTargetTransform(long body, double px, double py, double pz,
-                                                     float qx, float qy, float qz, float qw, float timeStep, boolean wake);
+    public static native void bodySetTargetTransform(
+            long body,
+            double px,
+            double py,
+            double pz,
+            float qx,
+            float qy,
+            float qz,
+            float qw,
+            float timeStep,
+            boolean wake);
 
     /** {@link #bodySetTargetTransform} for {@code count} bodies, 7 doubles each {@code [px, py, pz, qx, qy, qz, qw]}. */
-    public static native void bodiesSetTargetTransforms(long[] bodies, int count, double[] transforms, float timeStep,
-                                                        boolean wake);
+    public static native void bodiesSetTargetTransforms(
+            long[] bodies, int count, double[] transforms, float timeStep, boolean wake);
 
     public static native void bodySetEnabled(long body, boolean enabled);
 
@@ -312,16 +416,46 @@ public final class B3 {
     public static native void bodyGetWorldPointVelocity(long body, double x, double y, double z, float[] out);
 
     /** The closest hit on this body only; outputs as {@link #worldCastRayClosest}. */
-    public static native boolean bodyCastRay(long body, double ox, double oy, double oz, float tx, float ty, float tz,
-                                             long categoryBits, long maskBits, double[] doubles, long[] longs);
+    public static native boolean bodyCastRay(
+            long body,
+            double ox,
+            double oy,
+            double oz,
+            float tx,
+            float ty,
+            float tz,
+            long categoryBits,
+            long maskBits,
+            double[] doubles,
+            long[] longs);
 
     /** The closest hit of a query shape on this body only; outputs as {@link #worldCastRayClosest}. */
-    public static native boolean bodyCastShape(long body, double ox, double oy, double oz, float[] points, int count,
-                                               float radius, float tx, float ty, float tz, long categoryBits, long maskBits,
-                                               double[] doubles, long[] longs);
+    public static native boolean bodyCastShape(
+            long body,
+            double ox,
+            double oy,
+            double oz,
+            float[] points,
+            int count,
+            float radius,
+            float tx,
+            float ty,
+            float tz,
+            long categoryBits,
+            long maskBits,
+            double[] doubles,
+            long[] longs);
 
-    public static native boolean bodyOverlapShape(long body, double ox, double oy, double oz, float[] points, int count,
-                                                  float radius, long categoryBits, long maskBits);
+    public static native boolean bodyOverlapShape(
+            long body,
+            double ox,
+            double oy,
+            double oz,
+            float[] points,
+            int count,
+            float radius,
+            long categoryBits,
+            long maskBits);
 
     /**
      * The closest point on the body's convex shapes into {@code out}; the distance (0 inside), {@code Float.MAX_VALUE}
@@ -341,14 +475,15 @@ public final class B3 {
     /** {@code [minX, minY, minZ, maxX, maxY, maxZ]}, world space, float (the broad phase's own box). */
     public static native void bodyComputeAABB(long body, float[] out);
 
-    public static native void bodyApplyLinearImpulse(long body, float ix, float iy, float iz,
-                                                     double px, double py, double pz, boolean wake);
+    public static native void bodyApplyLinearImpulse(
+            long body, float ix, float iy, float iz, double px, double py, double pz, boolean wake);
 
     public static native void bodyApplyLinearImpulseToCenter(long body, float ix, float iy, float iz, boolean wake);
 
     public static native void bodyApplyAngularImpulse(long body, float ix, float iy, float iz, boolean wake);
 
-    public static native void bodyApplyForce(long body, float fx, float fy, float fz, double px, double py, double pz, boolean wake);
+    public static native void bodyApplyForce(
+            long body, float fx, float fy, float fz, double px, double py, double pz, boolean wake);
 
     public static native void bodyApplyForceToCenter(long body, float fx, float fy, float fz, boolean wake);
 
@@ -356,14 +491,26 @@ public final class B3 {
 
     // ---- shape --------------------------------------------------------------------------------
 
-    public static native long createSphereShape(long body, ShapeDef definition, float cx, float cy, float cz, float radius);
+    public static native long createSphereShape(
+            long body, ShapeDef definition, float cx, float cy, float cz, float radius);
 
-    public static native long createCapsuleShape(long body, ShapeDef definition, float x1, float y1, float z1,
-                                                 float x2, float y2, float z2, float radius);
+    public static native long createCapsuleShape(
+            long body, ShapeDef definition, float x1, float y1, float z1, float x2, float y2, float z2, float radius);
 
     /** A box of half extents {@code (hx, hy, hz)} centred at {@code c}, turned by {@code q}, in body space. */
-    public static native long createBoxShape(long body, ShapeDef definition, float hx, float hy, float hz,
-                                             float cx, float cy, float cz, float qx, float qy, float qz, float qw);
+    public static native long createBoxShape(
+            long body,
+            ShapeDef definition,
+            float hx,
+            float hy,
+            float hz,
+            float cx,
+            float cy,
+            float cz,
+            float qx,
+            float qy,
+            float qz,
+            float qw);
 
     public static native void destroyShape(long shape, boolean updateBodyMass);
 
@@ -371,7 +518,8 @@ public final class B3 {
 
     public static native long shapeGetBody(long shape);
 
-    public static native void shapeSetFilter(long shape, long categoryBits, long maskBits, int groupIndex, boolean invokeContacts);
+    public static native void shapeSetFilter(
+            long shape, long categoryBits, long maskBits, int groupIndex, boolean invokeContacts);
 
     public static native void shapeSetFriction(long shape, float friction);
 
@@ -395,10 +543,21 @@ public final class B3 {
 
     public static native void shapeSetSphere(long shape, float cx, float cy, float cz, float radius);
 
-    public static native void shapeSetCapsule(long shape, float x1, float y1, float z1, float x2, float y2, float z2, float radius);
+    public static native void shapeSetCapsule(
+            long shape, float x1, float y1, float z1, float x2, float y2, float z2, float radius);
 
-    public static native void shapeSetBox(long shape, float hx, float hy, float hz, float cx, float cy, float cz,
-                                          float qx, float qy, float qz, float qw);
+    public static native void shapeSetBox(
+            long shape,
+            float hx,
+            float hy,
+            float hz,
+            float cx,
+            float cy,
+            float cz,
+            float qx,
+            float qy,
+            float qz,
+            float qw);
 
     public static native void shapeSetHull(long shape, float[] points, int count);
 
@@ -436,9 +595,20 @@ public final class B3 {
      * {@link #worldCastRayClosest}. With {@code canEncroach}, one touching it without overlapping hits only moving in
      * (Box3D's box mover).
      */
-    public static native boolean shapeCastShape(long shape, double ox, double oy, double oz, float[] points, int count,
-                                                float radius, float tx, float ty, float tz, boolean canEncroach,
-                                                double[] doubles, long[] longs);
+    public static native boolean shapeCastShape(
+            long shape,
+            double ox,
+            double oy,
+            double oz,
+            float[] points,
+            int count,
+            float radius,
+            float tx,
+            float ty,
+            float tz,
+            boolean canEncroach,
+            double[] doubles,
+            long[] longs);
 
     // ---- height fields ------------------------------------------------------------------------
 
@@ -450,8 +620,17 @@ public final class B3 {
      * @param heights   {@code countX * countZ}, index {@code z * countX + x}
      * @param materials one per cell ({@code (countX - 1) * (countZ - 1)}), {@code 0xFF} a hole, or null
      */
-    public static native long createHeightField(float[] heights, int countX, int countZ, byte[] materials, float sx, float sy,
-                                                float sz, float minHeight, float maxHeight, boolean clockwise);
+    public static native long createHeightField(
+            float[] heights,
+            int countX,
+            int countZ,
+            byte[] materials,
+            float sx,
+            float sy,
+            float sz,
+            float minHeight,
+            float maxHeight,
+            boolean clockwise);
 
     public static native void destroyHeightField(long heightField);
 
@@ -470,8 +649,8 @@ public final class B3 {
 
     public static native int jointGetType(long joint);
 
-    public static native void jointSetLocalFrame(long joint, boolean frameB, float px, float py, float pz,
-                                                 float qx, float qy, float qz, float qw);
+    public static native void jointSetLocalFrame(
+            long joint, boolean frameB, float px, float py, float pz, float qx, float qy, float qz, float qw);
 
     /** {@code [px, py, pz, qx, qy, qz, qw]} */
     public static native void jointGetLocalFrame(long joint, boolean frameB, float[] out);
@@ -517,9 +696,17 @@ public final class B3 {
      *
      * @param materialIndices one per triangle, indexing the shape definition's materials, or null
      */
-    public static native long createMesh(float[] vertices, int vertexCount, int[] indices, int triangleCount,
-                                         byte[] materialIndices, float weldTolerance, boolean weldVertices,
-                                         boolean useMedianSplit, boolean identifyEdges, boolean clockWiseWinding);
+    public static native long createMesh(
+            float[] vertices,
+            int vertexCount,
+            int[] indices,
+            int triangleCount,
+            byte[] materialIndices,
+            float weldTolerance,
+            boolean weldVertices,
+            boolean useMedianSplit,
+            boolean identifyEdges,
+            boolean clockWiseWinding);
 
     public static native void destroyMesh(long mesh);
 
@@ -564,6 +751,6 @@ public final class B3 {
      * minZ, maxX, maxY, maxZ]}, section coordinates), 9 floats each into {@code vertices} and Box3D edge flags
      * into {@code flags}. Returns how many there are, which may be more than fit.
      */
-    public static native int voxelGridCollectTriangles(long grid, int sx, int sy, int sz, float[] bounds, float[] vertices,
-                                                        byte[] flags);
+    public static native int voxelGridCollectTriangles(
+            long grid, int sx, int sy, int sz, float[] bounds, float[] vertices, byte[] flags);
 }

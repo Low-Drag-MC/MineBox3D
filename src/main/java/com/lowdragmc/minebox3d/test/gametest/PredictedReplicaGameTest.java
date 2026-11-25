@@ -12,6 +12,7 @@ import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import com.lowdragmc.minebox3d.physics.WorldDef;
+import java.util.List;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.Vec3;
@@ -19,8 +20,6 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
-
-import java.util.List;
 
 /**
  * <b>A client predicting round its own body</b> (EntityStudio doc 61 §3.9), the client's half played on a private physics
@@ -32,8 +31,7 @@ import java.util.List;
 @GameTestHolder(MineBox3D.MOD_ID)
 public final class PredictedReplicaGameTest {
 
-    private PredictedReplicaGameTest() {
-    }
+    private PredictedReplicaGameTest() {}
 
     private static final byte BOX = 2;
     private static final long OWN_TAG = 1L << 62 | 7;
@@ -42,6 +40,7 @@ public final class PredictedReplicaGameTest {
     /** A predictor at a fixed place, whose frames are the physics' own ticks; the body tagged {@link #OTHER_TAG} another's. */
     private static final class Predicting implements SyncedBodies.Predictor {
         final Vec3 centre;
+
         @Nullable
         Body own;
 
@@ -81,7 +80,8 @@ public final class PredictedReplicaGameTest {
         final Predicting predictor;
 
         Stage(GameTestHelper helper) {
-            LevelPhysics created = LevelPhysics.create(helper.getLevel(), new WorldDef().gravity(0, LevelPhysics.GRAVITY, 0));
+            LevelPhysics created =
+                    LevelPhysics.create(helper.getLevel(), new WorldDef().gravity(0, LevelPhysics.GRAVITY, 0));
             if (created == null) {
                 throw new IllegalStateException("Box3D is not available");
             }
@@ -109,21 +109,40 @@ public final class PredictedReplicaGameTest {
 
         /** The server's word: a crate of 40 kg at {@code (x, y, z)}, tagged {@code tag}. */
         void spawn(int id, double x, double y, double z, long tag) {
-            spawn(id, state(id, x, y, z), tag, new BodySyncPayload.Dynamics(40, 0, 0, 0,
-                    new float[]{4, 0, 0, 0, 4, 0, 0, 0, 4}, true));
+            spawn(
+                    id,
+                    state(id, x, y, z),
+                    tag,
+                    new BodySyncPayload.Dynamics(40, 0, 0, 0, new float[] {4, 0, 0, 0, 4, 0, 0, 0, 4}, true));
         }
 
         void spawn(int id, BodySyncPayload.State state, long tag, BodySyncPayload.Dynamics dynamics) {
-            var shape = new BodySyncPayload.SyncedShape(BOX, new float[]{0.4f, 0.4f, 0.4f, 0, 0, 0, 0, 0, 0, 1}, -1L, -1L, 0,
-                    false, 0.6f, 0, 0, com.lowdragmc.minebox3d.mc.entity.StepUpOn.YES);
-            physics.sync().apply(new BodySyncPayload(List.of(new BodySyncPayload.Spawn(id, "crate", 0, tag, 0, List.of(shape),
-                    state, dynamics, new org.joml.Vector3f())), List.of(), new int[0], false, physics.ticks(),
-                    BodySyncPayload.NO_FRAME));
+            var shape = new BodySyncPayload.SyncedShape(
+                    BOX,
+                    new float[] {0.4f, 0.4f, 0.4f, 0, 0, 0, 0, 0, 0, 1},
+                    -1L,
+                    -1L,
+                    0,
+                    false,
+                    0.6f,
+                    0,
+                    0,
+                    com.lowdragmc.minebox3d.mc.entity.StepUpOn.YES);
+            physics.sync()
+                    .apply(new BodySyncPayload(
+                            List.of(new BodySyncPayload.Spawn(
+                                    id, "crate", 0, tag, 0, List.of(shape), state, dynamics, new org.joml.Vector3f())),
+                            List.of(),
+                            new int[0],
+                            false,
+                            physics.ticks(),
+                            BodySyncPayload.NO_FRAME));
         }
 
         void state(int id, double x, double y, double z, long tick) {
-            physics.sync().apply(new BodySyncPayload(List.of(), List.of(state(id, x, y, z)), new int[0], false, tick,
-                    (int) tick));
+            physics.sync()
+                    .apply(new BodySyncPayload(
+                            List.of(), List.of(state(id, x, y, z)), new int[0], false, tick, (int) tick));
         }
 
         static BodySyncPayload.State state(int id, double x, double y, double z) {
@@ -144,15 +163,19 @@ public final class PredictedReplicaGameTest {
             Vec3 c = stage.centre;
             stage.spawn(1, c.x, c.y + 3, c.z, 0);
             stage.spawn(2, c.x + 20, c.y + 3, c.z, 0);
-            Body near = stage.physics.sync().replica(1), far = stage.physics.sync().replica(2);
+            Body near = stage.physics.sync().replica(1),
+                    far = stage.physics.sync().replica(2);
             helper.assertTrue(near != null && far != null, "both made");
             // a client's tick: the replicas given their part before the steps (prepare does it only on a client)
             stage.physics.sync().beforeSteps(1 / 20f);
             stage.ticks(helper, 10);
-            helper.assertTrue(near.type() == BodyType.DYNAMIC && SyncedBodies.isSimulated(near), "the near one simulated");
-            helper.assertTrue(near.position(new Vector3d()).y < c.y + 1, "falling here on its own: "
-                    + (near.position(new Vector3d()).y - c.y));
-            helper.assertTrue(far.type() == BodyType.KINEMATIC && !SyncedBodies.isSimulated(far), "the far one following");
+            helper.assertTrue(
+                    near.type() == BodyType.DYNAMIC && SyncedBodies.isSimulated(near), "the near one simulated");
+            helper.assertTrue(
+                    near.position(new Vector3d()).y < c.y + 1,
+                    "falling here on its own: " + (near.position(new Vector3d()).y - c.y));
+            helper.assertTrue(
+                    far.type() == BodyType.KINEMATIC && !SyncedBodies.isSimulated(far), "the far one following");
             helper.assertTrue(far.position(new Vector3d()).y > c.y + 2.9, "where the server last said");
         }
         helper.succeed();
@@ -173,7 +196,8 @@ public final class PredictedReplicaGameTest {
 
             stage.state(1, recorded.x + 0.05, recorded.y, recorded.z, then);
             stage.tick();
-            helper.assertTrue(stage.physics.rewind().resimulations() == 0, "5 cm off: within Unreal's 10, not run again");
+            helper.assertTrue(
+                    stage.physics.rewind().resimulations() == 0, "5 cm off: within Unreal's 10, not run again");
 
             stage.state(1, recorded.x + 0.5, recorded.y, recorded.z, then);
             Vector3d before = crate.position(new Vector3d());
@@ -191,7 +215,8 @@ public final class PredictedReplicaGameTest {
     public static void itsOwnBodyHasNoReplicaAndIsHeldAgainstTheServers(GameTestHelper helper) {
         try (Stage stage = new Stage(helper)) {
             Vec3 c = stage.centre;
-            Body own = stage.physics.createBody(new BodyDef().type(BodyType.DYNAMIC).position(c.x + 1, c.y + 0.4, c.z));
+            Body own = stage.physics.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(c.x + 1, c.y + 0.4, c.z));
             own.createShape(new ShapeDef().density(100), Geometry.Box.of(0.4f, 0.4f, 0.4f));
             LevelBodies.setNeedsTerrain(own, false);
             stage.predictor.own = own;
@@ -233,7 +258,8 @@ public final class PredictedReplicaGameTest {
             stage.physics.sync().setPredictor(null);
             stage.spawn(5, c.x + 1, c.y + 0.4, c.z, OWN_TAG);
             helper.assertTrue(stage.physics.sync().replica(5) != null, "a replica while nothing predicts");
-            Body own = stage.physics.createBody(new BodyDef().type(BodyType.DYNAMIC).position(c.x + 1, c.y + 0.4, c.z));
+            Body own = stage.physics.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(c.x + 1, c.y + 0.4, c.z));
             own.createShape(new ShapeDef().density(100), Geometry.Box.of(0.4f, 0.4f, 0.4f));
             LevelBodies.setNeedsTerrain(own, false);
             stage.predictor.own = own;
@@ -245,7 +271,8 @@ public final class PredictedReplicaGameTest {
             helper.assertTrue(recorded != null, "its own recorded");
             stage.state(5, recorded.x, recorded.y, recorded.z + 0.3, then);
             stage.tick();
-            helper.assertTrue(stage.physics.rewind().resimulations() == 1, "the server's word of it held against its own");
+            helper.assertTrue(
+                    stage.physics.rewind().resimulations() == 1, "the server's word of it held against its own");
         }
         helper.succeed();
     }
@@ -260,24 +287,39 @@ public final class PredictedReplicaGameTest {
         try (Stage stage = new Stage(helper)) {
             Vec3 c = stage.centre;
             float[] inertia = {4, 0, 0, 0, 4, 0, 0, 0, 4};
-            stage.spawn(1, Stage.state(1, c.x, c.y + 3, c.z), 0, new BodySyncPayload.Dynamics(40, 0, 0, 0, inertia, true,
-                    0.5f, 0.25f, 0, true));
-            stage.spawn(2, new BodySyncPayload.State(2, c.x + 2, c.y + 3, c.z, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, false, 0), 0,
+            stage.spawn(
+                    1,
+                    Stage.state(1, c.x, c.y + 3, c.z),
+                    0,
+                    new BodySyncPayload.Dynamics(40, 0, 0, 0, inertia, true, 0.5f, 0.25f, 0, true));
+            stage.spawn(
+                    2,
+                    new BodySyncPayload.State(2, c.x + 2, c.y + 3, c.z, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, false, 0),
+                    0,
                     new BodySyncPayload.Dynamics(40, 0, 0, 0, inertia, true));
-            stage.spawn(3, new BodySyncPayload.State(3, c.x - 2, c.y + 3, c.z, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, true, 1), 0,
+            stage.spawn(
+                    3,
+                    new BodySyncPayload.State(3, c.x - 2, c.y + 3, c.z, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, true, 1),
+                    0,
                     new BodySyncPayload.Dynamics(40, 0, 0, 0, inertia, true));
-            Body weightless = stage.physics.sync().replica(1), lacking = stage.physics.sync().replica(2),
+            Body weightless = stage.physics.sync().replica(1),
+                    lacking = stage.physics.sync().replica(2),
                     held = stage.physics.sync().replica(3);
             stage.physics.sync().beforeSteps(1 / 20f);
             stage.ticks(helper, 10);
             helper.assertTrue(SyncedBodies.isSimulated(weightless), "simulated here");
-            helper.assertTrue(weightless.gravityScale() == 0 && weightless.linearDamping() == 0.5f
-                    && weightless.angularDamping() == 0.25f && weightless.isFixedRotation(),
+            helper.assertTrue(
+                    weightless.gravityScale() == 0
+                            && weightless.linearDamping() == 0.5f
+                            && weightless.angularDamping() == 0.25f
+                            && weightless.isFixedRotation(),
                     "moving as the server's body: " + weightless.gravityScale() + " " + weightless.isFixedRotation());
             helper.assertTrue(weightless.position(new Vector3d()).y > c.y + 2.9, "weightless, it floats as there");
-            helper.assertTrue(!SyncedBodies.isSimulated(lacking) && lacking.type() == BodyType.KINEMATIC,
+            helper.assertTrue(
+                    !SyncedBodies.isSimulated(lacking) && lacking.type() == BodyType.KINEMATIC,
                     "touching what is not here: followed");
-            helper.assertTrue(!SyncedBodies.isSimulated(held) && held.type() == BodyType.KINEMATIC,
+            helper.assertTrue(
+                    !SyncedBodies.isSimulated(held) && held.type() == BodyType.KINEMATIC,
                     "held by a joint it is not held by here: followed");
         }
         helper.succeed();
@@ -294,28 +336,43 @@ public final class PredictedReplicaGameTest {
         try (Stage stage = new Stage(helper)) {
             Vec3 c = stage.centre;
             float[] inertia = {4, 0, 0, 0, 4, 0, 0, 0, 4};
-            stage.spawn(1, Stage.state(1, c.x, c.y + 3, c.z), 0, new BodySyncPayload.Dynamics(40, 0, 0, 0, inertia, true));
+            stage.spawn(
+                    1, Stage.state(1, c.x, c.y + 3, c.z), 0, new BodySyncPayload.Dynamics(40, 0, 0, 0, inertia, true));
             Body crate = stage.physics.sync().replica(1);
             stage.physics.sync().beforeSteps(1 / 20f);
             helper.assertTrue(SyncedBodies.isSimulated(crate) && crate.gravityScale() == 1, "simulated, falling");
-            stage.physics.sync().apply(new BodySyncPayload(List.of(), List.of(), new int[0], false, stage.physics.ticks(),
-                    BodySyncPayload.NO_FRAME, List.of(new BodySyncPayload.Tuning(1, new BodySyncPayload.Dynamics(40, 0,
-                    0, 0, inertia, true, 0.5f, 0, 0, false)))));
+            stage.physics
+                    .sync()
+                    .apply(new BodySyncPayload(
+                            List.of(),
+                            List.of(),
+                            new int[0],
+                            false,
+                            stage.physics.ticks(),
+                            BodySyncPayload.NO_FRAME,
+                            List.of(new BodySyncPayload.Tuning(
+                                    1, new BodySyncPayload.Dynamics(40, 0, 0, 0, inertia, true, 0.5f, 0, 0, false)))));
             helper.assertTrue(stage.physics.sync().replica(1) == crate, "the same replica");
             helper.assertTrue(crate.gravityScale() == 0 && crate.linearDamping() == 0.5f, "moving as the server's now");
 
-            // held on the server by a joint this client has not got, and here by its own body standing on it: that joint
+            // held on the server by a joint this client has not got, and here by its own body standing on it: that
+            // joint
             // is its own body's, not the one the server counts — followed
-            stage.spawn(2, new BodySyncPayload.State(2, c.x + 3, c.y + 3, c.z, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, true, 1), 0,
+            stage.spawn(
+                    2,
+                    new BodySyncPayload.State(2, c.x + 3, c.y + 3, c.z, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, true, 1),
+                    0,
                     new BodySyncPayload.Dynamics(40, 0, 0, 0, inertia, true));
             Body held = stage.physics.sync().replica(2);
-            Body own = stage.physics.createBody(new BodyDef().type(BodyType.DYNAMIC).position(c.x + 3, c.y + 4, c.z));
+            Body own = stage.physics.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(c.x + 3, c.y + 4, c.z));
             own.createShape(new ShapeDef().density(100), Geometry.Box.of(0.3f, 0.3f, 0.3f));
             LevelBodies.setNeedsTerrain(own, false);
             stage.predictor.own = own;
             stage.physics.world().createJoint(new com.lowdragmc.minebox3d.physics.RevoluteJointDef().bodies(held, own));
             stage.physics.sync().beforeSteps(1 / 20f);
-            helper.assertTrue(!SyncedBodies.isSimulated(held), "its own body's joint is not the one the server holds it by");
+            helper.assertTrue(
+                    !SyncedBodies.isSimulated(held), "its own body's joint is not the one the server holds it by");
         }
         helper.succeed();
     }
@@ -326,7 +383,8 @@ public final class PredictedReplicaGameTest {
     public static void aPredictorAfterAnotherFindsItsOwnBody(GameTestHelper helper) {
         try (Stage stage = new Stage(helper)) {
             Vec3 c = stage.centre;
-            Body own = stage.physics.createBody(new BodyDef().type(BodyType.DYNAMIC).position(c.x + 1, c.y + 0.4, c.z));
+            Body own = stage.physics.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(c.x + 1, c.y + 0.4, c.z));
             own.createShape(new ShapeDef().density(100), Geometry.Box.of(0.4f, 0.4f, 0.4f));
             LevelBodies.setNeedsTerrain(own, false);
             stage.predictor.own = own;
@@ -341,7 +399,8 @@ public final class PredictedReplicaGameTest {
             helper.assertTrue(recorded != null, "its own recorded");
             stage.state(5, recorded.x, recorded.y, recorded.z + 0.3, then);
             stage.tick();
-            helper.assertTrue(stage.physics.rewind().resimulations() == 1, "the server's word of it held against its own");
+            helper.assertTrue(
+                    stage.physics.rewind().resimulations() == 1, "the server's word of it held against its own");
         }
         helper.succeed();
     }

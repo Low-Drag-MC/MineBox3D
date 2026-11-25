@@ -1,15 +1,14 @@
 package com.lowdragmc.minebox3d.physics;
 
-import org.jetbrains.annotations.Nullable;
-import org.joml.Quaternionf;
-import org.joml.Vector3d;
-import org.joml.Vector3f;
-
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Set;
+import org.jetbrains.annotations.Nullable;
+import org.joml.Quaternionf;
+import org.joml.Vector3d;
+import org.joml.Vector3f;
 
 /**
  * <b>Where bodies were over the last ticks</b>, to put them back and simulate again — Unreal's rewind data, the bodies'
@@ -62,8 +61,23 @@ public final class RewindHistory {
      * {@code body}'s state at the end of {@code tick} as it is known to have been — a server's word — held in place of what
      * was recorded, so a {@link #restore} puts it there. The rotation is taken as given: a unit one.
      */
-    public void put(long tick, Body body, double x, double y, double z, float qx, float qy, float qz, float qw, float vx,
-                    float vy, float vz, float wx, float wy, float wz, boolean awake) {
+    public void put(
+            long tick,
+            Body body,
+            double x,
+            double y,
+            double z,
+            float qx,
+            float qy,
+            float qz,
+            float qw,
+            float vx,
+            float vy,
+            float vz,
+            float wx,
+            float wy,
+            float wz,
+            boolean awake) {
         Track track = tracks.computeIfAbsent(body, b -> new Track(capacity));
         int slot = slot(tick);
         track.ticks[slot] = tick;
@@ -102,8 +116,21 @@ public final class RewindHistory {
         }
         int p = 3 * slot, q = 4 * slot, v = 6 * slot;
         float[] r = track.rotations, w = track.velocities;
-        body.restore(track.positions[p], track.positions[p + 1], track.positions[p + 2], r[q], r[q + 1], r[q + 2],
-                r[q + 3], w[v], w[v + 1], w[v + 2], w[v + 3], w[v + 4], w[v + 5], track.awake[slot]);
+        body.restore(
+                track.positions[p],
+                track.positions[p + 1],
+                track.positions[p + 2],
+                r[q],
+                r[q + 1],
+                r[q + 2],
+                r[q + 3],
+                w[v],
+                w[v + 1],
+                w[v + 2],
+                w[v + 3],
+                w[v + 4],
+                w[v + 5],
+                track.awake[slot]);
         return true;
     }
 

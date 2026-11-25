@@ -11,6 +11,7 @@ public final class PogoJointDef extends JointDef<PogoJoint, PogoJointDef> {
     public float normalX, normalY, normalZ;
     /** Spring stiffness, Hz. */
     public float hertz;
+
     public float dampingRatio;
     /** m */
     public float restLength;

@@ -1,14 +1,13 @@
 package com.lowdragmc.minebox3d.physics;
 
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * <b>A body's second round of API</b> (design doc {@code 03-threading-and-api.md} §6.4 item 2): mass, damping, forces
@@ -136,7 +135,8 @@ class BodyApiTest {
     @Test
     void aFixedRotationBodyFallsWithoutTurning() {
         try (PhysicsWorld world = world(-10)) {
-            Body fixed = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 5, 0).fixedRotation(true));
+            Body fixed = world.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(0, 5, 0).fixedRotation(true));
             fixed.createShape(new ShapeDef(), Geometry.Box.of(0.25f, 0.25f, 0.25f));
             assertTrue(fixed.isFixedRotation(), "from the definition");
             fixed.applyAngularImpulse(5, 5, 5);
@@ -153,8 +153,11 @@ class BodyApiTest {
             Body locked = cube(world, 0, 5, 0, 0.25f);
             // the frame where the cube is, its z axis up: kept on that height, turning about the vertical only
             Quaternionf zUp = new Quaternionf().rotationX((float) (-Math.PI / 2));
-            MotionLockJoint joint = world.createJoint(new MotionLockJointDef().bodies(anchor, locked)
-                    .worldFrame(0, 5, 0, zUp).lockLinear(false, false, true).lockAngularXY(true));
+            MotionLockJoint joint = world.createJoint(new MotionLockJointDef()
+                    .bodies(anchor, locked)
+                    .worldFrame(0, 5, 0, zUp)
+                    .lockLinear(false, false, true)
+                    .lockAngularXY(true));
             assertTrue(joint.isLinearLocked(2) && !joint.isLinearLocked(0) && joint.isAngularLocked());
             locked.applyAngularImpulse(5, 5, 5);
             locked.setLinearVelocity(1, 0, 0);
@@ -215,7 +218,9 @@ class BodyApiTest {
     void pointsGoBetweenTheBodysSpaceAndTheWorldExactlyFarOut() {
         try (PhysicsWorld world = world(0)) {
             double x = 29_000_000.125, z = -29_000_000.375;
-            Body body = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(x, 70, z)
+            Body body = world.createBody(new BodyDef()
+                    .type(BodyType.DYNAMIC)
+                    .position(x, 70, z)
                     .rotation(new Quaternionf().rotateY((float) Math.PI / 2)));
             Vector3d world3 = body.toWorld(1, 2, 0, new Vector3d());
             // a quarter turn about y takes local +x to world -z
@@ -279,11 +284,13 @@ class BodyApiTest {
     /** The step's whole impulse and the approach speed Box3D samples — the latter only for a pair reporting hits. */
     @Test
     void aContactPointSaysHowHardTheStepPushedAndHowFastThePairCame() {
-        for (boolean hits : new boolean[]{true, false}) {
+        for (boolean hits : new boolean[] {true, false}) {
             try (PhysicsWorld world = world(-10)) {
                 Body ground = world.createBody(new BodyDef());
                 ground.createShape(new ShapeDef(), Geometry.Box.of(5, 0.5f, 5));
-                Body ball = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 0.5 + 0.25 + 0.05, 0)
+                Body ball = world.createBody(new BodyDef()
+                        .type(BodyType.DYNAMIC)
+                        .position(0, 0.5 + 0.25 + 0.05, 0)
                         .linearVelocity(0, -4, 0));
                 ball.createShape(new ShapeDef().enableHitEvents(hits), new Geometry.Sphere(0, 0, 0, 0.25f));
                 ContactPoints points = new ContactPoints();
@@ -298,7 +305,8 @@ class BodyApiTest {
                 }
                 if (hits) {
                     assertEquals(4, approach, 0.5, "came together at about its fall speed");
-                    assertTrue(total > last && total > 0.5f * ball.mass() * 4, "the step's impulse stopped it: " + total);
+                    assertTrue(
+                            total > last && total > 0.5f * ball.mass() * 4, "the step's impulse stopped it: " + total);
                 } else {
                     assertTrue(total > 0, "touching");
                     assertEquals(0, approach, 0.0, "not measured without hit events");
@@ -328,7 +336,8 @@ class BodyApiTest {
 
             Shape side = body.createShape(new ShapeDef().density(1000), Geometry.Box.of(0.5f, 0.5f, 0.5f, 2, 0, 0));
             sameAsBox3D(body, "after a shape off the centre");
-            assertNotEquals(before, body.linearVelocity(new Vector3f()), "and it did change (else this proves nothing)");
+            assertNotEquals(
+                    before, body.linearVelocity(new Vector3f()), "and it did change (else this proves nothing)");
 
             steps(world, 1);
             before = body.linearVelocity(new Vector3f());
@@ -401,7 +410,7 @@ class BodyApiTest {
     @Test
     void aBodyWithAHeightFieldStaysStatic() {
         try (PhysicsWorld world = world(0);
-             HeightFieldData data = HeightFieldData.create(new float[]{0, 0, 0, 0}, 2, 2)) {
+                HeightFieldData data = HeightFieldData.create(new float[] {0, 0, 0, 0}, 2, 2)) {
             Body ground = world.createBody(new BodyDef());
             ground.createShape(new ShapeDef(), new Geometry.HeightField(data));
             assertThrows(IllegalStateException.class, () -> ground.setType(BodyType.DYNAMIC));
@@ -430,7 +439,8 @@ class BodyApiTest {
     @Test
     void aTeleportThatDoesNotWakeLeavesTheBodyAsleepWhereQueriesStillMeetIt() {
         try (PhysicsWorld world = world(-10)) {
-            Body volume = world.createBody(new BodyDef().type(BodyType.KINEMATIC).awake(false));
+            Body volume =
+                    world.createBody(new BodyDef().type(BodyType.KINEMATIC).awake(false));
             volume.createShape(new ShapeDef().sensor(true), new Geometry.Sphere(0, 0, 0, 0.25f));
             steps(world, 1);
             assertFalse(volume.isAwake(), "made asleep");
@@ -443,8 +453,10 @@ class BodyApiTest {
             assertEquals(1, world.castRay(0, 0, 0, 10, 0, 0, QueryFilter.ALL, hits), "met where it was put");
             assertEquals(4.75, hits.x(0), 1e-4);
             Overlaps found = new Overlaps();
-            assertEquals(1, world.overlapShape(new Geometry.Sphere(0, 0, 0, 0.1f), 5, 0, 0, new Quaternionf(),
-                    QueryFilter.ALL, found));
+            assertEquals(
+                    1,
+                    world.overlapShape(
+                            new Geometry.Sphere(0, 0, 0, 0.1f), 5, 0, 0, new Quaternionf(), QueryFilter.ALL, found));
 
             volume.setTransform(6, 0, 0, new Quaternionf());
             assertTrue(volume.isAwake(), "a plain teleport still wakes it");
@@ -458,7 +470,8 @@ class BodyApiTest {
     @Test
     void aSleepingBodySwitchedOffAndOnKeepsNothingBehind() {
         try (PhysicsWorld world = world(0)) {
-            Body volume = world.createBody(new BodyDef().type(BodyType.KINEMATIC).awake(false));
+            Body volume =
+                    world.createBody(new BodyDef().type(BodyType.KINEMATIC).awake(false));
             volume.createShape(new ShapeDef().sensor(true), new Geometry.Sphere(0, 0, 0, 0.25f));
             for (int i = 0; i < 20; i++) {
                 switchOffAndOnAsleep(volume);

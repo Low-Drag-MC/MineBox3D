@@ -6,8 +6,9 @@
 #include "mb3.h"
 
 MB3_JNI( jlong, createMesh )( JNIEnv* env, jclass type, jfloatArray vertices, jint vertexCount, jintArray indices,
-							   jint triangleCount, jbyteArray materialIndices, jfloat weldTolerance, jboolean weldVertices,
-							   jboolean useMedianSplit, jboolean identifyEdges, jboolean clockWiseWinding )
+							  jint triangleCount, jbyteArray materialIndices, jfloat weldTolerance,
+							  jboolean weldVertices, jboolean useMedianSplit, jboolean identifyEdges,
+							  jboolean clockWiseWinding )
 {
 	(void)type;
 	if ( vertices == NULL || vertexCount < 3 || ( *env )->GetArrayLength( env, vertices ) < 3 * vertexCount )
@@ -31,7 +32,8 @@ MB3_JNI( jlong, createMesh )( JNIEnv* env, jclass type, jfloatArray vertices, ji
 	// each pinned only once the one before it was: a failed pin leaves an exception pending, and no JNI call may follow
 	jfloat* v = ( *env )->GetFloatArrayElements( env, vertices, NULL );
 	jint* i = v != NULL ? ( *env )->GetIntArrayElements( env, indices, NULL ) : NULL;
-	jbyte* m = i != NULL && materialIndices != NULL ? ( *env )->GetByteArrayElements( env, materialIndices, NULL ) : NULL;
+	jbyte* m =
+		i != NULL && materialIndices != NULL ? ( *env )->GetByteArrayElements( env, materialIndices, NULL ) : NULL;
 	if ( v == NULL || i == NULL || ( materialIndices != NULL && m == NULL ) )
 	{
 		if ( i != NULL )
@@ -98,7 +100,7 @@ MB3_JNI( void, destroyMesh )( JNIEnv* env, jclass type, jlong mesh )
 }
 
 MB3_JNI( jlong, createMeshShape )( JNIEnv* env, jclass type, jlong body, jobject definition, jlong mesh, jfloat sx,
-									jfloat sy, jfloat sz )
+								   jfloat sy, jfloat sz )
 {
 	(void)type;
 	if ( mesh == 0 )
@@ -112,7 +114,8 @@ MB3_JNI( jlong, createMeshShape )( JNIEnv* env, jclass type, jlong body, jobject
 	{
 		return 0;
 	}
-	b3ShapeId id = b3CreateMeshShape( mb3_body( body ), &def, (const b3MeshData*)(intptr_t)mesh, mb3_vec3( sx, sy, sz ) );
+	b3ShapeId id =
+		b3CreateMeshShape( mb3_body( body ), &def, (const b3MeshData*)(intptr_t)mesh, mb3_vec3( sx, sy, sz ) );
 	mb3_shape_def_release( &def );
 	// A failed check does not stop Box3D making the shape: Java never gets its id, and the shape would keep pointing
 	// at a mesh Java frees

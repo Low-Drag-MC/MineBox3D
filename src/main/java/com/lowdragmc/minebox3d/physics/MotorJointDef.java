@@ -16,11 +16,13 @@ public final class MotorJointDef extends JointDef<MotorJoint, MotorJointDef> {
     public float maxVelocityTorque;
     /** Position spring, Hz. */
     public float linearHertz;
+
     public float linearDampingRatio;
     /** N */
     public float maxSpringForce;
     /** Rotation spring, Hz. */
     public float angularHertz;
+
     public float angularDampingRatio;
     /** N·m */
     public float maxSpringTorque;

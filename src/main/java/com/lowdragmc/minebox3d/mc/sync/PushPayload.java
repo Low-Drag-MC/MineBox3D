@@ -12,9 +12,11 @@ import net.minecraft.resources.ResourceLocation;
  * the server, which takes the client's word on bodies and so never meets the body in the player's move, applies the
  * impulse ({@code ix, iy, iz}, N·s) at the point ({@code x, y, z}, in the body's frame) — within what a player can give.
  */
-public record PushPayload(int body, float ix, float iy, float iz, float x, float y, float z) implements CustomPacketPayload {
+public record PushPayload(int body, float ix, float iy, float iz, float x, float y, float z)
+        implements CustomPacketPayload {
 
-    public static final Type<PushPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(MineBox3D.MOD_ID, "push"));
+    public static final Type<PushPayload> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(MineBox3D.MOD_ID, "push"));
     public static final StreamCodec<FriendlyByteBuf, PushPayload> CODEC = StreamCodec.of(
             (buffer, payload) -> {
                 buffer.writeVarInt(payload.body);
@@ -25,8 +27,14 @@ public record PushPayload(int body, float ix, float iy, float iz, float x, float
                 buffer.writeFloat(payload.y);
                 buffer.writeFloat(payload.z);
             },
-            buffer -> new PushPayload(buffer.readVarInt(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat(),
-                    buffer.readFloat(), buffer.readFloat(), buffer.readFloat()));
+            buffer -> new PushPayload(
+                    buffer.readVarInt(),
+                    buffer.readFloat(),
+                    buffer.readFloat(),
+                    buffer.readFloat(),
+                    buffer.readFloat(),
+                    buffer.readFloat(),
+                    buffer.readFloat()));
 
     @Override
     public Type<? extends CustomPacketPayload> type() {

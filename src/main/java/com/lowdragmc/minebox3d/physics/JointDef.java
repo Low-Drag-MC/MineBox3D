@@ -23,18 +23,30 @@ import org.joml.Vector3f;
  * @param <D> the definition itself, for the chained setters
  */
 public abstract sealed class JointDef<J extends Joint, D extends JointDef<J, D>>
-        permits DistanceJointDef, FilterJointDef, MotorJointDef, ParallelJointDef, PrismaticJointDef, RevoluteJointDef,
-        SphericalJointDef, WeldJointDef, WheelJointDef, MoverJointDef, PogoJointDef, MotionLockJointDef,
-        ConstraintJointDef {
+        permits DistanceJointDef,
+                FilterJointDef,
+                MotorJointDef,
+                ParallelJointDef,
+                PrismaticJointDef,
+                RevoluteJointDef,
+                SphericalJointDef,
+                WeldJointDef,
+                WheelJointDef,
+                MoverJointDef,
+                PogoJointDef,
+                MotionLockJointDef,
+                ConstraintJointDef {
 
     @Nullable
     public Body bodyA, bodyB;
     public long userData;
     /** Frame A, in body A's space from its origin. */
     public float positionAX, positionAY, positionAZ;
+
     public float rotationAX, rotationAY, rotationAZ, rotationAW;
     /** Frame B, in body B's space from its origin. */
     public float positionBX, positionBY, positionBZ;
+
     public float rotationBX, rotationBY, rotationBZ, rotationBW;
     /** Force (N) above which the joint is reported in {@link WorldEvents#jointEvents()}; Box3D never breaks it itself. */
     public float forceThreshold;
@@ -42,6 +54,7 @@ public abstract sealed class JointDef<J extends Joint, D extends JointDef<J, D>>
     public float torqueThreshold;
     /** How stiffly the joint corrects drift (advanced); Hz. */
     public float constraintHertz;
+
     public float constraintDampingRatio;
     /** Debug draw scale. */
     public float drawScale;
@@ -121,8 +134,8 @@ public abstract sealed class JointDef<J extends Joint, D extends JointDef<J, D>>
         return worldFrame(x, y, z, new Quaternionf());
     }
 
-    private static void toLocal(Body body, double x, double y, double z, Quaternionfc rotation, Vector3f position,
-                                Quaternionf local) {
+    private static void toLocal(
+            Body body, double x, double y, double z, Quaternionfc rotation, Vector3f position, Quaternionf local) {
         Quaternionf inverse = body.rotation(new Quaternionf()).conjugate();
         // subtract in double: the bodies may be millions of blocks out
         position.set((float) (x - body.current[0]), (float) (y - body.current[1]), (float) (z - body.current[2]));

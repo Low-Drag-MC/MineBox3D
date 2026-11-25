@@ -5,6 +5,8 @@ import com.lowdragmc.minebox3d.physics.SurfaceMaterial;
 import com.lowdragmc.minebox3d.physics.VoxelGrid;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
+import java.util.Arrays;
+import java.util.List;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.world.level.Level;
@@ -17,9 +19,6 @@ import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * <b>Minecraft's block collision as the collider ids of one {@link VoxelGrid}</b> (design doc
@@ -43,6 +42,7 @@ public final class BlockColliders {
     private final VoxelGrid grid;
     /** a state's own collider, cut to its cell, for states whose shape Minecraft caches */
     private final Reference2IntOpenHashMap<BlockState> byState = new Reference2IntOpenHashMap<>();
+
     private final Object2IntOpenHashMap<ColliderKey> byContent = new Object2IntOpenHashMap<>();
     private final Object2IntOpenHashMap<MaterialKey> materials = new Object2IntOpenHashMap<>();
     private final SurfaceMaterial scratch = new SurfaceMaterial();
@@ -107,7 +107,12 @@ public final class BlockColliders {
         }
         AABB b = shape.bounds();
         // in the cell's frame the neighbour's unit cube sits at (dx, dy, dz)
-        if (b.maxX + dx <= 0 || b.minX + dx >= 1 || b.maxY + dy <= 0 || b.minY + dy >= 1 || b.maxZ + dz <= 0 || b.minZ + dz >= 1) {
+        if (b.maxX + dx <= 0
+                || b.minX + dx >= 1
+                || b.maxY + dy <= 0
+                || b.minY + dy >= 1
+                || b.maxZ + dz <= 0
+                || b.minZ + dz >= 1) {
             return Shapes.empty();
         }
         return Shapes.join(shape.move(dx, dy, dz), Shapes.block(), BooleanOp.AND);
@@ -151,7 +156,9 @@ public final class BlockColliders {
         List<AABB> boxes = shape.toAabbs();
         if (boxes.size() > VoxelGrid.MAX_BOXES) {
             if (!warnedTooManyBoxes) {
-                MineBox3D.LOGGER.warn("a block collision shape has {} boxes, more than {}: using its bounds", boxes.size(),
+                MineBox3D.LOGGER.warn(
+                        "a block collision shape has {} boxes, more than {}: using its bounds",
+                        boxes.size(),
                         VoxelGrid.MAX_BOXES);
                 warnedTooManyBoxes = true;
             }
@@ -186,13 +193,17 @@ public final class BlockColliders {
             return grid.addCollider(values, boxCount, material);
         } catch (RuntimeException rejected) {
             AABB b = shape.bounds();
-            float[] bounds = {(float) b.minX, (float) b.minY, (float) b.minZ, (float) b.maxX, (float) b.maxY, (float) b.maxZ};
+            float[] bounds = {
+                (float) b.minX, (float) b.minY, (float) b.minZ, (float) b.maxX, (float) b.maxY, (float) b.maxZ
+            };
             try {
                 int id = grid.addCollider(bounds, 1, material);
-                MineBox3D.LOGGER.warn("a block collision shape was refused ({}); using its bounds", rejected.getMessage());
+                MineBox3D.LOGGER.warn(
+                        "a block collision shape was refused ({}); using its bounds", rejected.getMessage());
                 return id;
             } catch (RuntimeException alsoRejected) {
-                MineBox3D.LOGGER.warn("a block collision shape was refused ({}); the block has no physics", rejected.getMessage());
+                MineBox3D.LOGGER.warn(
+                        "a block collision shape was refused ({}); the block has no physics", rejected.getMessage());
                 return 0;
             }
         }
@@ -200,8 +211,15 @@ public final class BlockColliders {
 
     private int material(Level level, BlockPos pos, BlockState state) {
         TerrainMaterials.fill(level, pos, state, scratch);
-        MaterialKey key = new MaterialKey(scratch.friction, scratch.restitution, scratch.rollingResistance, scratch.tangentVelocityX,
-                scratch.tangentVelocityY, scratch.tangentVelocityZ, scratch.userMaterialId, scratch.customColor);
+        MaterialKey key = new MaterialKey(
+                scratch.friction,
+                scratch.restitution,
+                scratch.rollingResistance,
+                scratch.tangentVelocityX,
+                scratch.tangentVelocityY,
+                scratch.tangentVelocityZ,
+                scratch.userMaterialId,
+                scratch.customColor);
         int index = materials.getInt(key);
         if (index == MISSING) {
             index = grid.addMaterial(scratch);
@@ -223,7 +241,9 @@ public final class BlockColliders {
             return null;
         }
         LevelChunkSection blocks = chunk.getSection(index);
-        int ox = chunk.getPos().getMinBlockX(), oy = SectionPos.sectionToBlockCoord(sectionY), oz = chunk.getPos().getMinBlockZ();
+        int ox = chunk.getPos().getMinBlockX(),
+                oy = SectionPos.sectionToBlockCoord(sectionY),
+                oz = chunk.getPos().getMinBlockZ();
         short[] cells = new short[VoxelGrid.SECTION_CELLS];
         boolean any = false;
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
@@ -262,8 +282,13 @@ public final class BlockColliders {
                             for (int tz = Math.max(0, z - 1); tz <= Math.min(15, z + 1); tz++) {
                                 for (int tx = Math.max(0, x - 1); tx <= Math.min(15, x + 1); tx++) {
                                     int rx = tx - x, ry = ty - y, rz = tz - z;
-                                    if (rx == 0 && ry == 0 && rz == 0 || b.maxX <= rx || b.minX >= rx + 1 || b.maxY <= ry
-                                            || b.minY >= ry + 1 || b.maxZ <= rz || b.minZ >= rz + 1) {
+                                    if (rx == 0 && ry == 0 && rz == 0
+                                            || b.maxX <= rx
+                                            || b.minX >= rx + 1
+                                            || b.maxY <= ry
+                                            || b.minY >= ry + 1
+                                            || b.maxZ <= rz
+                                            || b.minZ >= rz + 1) {
                                         continue;
                                     }
                                     int id = collider(level, new BlockPos(ox + tx, oy + ty, oz + tz));
@@ -288,8 +313,10 @@ public final class BlockColliders {
                 }
                 for (int dy = -1; dy <= 1; dy++) {
                     int index = level.getSectionIndexFromSectionY(sy + dy);
-                    if (index >= 0 && index < chunk.getSectionsCount()
-                            && chunk.getSection(index).maybeHas(state -> !state.isAir() && state.hasLargeCollisionShape())) {
+                    if (index >= 0
+                            && index < chunk.getSectionsCount()
+                            && chunk.getSection(index)
+                                    .maybeHas(state -> !state.isAir() && state.hasLargeCollisionShape())) {
                         return true;
                     }
                 }
@@ -306,8 +333,8 @@ public final class BlockColliders {
         if (level.isOutsideBuildHeight(pos)) {
             return Blocks.AIR.defaultBlockState();
         }
-        LevelChunk chunk = level.getChunkSource().getChunkNow(SectionPos.blockToSectionCoord(pos.getX()),
-                SectionPos.blockToSectionCoord(pos.getZ()));
+        LevelChunk chunk = level.getChunkSource()
+                .getChunkNow(SectionPos.blockToSectionCoord(pos.getX()), SectionPos.blockToSectionCoord(pos.getZ()));
         return chunk == null ? Blocks.AIR.defaultBlockState() : chunk.getBlockState(pos);
     }
 
@@ -324,7 +351,13 @@ public final class BlockColliders {
     }
 
     /** Every field of the material: two blocks share a material only if they are the same surface in every respect. */
-    private record MaterialKey(float friction, float restitution, float rollingResistance, float tangentVelocityX,
-                               float tangentVelocityY, float tangentVelocityZ, long userMaterialId, int customColor) {
-    }
+    private record MaterialKey(
+            float friction,
+            float restitution,
+            float rollingResistance,
+            float tangentVelocityX,
+            float tangentVelocityY,
+            float tangentVelocityZ,
+            long userMaterialId,
+            int customColor) {}
 }

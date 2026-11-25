@@ -1,9 +1,9 @@
 package com.lowdragmc.minebox3d.physics;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * <b>Friction and restitution combine modes</b> (UE's physical material): two surfaces without one mix as Box3D always did,
@@ -18,7 +18,8 @@ class SurfaceCombineTest {
             ShapeDef ground = new ShapeDef();
             ground.baseMaterial.friction = 0.9f;
             floor.createShape(ground, Geometry.Box.of(50, 0.5f, 50));
-            Body box = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 0.25, 0).enableSleep(false));
+            Body box = world.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(0, 0.25, 0).enableSleep(false));
             ShapeDef shape = new ShapeDef().density(1000);
             shape.baseMaterial.friction = 0.1f;
             shape.baseMaterial.frictionCombine = mode;
@@ -50,7 +51,8 @@ class SurfaceCombineTest {
             ShapeDef ground = new ShapeDef();
             ground.baseMaterial.restitution = 0.9f;
             floor.createShape(ground, Geometry.Box.of(50, 0.5f, 50));
-            Body ball = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 2.2, 0).enableSleep(false));
+            Body ball = world.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(0, 2.2, 0).enableSleep(false));
             ShapeDef shape = new ShapeDef().density(1000);
             shape.baseMaterial.restitution = 0.1f;
             shape.baseMaterial.restitutionCombine = mode;
@@ -88,7 +90,8 @@ class SurfaceCombineTest {
 
             CastResult hit = new CastResult();
             assertTrue(world.castRayClosest(0, 5, 0, 0, -10, 0, QueryFilter.ALL, hit));
-            assertEquals(0x00AB_CDEF_1234_5678L, hit.userMaterialId(), "a query sees the user's id, not MineBox3D's byte");
+            assertEquals(
+                    0x00AB_CDEF_1234_5678L, hit.userMaterialId(), "a query sees the user's id, not MineBox3D's byte");
 
             read.combine(null, null);
             shape.setSurfaceMaterial(read);
@@ -97,7 +100,9 @@ class SurfaceCombineTest {
             assertNull(plain.restitutionCombine);
 
             def.baseMaterial.userMaterialId = 1L << 60;
-            assertThrows(IllegalArgumentException.class, () -> body.createShape(def, Geometry.Box.of(1, 1, 1)),
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> body.createShape(def, Geometry.Box.of(1, 1, 1)),
                     "the top byte is MineBox3D's");
         }
     }

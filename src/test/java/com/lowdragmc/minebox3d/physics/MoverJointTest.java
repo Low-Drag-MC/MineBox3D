@@ -1,13 +1,13 @@
 package com.lowdragmc.minebox3d.physics;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * <b>Box3D's dynamic mover joints</b>: the mover joint drives a character body at a velocity by a limited force, the pogo
@@ -31,7 +31,11 @@ class MoverJointTest {
 
     /** A capsule standing upright with its rotation locked, no friction: what Box3D's sample walks. */
     private static Body character(PhysicsWorld world, double x, double y, double z) {
-        BodyDef def = new BodyDef().type(BodyType.DYNAMIC).position(x, y, z).enableSleep(false).fixedRotation(true);
+        BodyDef def = new BodyDef()
+                .type(BodyType.DYNAMIC)
+                .position(x, y, z)
+                .enableSleep(false)
+                .fixedRotation(true);
         Body body = world.createBody(def);
         ShapeDef shape = new ShapeDef().density(500);
         shape.baseMaterial.friction = 0;
@@ -41,7 +45,10 @@ class MoverJointTest {
 
     /** The pogo between the character and the ground right under it, its frame B at the capsule's bottom. */
     private static PogoJoint pogo(PhysicsWorld world, Body ground, Body character) {
-        PogoJointDef def = new PogoJointDef().bodies(ground, character).normal(0, 1, 0).spring(5, 1, REST)
+        PogoJointDef def = new PogoJointDef()
+                .bodies(ground, character)
+                .normal(0, 1, 0)
+                .spring(5, 1, REST)
                 .maxForces(character.mass() * 20, character.mass() * 40);
         Vector3d at = character.position(new Vector3d());
         // the ground's top, in the ground body's own frame (it is centred half a block down)
@@ -64,7 +71,9 @@ class MoverJointTest {
             Body body = character(world, 0, 1, 0);
             Vector3f v = new Vector3f();
 
-            MoverJoint mover = world.createJoint(new MoverJointDef().bodies(ground, body).linearVelocity(1, 0, 2)
+            MoverJoint mover = world.createJoint(new MoverJointDef()
+                    .bodies(ground, body)
+                    .linearVelocity(1, 0, 2)
                     .maxForce(300));
             assertEquals(new Vector3f(1, 0, 2), mover.linearVelocity(v));
             assertEquals(300, mover.maxForce());
@@ -74,7 +83,10 @@ class MoverJointTest {
             assertEquals(50, mover.maxForce());
             assertEquals(JointType.MOVER, mover.type());
 
-            PogoJoint pogo = world.createJoint(new PogoJointDef().bodies(ground, body).normal(0, 1, 0).spring(4, 0.7f, 0.6f)
+            PogoJoint pogo = world.createJoint(new PogoJointDef()
+                    .bodies(ground, body)
+                    .normal(0, 1, 0)
+                    .spring(4, 0.7f, 0.6f)
                     .maxForces(100, 200));
             assertEquals(0.6f, pogo.restLength());
             assertEquals(4, pogo.springHertz());
@@ -94,13 +106,18 @@ class MoverJointTest {
             pogo.setNormal(0, 0, 1);
             assertEquals(new Vector3f(0, 0, 1), pogo.normal(v));
             assertEquals(JointType.POGO, pogo.type());
-            assertTrue(Float.isFinite(pogo.currentLength()) && Float.isFinite(pogo.currentSpeed())
-                    && Float.isFinite(pogo.impulse()), "the spring's state reads");
+            assertTrue(
+                    Float.isFinite(pogo.currentLength())
+                            && Float.isFinite(pogo.currentSpeed())
+                            && Float.isFinite(pogo.impulse()),
+                    "the spring's state reads");
 
             assertThrows(IllegalArgumentException.class, () -> mover.setMaxForce(-1));
             assertThrows(IllegalArgumentException.class, () -> pogo.setNormal(0, 2, 0));
-            assertThrows(IllegalArgumentException.class, () -> world.createJoint(new PogoJointDef().bodies(ground, body)
-                    .normal(1, 1, 0)));
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> world.createJoint(
+                            new PogoJointDef().bodies(ground, body).normal(1, 1, 0)));
         }
     }
 
@@ -109,7 +126,8 @@ class MoverJointTest {
         try (PhysicsWorld world = world()) {
             Body ground = ground(world);
             Body body = character(world, 0, REST, 0);
-            MoverJoint mover = world.createJoint(new MoverJointDef().bodies(ground, body).maxForce(body.mass() * 30));
+            MoverJoint mover =
+                    world.createJoint(new MoverJointDef().bodies(ground, body).maxForce(body.mass() * 30));
             PogoJoint pogo = pogo(world, ground, body);
             steps(world, 60);
             assertEquals(REST, body.position(new Vector3d()).y, 0.05, "held its rest length above the ground");
@@ -133,7 +151,9 @@ class MoverJointTest {
             Body ground = ground(world);
             Body body = character(world, 0, REST, 0);
             float force = body.mass() * 30;
-            MoverJoint mover = world.createJoint(new MoverJointDef().bodies(ground, body).linearVelocity(2, 0, 0)
+            MoverJoint mover = world.createJoint(new MoverJointDef()
+                    .bodies(ground, body)
+                    .linearVelocity(2, 0, 0)
                     .maxForce(force));
             Body light = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(1.5, 0.4, 0));
             light.createShape(new ShapeDef().density(50), Geometry.Box.of(0.4f, 0.4f, 0.4f));
@@ -142,11 +162,13 @@ class MoverJointTest {
                 steps(world, 1);
                 step.destroy(false);
             }
-            assertTrue(light.position(new Vector3d()).x > 2.5, "pushed the light crate along: " + light.position(new Vector3d()));
+            assertTrue(
+                    light.position(new Vector3d()).x > 2.5,
+                    "pushed the light crate along: " + light.position(new Vector3d()));
 
             light.destroy();
-            Body heavy = world.createBody(new BodyDef().type(BodyType.DYNAMIC)
-                    .position(body.position(new Vector3d()).x + 1.5, 0.4, 0));
+            Body heavy = world.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(body.position(new Vector3d()).x + 1.5, 0.4, 0));
             ShapeDef stuck = new ShapeDef().density(20000);
             stuck.baseMaterial.friction = 1;
             heavy.createShape(stuck, Geometry.Box.of(0.4f, 0.4f, 0.4f));
@@ -155,8 +177,9 @@ class MoverJointTest {
                 steps(world, 1);
                 step.destroy(false);
             }
-            assertTrue(body.linearVelocity(new Vector3f()).x < 0.3f, "held at the heavy one by its limited force: "
-                    + body.linearVelocity(new Vector3f()));
+            assertTrue(
+                    body.linearVelocity(new Vector3f()).x < 0.3f,
+                    "held at the heavy one by its limited force: " + body.linearVelocity(new Vector3f()));
             mover.setLinearVelocity(0, 0, 0);
         }
     }
@@ -168,10 +191,14 @@ class MoverJointTest {
             Body pivot = world.createBody(new BodyDef().position(0, 1, 0));
             Body plank = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 1, 0));
             plank.createShape(new ShapeDef().density(100), Geometry.Box.of(2.5f, 0.1f, 0.5f));
-            RevoluteJoint hinge = world.createJoint(new RevoluteJointDef().bodies(pivot, plank).worldFrame(0, 1, 0));
+            RevoluteJoint hinge = world.createJoint(
+                    new RevoluteJointDef().bodies(pivot, plank).worldFrame(0, 1, 0));
             Body body = character(world, 2, 1.1 + REST, 0);
             for (int i = 0; i < 30; i++) {
-                PogoJointDef def = new PogoJointDef().bodies(plank, body).normal(0, 1, 0).spring(5, 1, REST)
+                PogoJointDef def = new PogoJointDef()
+                        .bodies(plank, body)
+                        .normal(0, 1, 0)
+                        .spring(5, 1, REST)
                         .maxForces(body.mass() * 20, body.mass() * 40);
                 Vector3d at = body.position(new Vector3d());
                 def.localFrameA((float) at.x, 0.1f, 0, new Quaternionf());

@@ -1,11 +1,11 @@
 package com.lowdragmc.minebox3d.physics;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * <b>The constraint joint</b> (design doc {@code 05-constraint-joint.md}): the settings round trip, every motion
@@ -29,14 +29,18 @@ class ConstraintJointTest {
     }
 
     private static Body bar(PhysicsWorld world) {
-        Body body = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, -0.4, 0).enableSleep(false));
+        Body body = world.createBody(
+                new BodyDef().type(BodyType.DYNAMIC).position(0, -0.4, 0).enableSleep(false));
         body.createShape(new ShapeDef().density(1000), Geometry.Box.of(0.05f, 0.4f, 0.05f));
         return body;
     }
 
     private static ConstraintJoint hang(PhysicsWorld world, Body bar, ConstraintJointSettings settings) {
         Body anchor = world.createBody(new BodyDef());
-        return world.createJoint(new ConstraintJointDef().bodies(anchor, bar).worldFrame(0, 0, 0, DOWN).settings(settings));
+        return world.createJoint(new ConstraintJointDef()
+                .bodies(anchor, bar)
+                .worldFrame(0, 0, 0, DOWN)
+                .settings(settings));
     }
 
     private static void step(PhysicsWorld world) {
@@ -45,14 +49,24 @@ class ConstraintJointTest {
     }
 
     /** Pushes the bar with a constant torque (world) for the frames; returns the largest |twist|, |swing 1|, |swing 2| seen. */
-    private static Vector3f push(PhysicsWorld world, Body bar, ConstraintJoint joint, float tx, float ty, float tz, int frames,
-                                 Vector3f last) {
+    private static Vector3f push(
+            PhysicsWorld world,
+            Body bar,
+            ConstraintJoint joint,
+            float tx,
+            float ty,
+            float tz,
+            int frames,
+            Vector3f last) {
         Vector3f most = new Vector3f();
         for (int i = 0; i < frames; i++) {
             bar.applyTorque(tx, ty, tz);
             step(world);
             joint.angles(last);
-            most.set(Math.max(most.x, Math.abs(last.x)), Math.max(most.y, Math.abs(last.y)), Math.max(most.z, Math.abs(last.z)));
+            most.set(
+                    Math.max(most.x, Math.abs(last.x)),
+                    Math.max(most.y, Math.abs(last.y)),
+                    Math.max(most.z, Math.abs(last.z)));
         }
         return most;
     }
@@ -65,10 +79,13 @@ class ConstraintJointTest {
         try (PhysicsWorld world = world(0)) {
             Body bar = bar(world);
             ConstraintJoint constraint = hang(world, bar, new ConstraintJointSettings());
-            assertEquals(JointType.CONSTRAINT.ordinal(), com.lowdragmc.minebox3d.internal.B3.jointGetType(constraint.id()));
+            assertEquals(
+                    JointType.CONSTRAINT.ordinal(), com.lowdragmc.minebox3d.internal.B3.jointGetType(constraint.id()));
             MotorJoint motor = world.createJoint(new MotorJointDef().bodies(world.createBody(new BodyDef()), bar));
             assertEquals(JointType.MOTOR.ordinal(), com.lowdragmc.minebox3d.internal.B3.jointGetType(motor.id()));
-            assertEquals(JointType.WHEEL.ordinal() + 4, JointType.CONSTRAINT.ordinal(),
+            assertEquals(
+                    JointType.WHEEL.ordinal() + 4,
+                    JointType.CONSTRAINT.ordinal(),
                     "Box3D's mover, pogo and motion lock joints sit between");
         }
     }
@@ -218,7 +235,8 @@ class ConstraintJointTest {
             push(world, bar, joint, 25, 0, 25, 900, last);
             float reach = (float) Math.hypot(last.y / 0.6f, last.z / 0.3f);
             assertEquals(1, reach, 0.01f, "on the ellipse: swing 1 " + last.y + ", swing 2 " + last.z);
-            // pushed back along the ellipse's normal, it rests where the normal lies along the push, which with the twist
+            // pushed back along the ellipse's normal, it rests where the normal lies along the push, which with the
+            // twist
             // locked is 25 : 24.3 there — swing 1 about 4.1 times swing 2 (a radial push would rest at 1 : 1)
             assertEquals(4.1f, Math.abs(last.y / last.z), 0.2f, "where the normal points along the push: " + last);
             assertEquals(0, joint.angularSeparation(), ANGLE_TOLERANCE);
@@ -227,11 +245,16 @@ class ConstraintJointTest {
 
     @Test
     void anEllipsePressedAlongItsWideAxisStopsThereWithTheOtherSwingAtNoise() {
-        // the rig turned about the vertical so the swing nobody pushes reads float noise rather than exactly nothing: the
+        // the rig turned about the vertical so the swing nobody pushes reads float noise rather than exactly nothing:
+        // the
         // nearest point on the ellipse is then a root next to its pole, which must still come out at the wide limit
         Quaternionf turn = new Quaternionf().rotateY(0.7f);
         try (PhysicsWorld world = world(0)) {
-            Body bar = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, -0.4, 0).rotation(turn).enableSleep(false));
+            Body bar = world.createBody(new BodyDef()
+                    .type(BodyType.DYNAMIC)
+                    .position(0, -0.4, 0)
+                    .rotation(turn)
+                    .enableSleep(false));
             bar.createShape(new ShapeDef().density(1000), Geometry.Box.of(0.05f, 0.4f, 0.05f));
             ConstraintJointSettings s = new ConstraintJointSettings().swingLimits(0.6f, 0.3f);
             s.twistMotion = ConstraintMotion.LOCKED;
@@ -239,8 +262,10 @@ class ConstraintJointTest {
             s.swing2Motion = ConstraintMotion.LIMITED;
             s.massConditioning = false;
             Body anchor = world.createBody(new BodyDef());
-            ConstraintJoint joint = world.createJoint(new ConstraintJointDef().bodies(anchor, bar)
-                    .worldFrame(0, 0, 0, new Quaternionf(turn).mul(DOWN)).settings(s));
+            ConstraintJoint joint = world.createJoint(new ConstraintJointDef()
+                    .bodies(anchor, bar)
+                    .worldFrame(0, 0, 0, new Quaternionf(turn).mul(DOWN))
+                    .settings(s));
             bar.setAngularDamping(3);
             // swing 1 turns about frame A's z, the rig's z turned with it
             Vector3f axis = turn.transform(new Vector3f(0, 0, 1));
@@ -297,7 +322,8 @@ class ConstraintJointTest {
             Vector3f most = push(world, bar, joint, 25, 0, 25, 120, last);
             assertEquals(0.6f, Math.abs(last.y), 0.03f, "swing 1 at its limit: " + last);
             assertEquals(0.3f, Math.abs(last.z), 0.03f, "swing 2 at its limit: " + last);
-            assertTrue(most.y < 0.6f + ANGLE_TOLERANCE && most.z < 0.3f + ANGLE_TOLERANCE, "never past either: " + most);
+            assertTrue(
+                    most.y < 0.6f + ANGLE_TOLERANCE && most.z < 0.3f + ANGLE_TOLERANCE, "never past either: " + most);
         }
     }
 
@@ -391,7 +417,7 @@ class ConstraintJointTest {
             assertEquals(0.3f, last.x, 0.02f, "soft: past the limit by torque / stiffness");
         }
 
-        for (float restitution : new float[]{0, 0.8f}) {
+        for (float restitution : new float[] {0, 0.8f}) {
             try (PhysicsWorld world = world(0)) {
                 Body bar = bar(world);
                 ConstraintJointSettings s = new ConstraintJointSettings().angularMotion(ConstraintMotion.LOCKED);
@@ -421,7 +447,7 @@ class ConstraintJointTest {
     @Test
     void aSlerpDriveTurnsTheBarToItsTargetUnlessAnAngleIsLocked() {
         Quaternionf target = new Quaternionf().rotateZ(0.5f);
-        for (boolean lockTwist : new boolean[]{false, true}) {
+        for (boolean lockTwist : new boolean[] {false, true}) {
             try (PhysicsWorld world = world(0)) {
                 Body bar = bar(world);
                 ConstraintJointSettings s = new ConstraintJointSettings().angularOrientationTarget(target);
@@ -481,7 +507,7 @@ class ConstraintJointTest {
 
     @Test
     void aDriveCappedBelowTheLoadCannotHoldIt() {
-        for (float maxForce : new float[]{0, 20}) {
+        for (float maxForce : new float[] {0, 20}) {
             try (PhysicsWorld world = world(0)) {
                 Body bar = bar(world);
                 ConstraintJointSettings s = new ConstraintJointSettings();
@@ -500,9 +526,10 @@ class ConstraintJointTest {
 
     @Test
     void anAccelerationModeCapIsPerUnitOfTheAxissMass() {
-        // UE's default solver: the cap times the row's mass, the bar's 0.43 kg·m² about its centre — 60 rad/s² is 26 N·m and
+        // UE's default solver: the cap times the row's mass, the bar's 0.43 kg·m² about its centre — 60 rad/s² is 26
+        // N·m and
         // gives way under 40 N·m, where a physical cap of 60 N·m on the same spring holds
-        for (boolean acceleration : new boolean[]{true, false}) {
+        for (boolean acceleration : new boolean[] {true, false}) {
             try (PhysicsWorld world = world(0)) {
                 Body bar = bar(world);
                 ConstraintJointSettings s = new ConstraintJointSettings();
@@ -525,13 +552,16 @@ class ConstraintJointTest {
 
     @Test
     void aSliderOnASpinningParentStaysOnItsRail() {
-        // the child 1 m out along the parent's x, free to slide out to there and held off its y and z, the pair spun about z
-        // with no gravity: the locks hold the child's anchor on a rail turning with the parent, so they push the parent at
+        // the child 1 m out along the parent's x, free to slide out to there and held off its y and z, the pair spun
+        // about z
+        // with no gravity: the locks hold the child's anchor on a rail turning with the parent, so they push the parent
+        // at
         // the child's anchor too — off the rail by nothing, the pair's angular momentum kept
         try (PhysicsWorld world = world(0)) {
             Body parent = world.createBody(new BodyDef().type(BodyType.DYNAMIC).enableSleep(false));
             parent.createShape(new ShapeDef().density(1250), Geometry.Box.of(0.1f, 0.1f, 0.1f));
-            Body child = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(1, 0, 0).enableSleep(false));
+            Body child = world.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(1, 0, 0).enableSleep(false));
             child.createShape(new ShapeDef().density(1000), Geometry.Box.of(0.05f, 0.05f, 0.05f));
             ConstraintJointSettings s = new ConstraintJointSettings();
             s.linearMotionX = ConstraintMotion.LIMITED;
@@ -540,8 +570,11 @@ class ConstraintJointTest {
             s.swing1Motion = ConstraintMotion.LOCKED;
             s.swing2Motion = ConstraintMotion.LOCKED;
             s.massConditioning = false;
-            ConstraintJoint joint = world.createJoint(new ConstraintJointDef().bodies(parent, child)
-                    .localFrameA(0, 0, 0, new Quaternionf()).localFrameB(0, 0, 0, new Quaternionf()).settings(s));
+            ConstraintJoint joint = world.createJoint(new ConstraintJointDef()
+                    .bodies(parent, child)
+                    .localFrameA(0, 0, 0, new Quaternionf())
+                    .localFrameB(0, 0, 0, new Quaternionf())
+                    .settings(s));
             parent.setAngularVelocity(0, 0, 2);
             child.setAngularVelocity(0, 0, 2);
             child.setLinearVelocity(0, 2, 0);
@@ -611,8 +644,10 @@ class ConstraintJointTest {
     void turningADriveOffLetsGoOfItsImpulse() {
         try (PhysicsWorld world = world(-10)) {
             Body bar = bar(world);
-            ConstraintJointSettings s = new ConstraintJointSettings().angularOrientationTarget(new Quaternionf().rotateZ(PI / 2));
-            // acceleration mode scales by the row's mass, the bar's 0.43 kg·m² about its centre: 860 N·m/rad against 32 N·m
+            ConstraintJointSettings s =
+                    new ConstraintJointSettings().angularOrientationTarget(new Quaternionf().rotateZ(PI / 2));
+            // acceleration mode scales by the row's mass, the bar's 0.43 kg·m² about its centre: 860 N·m/rad against 32
+            // N·m
             s.slerpDrive.drive(2000, 90, 0);
             ConstraintJoint joint = hang(world, bar, s);
             Vector3f torque = new Vector3f();
@@ -628,7 +663,9 @@ class ConstraintJointTest {
             for (int i = 0; i < 30; i++) {
                 step(world);
             }
-            assertTrue(joint.angles(new Vector3f()).y < PI / 2 - 0.3f, "falls once let go: " + joint.angles(new Vector3f()));
+            assertTrue(
+                    joint.angles(new Vector3f()).y < PI / 2 - 0.3f,
+                    "falls once let go: " + joint.angles(new Vector3f()));
             assertEquals(0, joint.constraintTorque(torque).length(), 1e-3f, "and pushes with nothing");
 
             s.slerpDrive.drive(2000, 90, 0);
@@ -639,7 +676,11 @@ class ConstraintJointTest {
             s.slerpDrive.stiffness = 0;
             joint.setSettings(s);
             step(world);
-            assertEquals(0, joint.constraintTorque(torque).length(), 1e-3f, "a position drive with no stiffness holds nothing");
+            assertEquals(
+                    0,
+                    joint.constraintTorque(torque).length(),
+                    1e-3f,
+                    "a position drive with no stiffness holds nothing");
         }
     }
 
@@ -647,14 +688,18 @@ class ConstraintJointTest {
 
     @Test
     void aDominatingParentIsNotMovedByItsChild() {
-        for (float scale : new float[]{1, 0}) {
+        for (float scale : new float[] {1, 0}) {
             try (PhysicsWorld world = world(0)) {
-                Body parent = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 0, 0).enableSleep(false));
+                Body parent = world.createBody(
+                        new BodyDef().type(BodyType.DYNAMIC).position(0, 0, 0).enableSleep(false));
                 parent.createShape(new ShapeDef().density(1000), Geometry.Box.of(0.1f, 0.1f, 0.1f));
                 Body child = bar(world);
                 ConstraintJointSettings s = new ConstraintJointSettings();
                 s.parentInverseMassScale = scale;
-                world.createJoint(new ConstraintJointDef().bodies(parent, child).worldFrame(0, 0, 0, DOWN).settings(s));
+                world.createJoint(new ConstraintJointDef()
+                        .bodies(parent, child)
+                        .worldFrame(0, 0, 0, DOWN)
+                        .settings(s));
                 for (int i = 0; i < 30; i++) {
                     child.applyForceToCenter(100, 0, 0);
                     step(world);
@@ -675,15 +720,26 @@ class ConstraintJointTest {
         for (int run = 0; run < 2; run++) {
             try (PhysicsWorld world = world(-10)) {
                 Body anchor = world.createBody(new BodyDef());
-                Body link = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, -0.2, 0).enableSleep(false));
+                Body link = world.createBody(new BodyDef()
+                        .type(BodyType.DYNAMIC)
+                        .position(0, -0.2, 0)
+                        .enableSleep(false));
                 link.createShape(new ShapeDef().density(5), Geometry.Box.of(0.05f, 0.2f, 0.05f));
-                Body weight = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, -0.6, 0).enableSleep(false));
+                Body weight = world.createBody(new BodyDef()
+                        .type(BodyType.DYNAMIC)
+                        .position(0, -0.6, 0)
+                        .enableSleep(false));
                 weight.createShape(new ShapeDef().density(5000), Geometry.Box.of(0.2f, 0.2f, 0.2f));
                 ConstraintJointSettings s = new ConstraintJointSettings();
                 s.massConditioning = run == 1;
-                world.createJoint(new ConstraintJointDef().bodies(anchor, link).worldFrame(0, 0, 0, DOWN).settings(s));
-                ConstraintJoint lower = world.createJoint(
-                        new ConstraintJointDef().bodies(link, weight).worldFrame(0, -0.4, 0, DOWN).settings(s));
+                world.createJoint(new ConstraintJointDef()
+                        .bodies(anchor, link)
+                        .worldFrame(0, 0, 0, DOWN)
+                        .settings(s));
+                ConstraintJoint lower = world.createJoint(new ConstraintJointDef()
+                        .bodies(link, weight)
+                        .worldFrame(0, -0.4, 0, DOWN)
+                        .settings(s));
                 weight.setLinearVelocity(4, 0, 0);
                 for (int i = 0; i < 120; i++) {
                     step(world);
@@ -707,8 +763,10 @@ class ConstraintJointTest {
                 bars[i].createShape(new ShapeDef().density(1000), Geometry.Box.of(0.05f, 0.4f, 0.05f));
                 ConstraintJointSettings s = new ConstraintJointSettings();
                 s.slerpDrive.drive(200, 30, 0);
-                joints[i] = world.createJoint(new ConstraintJointDef().bodies(world.createBody(new BodyDef()), bars[i])
-                        .worldFrame(3 * i, 0, 0, DOWN).settings(s));
+                joints[i] = world.createJoint(new ConstraintJointDef()
+                        .bodies(world.createBody(new BodyDef()), bars[i])
+                        .worldFrame(3 * i, 0, 0, DOWN)
+                        .settings(s));
             }
             for (int i = 0; i < 120; i++) {
                 step(world);
@@ -727,8 +785,10 @@ class ConstraintJointTest {
                 targets[o + 9] = target.w;
             }
             batch.setTargets(targets, true);
-            assertEquals(targets[ConstraintJointBatch.TARGET + 8],
-                    joints[1].settings(new ConstraintJointSettings()).angularOrientationTargetZ, 1e-6f);
+            assertEquals(
+                    targets[ConstraintJointBatch.TARGET + 8],
+                    joints[1].settings(new ConstraintJointSettings()).angularOrientationTargetZ,
+                    1e-6f);
             for (int i = 0; i < 120; i++) {
                 step(world);
             }
@@ -745,16 +805,19 @@ class ConstraintJointTest {
             assertThrows(IllegalArgumentException.class, () -> batch.setTargets(targets, false));
             assertEquals(0, joints[1].settings(new ConstraintJointSettings()).linearPositionTargetY, "nothing stored");
 
-            Body kinematic = world.createBody(new BodyDef().type(BodyType.KINEMATIC).position(5, 0, 0));
+            Body kinematic =
+                    world.createBody(new BodyDef().type(BodyType.KINEMATIC).position(5, 0, 0));
             BodyBatch bodies = new BodyBatch(kinematic);
-            bodies.setTargetTransforms(new double[]{5, 1, 0, 0, 0, 0, 2}, 1 / 60f);
+            bodies.setTargetTransforms(new double[] {5, 1, 0, 0, 0, 0, 2}, 1 / 60f);
             step(world);
             assertEquals(1, kinematic.position(new Vector3d()).y, 1e-4);
             assertEquals(1, kinematic.rotation(new Quaternionf()).w, 1e-6, "made unit, as the single call does");
-            assertThrows(IllegalArgumentException.class,
-                    () -> bodies.setTargetTransforms(new double[]{5, Double.NaN, 0, 0, 0, 0, 1}, 1 / 60f));
-            assertThrows(IllegalArgumentException.class,
-                    () -> bodies.setTargetTransforms(new double[]{5, 1, 0, 0, 0, 0, 0}, 1 / 60f));
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> bodies.setTargetTransforms(new double[] {5, Double.NaN, 0, 0, 0, 0, 1}, 1 / 60f));
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> bodies.setTargetTransforms(new double[] {5, 1, 0, 0, 0, 0, 0}, 1 / 60f));
         }
     }
 
@@ -765,7 +828,10 @@ class ConstraintJointTest {
             double[] xs = {0, 0.1, 10, 10.1, 20, 20.1};
             Body[] boxes = new Body[xs.length];
             for (int i = 0; i < xs.length; i++) {
-                boxes[i] = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(xs[i], 0, 0).enableSleep(false));
+                boxes[i] = world.createBody(new BodyDef()
+                        .type(BodyType.DYNAMIC)
+                        .position(xs[i], 0, 0)
+                        .enableSleep(false));
                 ShapeDef shape = new ShapeDef().density(1000);
                 shape.enableCustomFiltering = true;
                 boxes[i].createShape(shape, Geometry.Box.of(0.2f, 0.2f, 0.2f));
@@ -778,10 +844,13 @@ class ConstraintJointTest {
             }
             assertEquals(0.1, gap(boxes, 0, 1), 1e-4, "the disabled pair passes through each other");
             assertTrue(gap(boxes, 2, 3) > 0.35, "a pair the table lets collide pushes apart: " + gap(boxes, 2, 3));
-            assertTrue(gap(boxes, 4, 5) > 0.35, "and a body outside the table collides with one in it: " + gap(boxes, 4, 5));
+            assertTrue(
+                    gap(boxes, 4, 5) > 0.35,
+                    "and a body outside the table collides with one in it: " + gap(boxes, 4, 5));
             assertFalse(table.collides(1, 0));
 
-            // changes reach pairs already overlapping, both ways: the pair let collide again pushes apart where it lies,
+            // changes reach pairs already overlapping, both ways: the pair let collide again pushes apart where it
+            // lies,
             // and one disabled while touching stops colliding
             table.setCollides(0, 1, true);
             table.setCollides(2, 3, false);

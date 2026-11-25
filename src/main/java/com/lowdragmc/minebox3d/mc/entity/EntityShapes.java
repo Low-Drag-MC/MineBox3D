@@ -3,6 +3,10 @@ package com.lowdragmc.minebox3d.mc.entity;
 import com.lowdragmc.minebox3d.MineBox3D;
 import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.Geometry;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Interaction;
@@ -17,11 +21,6 @@ import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.NeoForgeRegistries;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 /**
  * <b>What shape an entity has in Box3D</b>, in the entity's own frame: origin at its position (the
@@ -67,11 +66,11 @@ public final class EntityShapes {
     private static final DeferredRegister<AttachmentType<?>> ATTACHMENTS =
             DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, MineBox3D.MOD_ID);
     /** On an entity whose physics collision is off ({@link #setPhysicsCollision}); never saved */
-    private static final Supplier<AttachmentType<Boolean>> NO_PHYSICS_COLLISION = ATTACHMENTS.register(
-            "no_physics_collision", () -> AttachmentType.builder(() -> Boolean.TRUE).build());
+    private static final Supplier<AttachmentType<Boolean>> NO_PHYSICS_COLLISION =
+            ATTACHMENTS.register("no_physics_collision", () -> AttachmentType.builder(() -> Boolean.TRUE)
+                    .build());
 
-    private EntityShapes() {
-    }
+    private EntityShapes() {}
 
     @ApiStatus.Internal
     public static void registerAttachments(IEventBus modBus) {
@@ -135,8 +134,7 @@ public final class EntityShapes {
     }
 
     /** Who answered for an entity ({@code null} = the default box) and what they said. */
-    record Answer(@Nullable Provider provider, List<Geometry> shapes) {
-    }
+    record Answer(@Nullable Provider provider, List<Geometry> shapes) {}
 
     static Answer shapesOf(Entity entity) {
         for (Provider provider : PROVIDERS) {
@@ -167,8 +165,11 @@ public final class EntityShapes {
                 return mass;
             }
         }
-        if (entity instanceof BlockAttachedEntity || entity instanceof Mob mob && mob.isNoAi() || entity instanceof Marker
-                || entity instanceof Interaction || entity instanceof Display) {
+        if (entity instanceof BlockAttachedEntity
+                || entity instanceof Mob mob && mob.isNoAi()
+                || entity instanceof Marker
+                || entity instanceof Interaction
+                || entity instanceof Display) {
             return Float.POSITIVE_INFINITY;
         }
         float width = entity.getBbWidth(), height = entity.getBbHeight();

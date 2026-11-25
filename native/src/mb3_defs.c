@@ -221,8 +221,8 @@ bool mb3_world_def_from_java( JNIEnv* env, jobject s, b3WorldDef* d )
 
 // ---- BodyDef ------------------------------------------------------------------------------------
 
-static jfieldID f_bType, f_bPositionX, f_bPositionY, f_bPositionZ, f_bRotationX, f_bRotationY, f_bRotationZ, f_bRotationW,
-	f_bLinearVelocityX, f_bLinearVelocityY, f_bLinearVelocityZ, f_bAngularVelocityX, f_bAngularVelocityY,
+static jfieldID f_bType, f_bPositionX, f_bPositionY, f_bPositionZ, f_bRotationX, f_bRotationY, f_bRotationZ,
+	f_bRotationW, f_bLinearVelocityX, f_bLinearVelocityY, f_bLinearVelocityZ, f_bAngularVelocityX, f_bAngularVelocityY,
 	f_bAngularVelocityZ, f_bLinearDamping, f_bAngularDamping, f_bGravityScale, f_bSleepThreshold, f_bSafetyFactor,
 	f_bName, f_bUserData, f_bFixedRotation, f_bEnableSleep, f_bAwake, f_bBullet, f_bEnabled, f_bAllowFastRotation,
 	f_bEnableContactRecycling;
@@ -273,16 +273,18 @@ bool mb3_body_def_from_java( JNIEnv* env, jobject s, b3BodyDef* d, char* nameBuf
 		return false;
 	}
 	d->type = (b3BodyType)type;
-	d->position = mb3_pos( ( *env )->GetDoubleField( env, s, f_bPositionX ), ( *env )->GetDoubleField( env, s, f_bPositionY ),
-						   ( *env )->GetDoubleField( env, s, f_bPositionZ ) );
-	d->rotation = mb3_quat( ( *env )->GetFloatField( env, s, f_bRotationX ), ( *env )->GetFloatField( env, s, f_bRotationY ),
-							( *env )->GetFloatField( env, s, f_bRotationZ ), ( *env )->GetFloatField( env, s, f_bRotationW ) );
-	d->linearVelocity =
-		mb3_vec3( ( *env )->GetFloatField( env, s, f_bLinearVelocityX ), ( *env )->GetFloatField( env, s, f_bLinearVelocityY ),
-				  ( *env )->GetFloatField( env, s, f_bLinearVelocityZ ) );
-	d->angularVelocity =
-		mb3_vec3( ( *env )->GetFloatField( env, s, f_bAngularVelocityX ), ( *env )->GetFloatField( env, s, f_bAngularVelocityY ),
-				  ( *env )->GetFloatField( env, s, f_bAngularVelocityZ ) );
+	d->position =
+		mb3_pos( ( *env )->GetDoubleField( env, s, f_bPositionX ), ( *env )->GetDoubleField( env, s, f_bPositionY ),
+				 ( *env )->GetDoubleField( env, s, f_bPositionZ ) );
+	d->rotation =
+		mb3_quat( ( *env )->GetFloatField( env, s, f_bRotationX ), ( *env )->GetFloatField( env, s, f_bRotationY ),
+				  ( *env )->GetFloatField( env, s, f_bRotationZ ), ( *env )->GetFloatField( env, s, f_bRotationW ) );
+	d->linearVelocity = mb3_vec3( ( *env )->GetFloatField( env, s, f_bLinearVelocityX ),
+								  ( *env )->GetFloatField( env, s, f_bLinearVelocityY ),
+								  ( *env )->GetFloatField( env, s, f_bLinearVelocityZ ) );
+	d->angularVelocity = mb3_vec3( ( *env )->GetFloatField( env, s, f_bAngularVelocityX ),
+								   ( *env )->GetFloatField( env, s, f_bAngularVelocityY ),
+								   ( *env )->GetFloatField( env, s, f_bAngularVelocityZ ) );
 	d->linearDamping = ( *env )->GetFloatField( env, s, f_bLinearDamping );
 	d->angularDamping = ( *env )->GetFloatField( env, s, f_bAngularDamping );
 	d->gravityScale = ( *env )->GetFloatField( env, s, f_bGravityScale );
@@ -407,9 +409,11 @@ bool mb3_defs_init( JNIEnv* env, jobjectArray classes )
 	s_enumOrdinal = ( *env )->GetMethodID( env, enumClass, "ordinal", "()I" );
 	jclass combineClass = (jclass)( *env )->GetObjectArrayElement( env, classes, MB3_CLASS_SURFACE_COMBINE );
 	jclass classClass = ( *env )->FindClass( env, "java/lang/Class" );
-	jmethodID constants = classClass == NULL ? NULL
-						 : ( *env )->GetMethodID( env, classClass, "getEnumConstants", "()[Ljava/lang/Object;" );
-	jobject modes = combineClass == NULL || constants == NULL ? NULL : ( *env )->CallObjectMethod( env, combineClass, constants );
+	jmethodID constants = classClass == NULL
+							  ? NULL
+							  : ( *env )->GetMethodID( env, classClass, "getEnumConstants", "()[Ljava/lang/Object;" );
+	jobject modes =
+		combineClass == NULL || constants == NULL ? NULL : ( *env )->CallObjectMethod( env, combineClass, constants );
 	if ( modes == NULL || ( *env )->ExceptionCheck( env ) )
 	{
 		return false;
@@ -434,8 +438,10 @@ bool mb3_defs_init( JNIEnv* env, jobjectArray classes )
 		MB3_FIELD( f_matTangentZ, "tangentVelocityZ", "F" ),
 		MB3_FIELD( f_matUserMaterialId, "userMaterialId", "J" ),
 		MB3_FIELD( f_matCustomColor, "customColor", "I" ),
-		MB3_FIELD( f_matFrictionCombine, "frictionCombine", "Lcom/lowdragmc/minebox3d/physics/SurfaceMaterial$Combine;" ),
-		MB3_FIELD( f_matRestitutionCombine, "restitutionCombine", "Lcom/lowdragmc/minebox3d/physics/SurfaceMaterial$Combine;" ),
+		MB3_FIELD( f_matFrictionCombine, "frictionCombine",
+				   "Lcom/lowdragmc/minebox3d/physics/SurfaceMaterial$Combine;" ),
+		MB3_FIELD( f_matRestitutionCombine, "restitutionCombine",
+				   "Lcom/lowdragmc/minebox3d/physics/SurfaceMaterial$Combine;" ),
 	};
 	const mb3_field world[] = {
 		MB3_FIELD( f_wGravityX, "gravityX", "F" ),
@@ -516,7 +522,8 @@ bool mb3_defs_init( JNIEnv* env, jobjectArray classes )
 
 	return mb3_lookup( env, filterClass, filter, MB3_COUNT( filter ) ) &&
 		   mb3_lookup( env, materialClass, material, MB3_COUNT( material ) ) &&
-		   mb3_lookup( env, worldClass, world, MB3_COUNT( world ) ) && mb3_lookup( env, bodyClass, body, MB3_COUNT( body ) ) &&
+		   mb3_lookup( env, worldClass, world, MB3_COUNT( world ) ) &&
+		   mb3_lookup( env, bodyClass, body, MB3_COUNT( body ) ) &&
 		   mb3_lookup( env, shapeClass, shape, MB3_COUNT( shape ) ) && mb3_joint_defs_init( env, classes );
 }
 

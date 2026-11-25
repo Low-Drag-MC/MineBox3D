@@ -1,15 +1,14 @@
 package com.lowdragmc.minebox3d.physics;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.lowdragmc.minebox3d.internal.B3;
+import java.util.List;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * <b>A shape's second round of API</b> (design doc {@code 03-threading-and-api.md} §6.4 item 3): hulls, height fields,
@@ -36,9 +35,9 @@ class ShapeApiTest {
     }
 
     private static final float[] CUBE = {
-            -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f, -0.5f,
-            -0.5f, -0.5f, 0.5f, 0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f,
-            0, 0, 0, 0.1f, 0.2f, -0.1f, 0.4f, 0.4f, 0.4f};
+        -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, -0.5f, -0.5f, 0.5f, -0.5f, 0.5f, 0.5f, -0.5f, -0.5f, -0.5f, 0.5f, 0.5f, -0.5f,
+        0.5f, -0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 0, 0, 0, 0.1f, 0.2f, -0.1f, 0.4f, 0.4f, 0.4f
+    };
 
     // ---- hulls --------------------------------------------------------------------------------
 
@@ -49,7 +48,9 @@ class ShapeApiTest {
         for (int i = 0; i < hull.points().length; i++) {
             assertEquals(0.5f, Math.abs(hull.points()[i]), 1e-5);
         }
-        assertThrows(IllegalArgumentException.class, () -> Geometry.Hull.of(0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1),
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> Geometry.Hull.of(0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1),
                 "flat: no hull");
         assertThrows(IllegalArgumentException.class, () -> Geometry.Hull.of(0, 0, 0, 1));
 
@@ -83,12 +84,14 @@ class ShapeApiTest {
             try (HeightFieldData data = HeightFieldData.create(heights, n, n, materials, 1, 2, 1, 0, 4)) {
                 Body field = world.createBody(new BodyDef().position(-2, 0, -2));
                 ShapeDef def = new ShapeDef();
-                def.materials = new SurfaceMaterial[]{new SurfaceMaterial()};
+                def.materials = new SurfaceMaterial[] {new SurfaceMaterial()};
                 field.createShape(def, new Geometry.HeightField(data));
 
-                Body resting = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(-1.5, 4, -1.5));
+                Body resting =
+                        world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(-1.5, 4, -1.5));
                 resting.createShape(new ShapeDef().density(1000), new Geometry.Sphere(0, 0, 0, 0.25f));
-                Body falling = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0.5, 4, 0.5));
+                Body falling =
+                        world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0.5, 4, 0.5));
                 falling.createShape(new ShapeDef().density(1000), new Geometry.Sphere(0, 0, 0, 0.25f));
                 steps(world, 120);
                 assertEquals(2.25, resting.position(new Vector3d()).y, 0.02, "height 1 scaled by 2, plus the radius");
@@ -101,13 +104,14 @@ class ShapeApiTest {
     @Test
     void aHeightFieldGoesOnStaticBodiesOnly() {
         try (PhysicsWorld world = world();
-             HeightFieldData data = HeightFieldData.create(new float[]{0, 0, 0, 0}, 2, 2)) {
+                HeightFieldData data = HeightFieldData.create(new float[] {0, 0, 0, 0}, 2, 2)) {
             Body dynamic = world.createBody(new BodyDef().type(BodyType.DYNAMIC));
-            assertThrows(Box3DException.class, () -> dynamic.createShape(new ShapeDef(), new Geometry.HeightField(data)));
+            assertThrows(
+                    Box3DException.class, () -> dynamic.createShape(new ShapeDef(), new Geometry.HeightField(data)));
             assertTrue(dynamic.shapes().isEmpty());
             List<Executable> refused = List.of(
                     () -> HeightFieldData.create(new float[3], 2, 2),
-                    () -> HeightFieldData.create(new float[]{0, Float.NaN, 0, 0}, 2, 2),
+                    () -> HeightFieldData.create(new float[] {0, Float.NaN, 0, 0}, 2, 2),
                     () -> HeightFieldData.create(new float[4], 2, 2, new byte[2], 1, 1, 1, 0, 1),
                     () -> HeightFieldData.create(new float[4], 2, 2, null, 0, 1, 1, 0, 1),
                     () -> HeightFieldData.create(new float[4], 2, 2, null, 1, 1, 1, 1, 0));
@@ -150,8 +154,10 @@ class ShapeApiTest {
             ball.setTransform(0, 2, 0, new Quaternionf());
             steps(world, 120);
             assertEquals(0.5 + 0.25, ball.position(new Vector3d()).y, 0.02, "lying on the slab it became");
-            assertThrows(IllegalArgumentException.class,
-                    () -> shape.setGeometry(new Geometry.HeightField(HeightFieldData.create(new float[4], 2, 2)), false));
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> shape.setGeometry(
+                            new Geometry.HeightField(HeightFieldData.create(new float[4], 2, 2)), false));
         }
     }
 
@@ -195,7 +201,8 @@ class ShapeApiTest {
             assertEquals(0.3f, shape.friction());
             shape.setRestitution(0.4f);
             assertEquals(0.4f, shape.restitution());
-            SurfaceMaterial material = new SurfaceMaterial().friction(0.9f).restitution(0.1f).rollingResistance(0.2f);
+            SurfaceMaterial material =
+                    new SurfaceMaterial().friction(0.9f).restitution(0.1f).rollingResistance(0.2f);
             material.tangentVelocityX = 1.5f;
             material.userMaterialId = 77;
             shape.setSurfaceMaterial(material);
@@ -223,7 +230,8 @@ class ShapeApiTest {
             assertEquals(1, shape.meshMaterialCount(), "a box's one material");
             assertEquals(0.9f, shape.meshMaterial(0, new SurfaceMaterial()).friction);
             assertThrows(IndexOutOfBoundsException.class, () -> shape.meshMaterial(1, new SurfaceMaterial()));
-            assertThrows(IllegalArgumentException.class, () -> shape.setSurfaceMaterial(new SurfaceMaterial().friction(-1)));
+            assertThrows(
+                    IllegalArgumentException.class, () -> shape.setSurfaceMaterial(new SurfaceMaterial().friction(-1)));
             assertThrows(IllegalArgumentException.class, () -> shape.setDensity(Float.NaN, true));
         }
     }
@@ -231,10 +239,14 @@ class ShapeApiTest {
     @Test
     void aMeshShapesPerTriangleMaterialsReadBackAndChange() {
         try (PhysicsWorld world = world();
-             MeshData mesh = MeshData.create(new float[]{0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1}, new int[]{0, 2, 1, 1, 2, 3},
-                     new byte[]{0, 1}, true)) {
+                MeshData mesh = MeshData.create(
+                        new float[] {0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1},
+                        new int[] {0, 2, 1, 1, 2, 3},
+                        new byte[] {0, 1},
+                        true)) {
             ShapeDef def = new ShapeDef();
-            def.materials = new SurfaceMaterial[]{new SurfaceMaterial().friction(0.1f), new SurfaceMaterial().friction(0.2f)};
+            def.materials =
+                    new SurfaceMaterial[] {new SurfaceMaterial().friction(0.1f), new SurfaceMaterial().friction(0.2f)};
             Shape shape = world.createBody(new BodyDef()).createShape(def, Geometry.Mesh.of(mesh));
             assertEquals(2, shape.meshMaterialCount());
             assertEquals(0.2f, shape.meshMaterial(1, new SurfaceMaterial()).friction);
@@ -250,11 +262,11 @@ class ShapeApiTest {
         // two triangles side by side, x 0..1 and 1..2, the second with material 1
         float[] vertices = {0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 2, 0, 0, 2, 0, 1};
         try (PhysicsWorld world = world();
-             MeshData mesh = MeshData.create(vertices, new int[]{0, 2, 1, 1, 3, 4, 4, 3, 5, 1, 2, 3}, new byte[]{0, 1, 1, 0},
-                     true)) {
+                MeshData mesh = MeshData.create(
+                        vertices, new int[] {0, 2, 1, 1, 3, 4, 4, 3, 5, 1, 2, 3}, new byte[] {0, 1, 1, 0}, true)) {
             ShapeDef def = new ShapeDef();
             def.baseMaterial.userMaterialId = 99;
-            def.materials = new SurfaceMaterial[]{new SurfaceMaterial(), new SurfaceMaterial()};
+            def.materials = new SurfaceMaterial[] {new SurfaceMaterial(), new SurfaceMaterial()};
             def.materials[0].userMaterialId = 10;
             def.materials[1].userMaterialId = 20;
             double x = 20_000_000;
@@ -264,7 +276,7 @@ class ShapeApiTest {
             Geometry.Box feet = Geometry.Box.of(0.1f, 0.1f, 0.1f);
             Quaternionf none = new Quaternionf();
             CastResult own = new CastResult(), all = new CastResult();
-            for (double[] at : new double[][]{{0.3, 0.3, 10}, {1.7, 0.4, 20}}) {
+            for (double[] at : new double[][] {{0.3, 0.3, 10}, {1.7, 0.4, 20}}) {
                 assertTrue(shape.castShape(feet, x + at[0], 1, at[1], none, 0, -2, 0, true, own));
                 assertTrue(world.castShapeClosest(feet, x + at[0], 1, at[1], none, 0, -2, 0, QueryFilter.ALL, all));
                 assertEquals((long) at[2], own.userMaterialId(), "the triangle's material at x " + at[0]);
@@ -276,14 +288,17 @@ class ShapeApiTest {
     @Test
     void aRoundSweepThatMayEncroachIsRefusedAgainstAMesh() {
         try (PhysicsWorld world = world();
-             MeshData mesh = MeshData.create(new float[]{0, 0, 0, 1, 0, 0, 0, 0, 1}, new int[]{0, 2, 1}, false)) {
+                MeshData mesh = MeshData.create(new float[] {0, 0, 0, 1, 0, 0, 0, 0, 1}, new int[] {0, 2, 1}, false)) {
             Shape triangle = world.createBody(new BodyDef()).createShape(new ShapeDef(), Geometry.Mesh.of(mesh));
             Quaternionf none = new Quaternionf();
             CastResult hit = new CastResult();
             Geometry.Sphere ball = new Geometry.Sphere(0, 0, 0, 0.1f);
-            assertThrows(IllegalArgumentException.class,
-                    () -> triangle.castShape(ball, 0.3, 1, 0.3, none, 0, -2, 0, true, hit), "it would creep in");
-            assertTrue(triangle.castShape(ball, 0.3, 1, 0.3, none, 0, -2, 0, false, hit), "not encroaching, it is fine");
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> triangle.castShape(ball, 0.3, 1, 0.3, none, 0, -2, 0, true, hit),
+                    "it would creep in");
+            assertTrue(
+                    triangle.castShape(ball, 0.3, 1, 0.3, none, 0, -2, 0, false, hit), "not encroaching, it is fine");
             assertTrue(triangle.castShape(Geometry.Box.of(0.1f, 0.1f, 0.1f), 0.3, 1, 0.3, none, 0, -2, 0, true, hit));
         }
     }
@@ -307,11 +322,15 @@ class ShapeApiTest {
     void aSensorListsWhatIsInsideIt() {
         try (PhysicsWorld world = world()) {
             Body zone = world.createBody(new BodyDef());
-            Shape sensor = zone.createShape(new ShapeDef().sensor(true).enableSensorEvents(true), Geometry.Box.of(2, 2, 2));
+            Shape sensor =
+                    zone.createShape(new ShapeDef().sensor(true).enableSensorEvents(true), Geometry.Box.of(2, 2, 2));
             assertTrue(sensor.isSensor());
-            Body inside = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 0, 0).gravityScale(0));
-            Shape ball = inside.createShape(new ShapeDef().enableSensorEvents(true), new Geometry.Sphere(0, 0, 0, 0.25f));
-            Body outside = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(10, 0, 0).gravityScale(0));
+            Body inside = world.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(0, 0, 0).gravityScale(0));
+            Shape ball =
+                    inside.createShape(new ShapeDef().enableSensorEvents(true), new Geometry.Sphere(0, 0, 0, 0.25f));
+            Body outside = world.createBody(
+                    new BodyDef().type(BodyType.DYNAMIC).position(10, 0, 0).gravityScale(0));
             outside.createShape(new ShapeDef().enableSensorEvents(true), new Geometry.Sphere(0, 0, 0, 0.25f));
             steps(world, 2);
             Overlaps overlaps = new Overlaps(1);
@@ -333,7 +352,7 @@ class ShapeApiTest {
             assertEquals(x - 0.5, closest.x, 1e-4);
             assertEquals(4.5f, far.closestPoint(x - 2, 0, 0, closest), 1e-4, "that shape, not the body's closest");
 
-            try (MeshData mesh = MeshData.create(new float[]{0, 0, 0, 1, 0, 0, 0, 0, 1}, new int[]{0, 2, 1}, false)) {
+            try (MeshData mesh = MeshData.create(new float[] {0, 0, 0, 1, 0, 0, 0, 0, 1}, new int[] {0, 2, 1}, false)) {
                 Shape triangle = body.createShape(new ShapeDef(), Geometry.Mesh.of(mesh));
                 assertEquals(Float.POSITIVE_INFINITY, triangle.closestPoint(x, 1, 0, closest));
             }
@@ -358,9 +377,13 @@ class ShapeApiTest {
             Geometry.Sphere ball = new Geometry.Sphere(0, 0, 0, 0.25f);
 
             CastHits hits = new CastHits(1);
-            assertEquals(5, world.castShape(ball, x, 0, 0, new Quaternionf(), 20, 0, 0, QueryFilter.ALL, hits),
+            assertEquals(
+                    5,
+                    world.castShape(ball, x, 0, 0, new Quaternionf(), 20, 0, 0, QueryFilter.ALL, hits),
                     "the three boxes, the other category's and the sensor: room is made for them all");
-            assertEquals(4, world.castShape(ball, x, 0, 0, new Quaternionf(), 20, 0, 0, QueryFilter.only(~(1L << 9)), hits),
+            assertEquals(
+                    4,
+                    world.castShape(ball, x, 0, 0, new Quaternionf(), 20, 0, 0, QueryFilter.only(~(1L << 9)), hits),
                     "a filter leaves a category out");
             assertSame(boxes[0], hits.shape(0));
             assertSame(boxes[1], hits.shape(1));
@@ -372,10 +395,13 @@ class ShapeApiTest {
             }
 
             // starting inside one: met at the start
-            assertEquals(3, world.castShape(ball, x + 2, 0, 0, new Quaternionf(), 6, 0, 0, QueryFilter.only(~(1L << 9)), hits));
+            assertEquals(
+                    3,
+                    world.castShape(ball, x + 2, 0, 0, new Quaternionf(), 6, 0, 0, QueryFilter.only(~(1L << 9)), hits));
             assertSame(boxes[0], hits.shape(0));
             assertEquals(0, hits.fraction(0));
-            assertEquals(0, world.castShape(ball, x, 5, 0, new Quaternionf(), 20, 0, 0, QueryFilter.ALL, hits), "a miss");
+            assertEquals(
+                    0, world.castShape(ball, x, 5, 0, new Quaternionf(), 20, 0, 0, QueryFilter.ALL, hits), "a miss");
         }
     }
 
@@ -390,7 +416,7 @@ class ShapeApiTest {
         Geometry.Sphere grain = new Geometry.Sphere(0, 0, 0, 0.05f);
         CastHits hits = new CastHits(1);
         List<String> missed = new java.util.ArrayList<>();
-        for (double further : new double[]{0, 15_000_000}) {
+        for (double further : new double[] {0, 15_000_000}) {
             for (int p = 0; p < 200; p++) {
                 double x = x(p) + further, z = z(p) - further;
                 try (PhysicsWorld world = world()) {
@@ -400,10 +426,12 @@ class ShapeApiTest {
                     if (world.castRay(x, -50, z, 0, -10, 0, QueryFilter.ALL, hits) != 1 || hits.shape(0) != target) {
                         missed.add("ray down at " + x + ", " + z);
                     }
-                    if (world.castRay(x - 0.5, -50, z - 0.5, 1, -10, 1, QueryFilter.ALL, hits) != 1 || hits.shape(0) != target) {
+                    if (world.castRay(x - 0.5, -50, z - 0.5, 1, -10, 1, QueryFilter.ALL, hits) != 1
+                            || hits.shape(0) != target) {
                         missed.add("ray slanting down at " + x + ", " + z);
                     }
-                    if (world.castShape(grain, x + 0.5, -50, z, new Quaternionf(), -1, -10, 0, QueryFilter.ALL, hits) != 1
+                    if (world.castShape(grain, x + 0.5, -50, z, new Quaternionf(), -1, -10, 0, QueryFilter.ALL, hits)
+                                    != 1
                             || hits.shape(0) != target) {
                         missed.add("grain slanting down at " + x + ", " + z);
                     }
@@ -414,7 +442,8 @@ class ShapeApiTest {
     }
 
     private static Shape ball(PhysicsWorld world, double x, double y, double z) {
-        return world.createBody(new BodyDef().position(x, y, z)).createShape(new ShapeDef(), new Geometry.Sphere(0, 0, 0, 0.4f));
+        return world.createBody(new BodyDef().position(x, y, z))
+                .createShape(new ShapeDef(), new Geometry.Sphere(0, 0, 0, 0.4f));
     }
 
     /**
@@ -450,20 +479,24 @@ class ShapeApiTest {
                 if (count != 2 || hits.shape(0) != balls[p][0] || hits.shape(1) != balls[p][1]) {
                     missed.add("grain swept down at " + p + ": " + count);
                 }
-                // slanting, a tenth of a block off each ball's middle: straight down, the walk's edge tests had nothing to do
+                // slanting, a tenth of a block off each ball's middle: straight down, the walk's edge tests had nothing
+                // to do
                 count = world.castRay(x(p) - 0.6, -50, z(p) - 0.6, 1.2f, -12, 1.2f, QueryFilter.ALL, hits);
                 if (count != 2 || hits.shape(0) != balls[p][0] || hits.shape(1) != balls[p][1]) {
                     missed.add("ray slanting down at " + p + ": " + count);
                 }
-                count = world.castShape(grain, x(p) + 0.6, -50, z(p) - 0.6, new Quaternionf(), -1.2f, -12, 1.2f,
-                        QueryFilter.ALL, hits);
+                count = world.castShape(
+                        grain, x(p) + 0.6, -50, z(p) - 0.6, new Quaternionf(), -1.2f, -12, 1.2f, QueryFilter.ALL, hits);
                 if (count != 2 || hits.shape(0) != balls[p][0] || hits.shape(1) != balls[p][1]) {
                     missed.add("grain slanting down at " + p + ": " + count);
                 }
             }
             assertEquals(List.of(), missed);
-            assertEquals(-56.6, world.castRay(x(0), -55, z(0), 0, -2.8f, 0, QueryFilter.ALL, hits) == 2 ? hits.y(1) : 0,
-                    1e-3, "exact where it is met");
+            assertEquals(
+                    -56.6,
+                    world.castRay(x(0), -55, z(0), 0, -2.8f, 0, QueryFilter.ALL, hits) == 2 ? hits.y(1) : 0,
+                    1e-3,
+                    "exact where it is met");
         }
     }
 
@@ -485,7 +518,8 @@ class ShapeApiTest {
             int balls = 50;
             java.util.Set<Shape> made = new java.util.HashSet<>();
             for (int i = 0; i < balls; i++) {
-                Body body = world.createBody(new BodyDef().type(BodyType.KINEMATIC).position(i, 0, 0));
+                Body body =
+                        world.createBody(new BodyDef().type(BodyType.KINEMATIC).position(i, 0, 0));
                 made.add(body.createShape(new ShapeDef(), new Geometry.Sphere(0, 0, 0, 0.3f)));
             }
             int[] planes = new int[2];
@@ -496,8 +530,19 @@ class ShapeApiTest {
                 for (int i = 0; i < balls; i++) {
                     assertEquals(i - 0.3, hits.x(i), 1e-4, "closest first");
                 }
-                assertEquals(balls, world.castShape(new Geometry.Sphere(0, 0, 0, 0.1f), -1, 0, 0, new Quaternionf(), balls + 1,
-                        0, 0, QueryFilter.ALL, hits));
+                assertEquals(
+                        balls,
+                        world.castShape(
+                                new Geometry.Sphere(0, 0, 0, 0.1f),
+                                -1,
+                                0,
+                                0,
+                                new Quaternionf(),
+                                balls + 1,
+                                0,
+                                0,
+                                QueryFilter.ALL,
+                                hits));
                 for (int i = 1; i < balls; i++) {
                     assertTrue(hits.fraction(i - 1) < hits.fraction(i), "closest first");
                 }
@@ -508,8 +553,8 @@ class ShapeApiTest {
                 assertEquals(balls, world.overlapAABB(-1, -1, -1, balls, 1, 1, QueryFilter.ALL, found));
                 assertEquals(made, shapesOf(found));
 
-                planes[round] = world.collideMover(0, 0.6, 0, 0, 0, 0, balls - 1, 0, 0, 0.4f, QueryFilter.ALL,
-                        new MoverPlanes(room));
+                planes[round] = world.collideMover(
+                        0, 0.6, 0, 0, 0, 0, balls - 1, 0, 0, 0.4f, QueryFilter.ALL, new MoverPlanes(room));
             }
             assertTrue(planes[0] >= balls, "a plane for every ball the mover lies on: " + planes[0]);
             assertEquals(planes[0], planes[1]);
@@ -530,7 +575,16 @@ class ShapeApiTest {
             assertSame(top, hits.shape(0));
             CastHit closest = world.castRayClosest(0, 10, 0, 0, -Float.MAX_VALUE, 0, QueryFilter.ALL);
             assertTrue(closest == null || closest.shape() == top);
-            world.castShape(new Geometry.Sphere(0, 0, 0, 0.1f), 0, 10, 0, new Quaternionf(), 1e20f, -1e20f, 0, QueryFilter.ALL,
+            world.castShape(
+                    new Geometry.Sphere(0, 0, 0, 0.1f),
+                    0,
+                    10,
+                    0,
+                    new Quaternionf(),
+                    1e20f,
+                    -1e20f,
+                    0,
+                    QueryFilter.ALL,
                     hits);
         }
     }
@@ -559,7 +613,7 @@ class ShapeApiTest {
             Geometry.Box feet = Geometry.Box.of(0.3f, 0.3f, 0.3f);
             Quaternionf none = new Quaternionf();
             CastResult hit = new CastResult();
-            for (Object[] round : new Object[][]{{ball, 0.0, 1.0}, {log, 4.0, 0.5}}) {
+            for (Object[] round : new Object[][] {{ball, 0.0, 1.0}, {log, 4.0, 0.5}}) {
                 Shape shape = (Shape) round[0];
                 double z = (double) round[1], top = (double) round[2];
                 // from afar: a slop short of the surface, not inside it
@@ -575,9 +629,13 @@ class ShapeApiTest {
                         bottom -= 0.08;
                     }
                 }
-                assertTrue(bottom > top + 0.001 && bottom < top + 0.01, "still above it after 100 ticks: " + (bottom - top));
+                assertTrue(
+                        bottom > top + 0.001 && bottom < top + 0.01,
+                        "still above it after 100 ticks: " + (bottom - top));
                 // and along it is no hit
-                assertFalse(shape.castShape(feet, x, bottom + 0.3, z, none, 0.05f, 0, 0, true, hit), "sliding across its top");
+                assertFalse(
+                        shape.castShape(feet, x, bottom + 0.3, z, none, 0.05f, 0, 0, true, hit),
+                        "sliding across its top");
             }
         }
     }
@@ -616,7 +674,8 @@ class ShapeApiTest {
             assertEquals(0, hit.normal(normal).length(), 1e-6, "no normal from inside");
 
             // only that shape: the sensor is its own, and is hit when asked for itself
-            assertFalse(top.castShape(feet, x, 4, -3, none, 0, 0, 6, true, hit), "the box's sweep does not see the sensor");
+            assertFalse(
+                    top.castShape(feet, x, 4, -3, none, 0, 0, 6, true, hit), "the box's sweep does not see the sensor");
             assertTrue(trigger.castShape(feet, x, 4, -3, none, 0, 0, 6, true, hit));
             assertSame(trigger, hit.shape());
         }
@@ -635,20 +694,27 @@ class ShapeApiTest {
             Shape hidden = near.createShape(other, new Geometry.Sphere(0, 2, 0, 0.5f));
 
             Overlaps found = new Overlaps(1);
-            assertEquals(2, world.overlapAABB(x + 0.4, -0.1, -0.1, x + 0.6, 2.1, 0.1, QueryFilter.ALL, found),
+            assertEquals(
+                    2,
+                    world.overlapAABB(x + 0.4, -0.1, -0.1, x + 0.6, 2.1, 0.1, QueryFilter.ALL, found),
                     "both of the near body's shapes; not the one ten blocks off");
             assertTrue(found.shape(0) == mine || found.shape(1) == mine);
-            assertEquals(1, world.overlapAABB(x + 0.4, -0.1, -0.1, x + 0.6, 2.1, 0.1, QueryFilter.only(~(1L << 9)), found),
+            assertEquals(
+                    1,
+                    world.overlapAABB(x + 0.4, -0.1, -0.1, x + 0.6, 2.1, 0.1, QueryFilter.only(~(1L << 9)), found),
                     "a filter leaves a category out");
             assertSame(mine, found.shape(0));
             assertNotSame(hidden, found.shape(0));
-            // the broad phase keeps float bounds: two blocks apart this far out, so "nothing between" is asked nearer in
+            // the broad phase keeps float bounds: two blocks apart this far out, so "nothing between" is asked nearer
+            // in
             Body close = world.createBody(new BodyDef().position(1000.5, 0, 0));
             close.createShape(new ShapeDef(), Geometry.Box.of(0.5f, 0.5f, 0.5f));
             assertEquals(1, world.overlapAABB(1000.9, 0, 0, 1001.2, 1, 1, QueryFilter.ALL, found));
             assertEquals(0, world.overlapAABB(1002, 0, 0, 1003, 1, 1, QueryFilter.ALL, found), "nothing a block off");
-            assertThrows(IllegalArgumentException.class,
-                    () -> world.overlapAABB(1, 0, 0, 0, 1, 1, QueryFilter.ALL, new Overlaps()), "min above max");
+            assertThrows(
+                    IllegalArgumentException.class,
+                    () -> world.overlapAABB(1, 0, 0, 0, 1, 1, QueryFilter.ALL, new Overlaps()),
+                    "min above max");
         }
     }
 }

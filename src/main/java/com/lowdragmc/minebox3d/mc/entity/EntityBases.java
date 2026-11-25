@@ -3,6 +3,13 @@ package com.lowdragmc.minebox3d.mc.entity;
 import com.lowdragmc.minebox3d.mc.LevelBodies;
 import com.lowdragmc.minebox3d.mc.LevelPhysics;
 import com.lowdragmc.minebox3d.physics.Body;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Consumer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -13,14 +20,6 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Consumer;
 
 /**
  * <b>The body an entity stands on</b> (design doc {@code 04-entities-and-bodies.md} §11, batch 4c-2) — Unreal's
@@ -81,6 +80,7 @@ public final class EntityBases {
         final Body body;
         /** the feet in the body's frame, and in the world, as last kept */
         double localX, localY, localZ, feetX, feetY, feetZ;
+
         float yaw;
         int airTicks;
 
@@ -122,8 +122,13 @@ public final class EntityBases {
                 Entity entity = it.next();
                 Holder holder = (Holder) entity;
                 Base base = holder.minebox3d$base();
-                if (base == null || entity.isRemoved() || !base.body.isValid() || entity.noPhysics || entity.isPassenger()
-                        || entity.level() != level || !meets(entity, base.body)) {
+                if (base == null
+                        || entity.isRemoved()
+                        || !base.body.isValid()
+                        || entity.noPhysics
+                        || entity.isPassenger()
+                        || entity.level() != level
+                        || !meets(entity, base.body)) {
                     if (base != null && !entity.isRemoved()) {
                         holder.minebox3d$setBase(null);
                     }
@@ -144,8 +149,7 @@ public final class EntityBases {
 
     private static final List<Carrier> CARRIERS = new CopyOnWriteArrayList<>();
 
-    private EntityBases() {
-    }
+    private EntityBases() {}
 
     public static void registerCarrier(Carrier carrier) {
         CARRIERS.add(carrier);
@@ -197,7 +201,8 @@ public final class EntityBases {
         }
         Vector3d p = base.body.position(new Vector3d());
         Quaternionf q = base.body.rotation(new Quaternionf());
-        Vector3d feet = q.transform(new Vector3d(base.localX, base.localY, base.localZ)).add(p);
+        Vector3d feet =
+                q.transform(new Vector3d(base.localX, base.localY, base.localZ)).add(p);
         double dx = feet.x - base.feetX, dy = feet.y - base.feetY, dz = feet.z - base.feetZ;
         if (dx * dx + dy * dy + dz * dz > LOST * LOST) {
             holder.minebox3d$setBase(null);
@@ -288,8 +293,11 @@ public final class EntityBases {
     static void beforeMove(Entity entity) {
         Holder holder = (Holder) entity;
         Base base = holder.minebox3d$base();
-        if (base != null && (!meets(entity, base.body) || !EntityCollisions.isClientMoved(entity) && !carriesItself(entity)
-                && isPutElsewhere(base, entity))) {
+        if (base != null
+                && (!meets(entity, base.body)
+                        || !EntityCollisions.isClientMoved(entity)
+                                && !carriesItself(entity)
+                                && isPutElsewhere(base, entity))) {
             holder.minebox3d$setBase(null);
         }
     }

@@ -9,6 +9,7 @@ public final class ConstraintLimitResponse {
     public float stiffness;
     /** 1/s in {@link #accelerationMode}, otherwise N·s/m or N·m·s/rad. */
     public float damping;
+
     public boolean accelerationMode = true;
     /** How much of its speed a hard limit gives back when hit: 0 stops it, 1 bounces it back as fast. */
     public float restitution;
@@ -38,8 +39,11 @@ public final class ConstraintLimitResponse {
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof ConstraintLimitResponse r && soft == r.soft && Float.compare(stiffness, r.stiffness) == 0
-                && Float.compare(damping, r.damping) == 0 && accelerationMode == r.accelerationMode
+        return o instanceof ConstraintLimitResponse r
+                && soft == r.soft
+                && Float.compare(stiffness, r.stiffness) == 0
+                && Float.compare(damping, r.damping) == 0
+                && accelerationMode == r.accelerationMode
                 && Float.compare(restitution, r.restitution) == 0;
     }
 

@@ -47,9 +47,13 @@ public final class ConstraintDrive {
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof ConstraintDrive d && positionDrive == d.positionDrive && velocityDrive == d.velocityDrive
-                && Float.compare(stiffness, d.stiffness) == 0 && Float.compare(damping, d.damping) == 0
-                && accelerationMode == d.accelerationMode && Float.compare(maxForce, d.maxForce) == 0;
+        return o instanceof ConstraintDrive d
+                && positionDrive == d.positionDrive
+                && velocityDrive == d.velocityDrive
+                && Float.compare(stiffness, d.stiffness) == 0
+                && Float.compare(damping, d.damping) == 0
+                && accelerationMode == d.accelerationMode
+                && Float.compare(maxForce, d.maxForce) == 0;
     }
 
     @Override

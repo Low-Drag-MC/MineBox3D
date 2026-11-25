@@ -46,14 +46,24 @@ public final class ConstraintJoint extends Joint {
     }
 
     /** The drive targets alone: linear in frame A, angular frame B relative to frame A (see {@link ConstraintJointSettings}). */
-    public void setDriveTargets(float px, float py, float pz, float vx, float vy, float vz, Quaternionfc orientation,
-                                float wx, float wy, float wz) {
+    public void setDriveTargets(
+            float px,
+            float py,
+            float pz,
+            float vx,
+            float vy,
+            float vz,
+            Quaternionfc orientation,
+            float wx,
+            float wy,
+            float wz) {
         world.enter();
         try {
             checkValid();
             Checks.finite(px, py, pz, "linear position target");
             Checks.finite(vx, vy, vz, "linear velocity target");
-            Checks.rotation(orientation.x(), orientation.y(), orientation.z(), orientation.w(), "angular orientation target");
+            Checks.rotation(
+                    orientation.x(), orientation.y(), orientation.z(), orientation.w(), "angular orientation target");
             Checks.finite(wx, wy, wz, "angular velocity target");
             float[] v = world.constraintValues;
             v[0] = px;

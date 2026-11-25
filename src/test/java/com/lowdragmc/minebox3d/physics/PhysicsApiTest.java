@@ -1,21 +1,20 @@
 package com.lowdragmc.minebox3d.physics;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.lowdragmc.minebox3d.internal.B3;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.atomic.AtomicReference;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * <b>The physics API's contract</b>: what each method does that can be seen, what it refuses, what is left after
@@ -85,12 +84,27 @@ class PhysicsApiTest {
                     () -> world.step(-1, 4),
                     () -> world.step(1 / 60f, 0),
                     () -> world.castRayClosest(Double.NaN, 0, 0, 0, -1, 0, QueryFilter.ALL),
-                    () -> world.castShapeClosest(new Geometry.Sphere(0, nan, 0, 0.1f), 0, 0, 0, 0, -1, 0, QueryFilter.ALL,
+                    () -> world.castShapeClosest(
+                            new Geometry.Sphere(0, nan, 0, 0.1f), 0, 0, 0, 0, -1, 0, QueryFilter.ALL, new CastResult()),
+                    () -> world.castShapeClosest(
+                            new Geometry.Sphere(0, 0, 0, 0.1f),
+                            0,
+                            0,
+                            0,
+                            new Quaternionf(0, 0, 0, 2),
+                            0,
+                            -1,
+                            0,
+                            QueryFilter.ALL,
                             new CastResult()),
-                    () -> world.castShapeClosest(new Geometry.Sphere(0, 0, 0, 0.1f), 0, 0, 0, new Quaternionf(0, 0, 0, 2), 0, -1,
-                            0, QueryFilter.ALL, new CastResult()),
-                    () -> world.overlapShape(Geometry.Mesh.of(MeshData.create(new float[]{0, 0, 0, 1, 0, 0, 0, 0, 1},
-                            new int[]{0, 2, 1}, false)), 0, 0, 0, QueryFilter.ALL, new Overlaps()),
+                    () -> world.overlapShape(
+                            Geometry.Mesh.of(MeshData.create(
+                                    new float[] {0, 0, 0, 1, 0, 0, 0, 0, 1}, new int[] {0, 2, 1}, false)),
+                            0,
+                            0,
+                            0,
+                            QueryFilter.ALL,
+                            new Overlaps()),
                     () -> world.collideMover(0, 0, 0, 0, 0, 0, 0, 1, 0, 0, QueryFilter.ALL, new MoverPlanes()));
             for (int i = 0; i < refused.size(); i++) {
                 assertThrows(IllegalArgumentException.class, refused.get(i), "call " + i);
@@ -140,10 +154,12 @@ class PhysicsApiTest {
             BodyPairTable table = new BodyPairTable(balls);
             table.setAllCollide(false);
             table.apply();
-            Joint joint = world.createJoint(new ConstraintJointDef().bodies(balls[0], balls[1]).worldFrame(0, 2, 0));
+            Joint joint = world.createJoint(
+                    new ConstraintJointDef().bodies(balls[0], balls[1]).worldFrame(0, 2, 0));
             steps(world, 2);
 
-            // as the solver flinging a body would: two of the largest forces add up to an infinite one, which the step's
+            // as the solver flinging a body would: two of the largest forces add up to an infinite one, which the
+            // step's
             // speed clamp makes NaN, and the step fails Box3D's own check
             B3.bodyApplyForceToCenter(balls[0].id(), Float.MAX_VALUE, 0, 0, true);
             B3.bodyApplyForceToCenter(balls[0].id(), Float.MAX_VALUE, 0, 0, true);
@@ -169,7 +185,7 @@ class PhysicsApiTest {
 
     @Test
     void aMeshLetGoOfInAFaultedWorldIsFreedWithTheWorldNotBefore() {
-        MeshData data = MeshData.create(new float[]{-2, 0, -2, 2, 0, -2, 0, 0, 2}, new int[]{0, 2, 1}, false);
+        MeshData data = MeshData.create(new float[] {-2, 0, -2, 2, 0, -2, 0, 0, 2}, new int[] {0, 2, 1}, false);
         try (PhysicsWorld other = world()) {
             PhysicsWorld world = world();
             Body ground = world.createBody(new BodyDef());
@@ -185,11 +201,14 @@ class PhysicsApiTest {
 
             // let go of here, Box3D's shape is still in the world and still reads the mesh
             Body probe = other.createBody(new BodyDef());
-            assertDoesNotThrow(() -> probe.createShape(new ShapeDef(), Geometry.Mesh.of(data)), "not freed under Box3D");
+            assertDoesNotThrow(
+                    () -> probe.createShape(new ShapeDef(), Geometry.Mesh.of(data)), "not freed under Box3D");
             world.close();
             probe.destroy();
             Body late = other.createBody(new BodyDef());
-            assertThrows(IllegalStateException.class, () -> late.createShape(new ShapeDef(), Geometry.Mesh.of(data)),
+            assertThrows(
+                    IllegalStateException.class,
+                    () -> late.createShape(new ShapeDef(), Geometry.Mesh.of(data)),
                     "freed once the world and the last other shape are gone");
         }
     }
@@ -219,7 +238,7 @@ class PhysicsApiTest {
                 () -> body.contactPoints(new ContactPoints()),
                 () -> shape.setFriction(1),
                 () -> shape.bounds(new float[6]),
-                () -> grid.setCells(new int[]{0, 0, 0, 0}, 1));
+                () -> grid.setCells(new int[] {0, 0, 0, 0}, 1));
         for (int i = 0; i < refused.size(); i++) {
             assertThrows(IllegalStateException.class, refused.get(i), "call " + i);
         }
@@ -230,16 +249,15 @@ class PhysicsApiTest {
 
     // ---- leaks ----------------------------------------------------------------------------------
 
-    private record Full(PhysicsWorld world, VoxelGrid grid) {
-    }
+    private record Full(PhysicsWorld world, VoxelGrid grid) {}
 
     /** A world with something of every kind in it, stepped a little. */
     private static Full fullWorld(MeshData mesh) {
         PhysicsWorld world = world();
         VoxelGrid grid = world.createVoxelGrid(new ShapeDef());
-        int id = grid.addCollider(new float[]{0, 0, 0, 1, 1, 1}, 1, grid.addMaterial(new SurfaceMaterial()));
+        int id = grid.addCollider(new float[] {0, 0, 0, 1, 1, 1}, 1, grid.addMaterial(new SurfaceMaterial()));
         for (int s = 0; s < 10; s++) {
-            grid.setCells(new int[]{16 * s, 0, 0, id, 16 * s + 1, 0, 0, id}, 2);
+            grid.setCells(new int[] {16 * s, 0, 0, id, 16 * s + 1, 0, 0, id}, 2);
         }
         Body body = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0.5, 3, 0.5));
         body.createShape(new ShapeDef(), new Geometry.Sphere(0, 0, 0, 0.25f));
@@ -247,10 +265,11 @@ class PhysicsApiTest {
         body.createShape(new ShapeDef(), Geometry.Box.of(0.2f, 0.2f, 0.2f));
         body.createShape(new ShapeDef(), Geometry.Hull.of(-0.2f, 0, -0.2f, 0.2f, 0, -0.2f, 0, 0, 0.2f, 0, 0.3f, 0));
         ShapeDef materials = new ShapeDef();
-        materials.materials = new SurfaceMaterial[]{new SurfaceMaterial(), new SurfaceMaterial().friction(0.1f)};
+        materials.materials = new SurfaceMaterial[] {new SurfaceMaterial(), new SurfaceMaterial().friction(0.1f)};
         world.createBody(new BodyDef().position(40, 0, 0)).createShape(materials, Geometry.Mesh.of(mesh));
         try (HeightFieldData field = HeightFieldData.create(new float[9], 3, 3)) {
-            world.createBody(new BodyDef().position(-40, 0, 0)).createShape(new ShapeDef(), new Geometry.HeightField(field));
+            world.createBody(new BodyDef().position(-40, 0, 0))
+                    .createShape(new ShapeDef(), new Geometry.HeightField(field));
         }
         Body other = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(1.5, 3, 0.5));
         other.createShape(new ShapeDef(), new Geometry.Sphere(0, 0, 0, 0.25f));
@@ -272,7 +291,7 @@ class PhysicsApiTest {
         int worlds = B3.getWorldCount();
 
         for (int order = 0; order < 3; order++) {
-            for (boolean meshFirst : new boolean[]{true, false}) {
+            for (boolean meshFirst : new boolean[] {true, false}) {
                 MeshData mesh = MeshData.create(vertices, indices, true);
                 Full full = fullWorld(mesh);
                 PhysicsWorld world = full.world();
@@ -294,7 +313,10 @@ class PhysicsApiTest {
                     mesh.close();
                 }
                 assertEquals(worlds, B3.getWorldCount(), "world slot back, order " + order);
-                assertEquals(bytes, B3.getByteCount(), "every byte back, order " + order + ", mesh closed first " + meshFirst);
+                assertEquals(
+                        bytes,
+                        B3.getByteCount(),
+                        "every byte back, order " + order + ", mesh closed first " + meshFirst);
             }
         }
     }
@@ -321,10 +343,13 @@ class PhysicsApiTest {
 
         // countX * countZ wraps to the array's length in an int: the long product does not
         assertThrows(IllegalArgumentException.class, () -> HeightFieldData.create(new float[65536], 65536, 65537));
-        assertThrows(IllegalArgumentException.class,
-                () -> MeshData.create(new float[]{0, 0, 0, 1, Float.NaN, 0, 0, 0, 1}, new int[]{0, 2, 1}, false));
-        assertThrows(IllegalArgumentException.class,
-                () -> MeshData.create(new float[]{0, 0, 0, 1, 0, 0, 0, 0, Float.POSITIVE_INFINITY}, new int[]{0, 2, 1}, false));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> MeshData.create(new float[] {0, 0, 0, 1, Float.NaN, 0, 0, 0, 1}, new int[] {0, 2, 1}, false));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> MeshData.create(
+                        new float[] {0, 0, 0, 1, 0, 0, 0, 0, Float.POSITIVE_INFINITY}, new int[] {0, 2, 1}, false));
     }
 
     @Test
@@ -334,8 +359,8 @@ class PhysicsApiTest {
             world.counters(counters);
             int bodies = counters[0];
             VoxelGrid grid = world.createVoxelGrid(new ShapeDef());
-            int id = grid.addCollider(new float[]{0, 0, 0, 1, 1, 1}, 1, grid.addMaterial(new SurfaceMaterial()));
-            grid.setCells(new int[]{0, 0, 0, id, 40, 0, 0, id}, 2);
+            int id = grid.addCollider(new float[] {0, 0, 0, 1, 1, 1}, 1, grid.addMaterial(new SurfaceMaterial()));
+            grid.setCells(new int[] {0, 0, 0, id, 40, 0, 0, id}, 2);
             world.counters(counters);
             assertEquals(bodies + 2, counters[0], "a static body per section");
             grid.close();
@@ -359,8 +384,9 @@ class PhysicsApiTest {
                     for (int r = 0; r < rounds; r++) {
                         try (PhysicsWorld world = world()) {
                             VoxelGrid grid = world.createVoxelGrid(new ShapeDef());
-                            int id = grid.addCollider(new float[]{0, 0, 0, 1, 1, 1}, 1, grid.addMaterial(new SurfaceMaterial()));
-                            grid.setCells(new int[]{0, 0, 0, id}, 1);
+                            int id = grid.addCollider(
+                                    new float[] {0, 0, 0, 1, 1, 1}, 1, grid.addMaterial(new SurfaceMaterial()));
+                            grid.setCells(new int[] {0, 0, 0, id}, 1);
                             ball(world, 2);
                             world.step(1 / 60f, 4);
                             if (r % 2 == 0) {
@@ -388,14 +414,16 @@ class PhysicsApiTest {
         try (PhysicsWorld world = world()) {
             Body[] bodies = new Body[200];
             for (int i = 0; i < bodies.length; i++) {
-                bodies[i] = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(i * 2, 10, 0));
+                bodies[i] =
+                        world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(i * 2, 10, 0));
                 bodies[i].createShape(new ShapeDef(), new Geometry.Sphere(0, 0, 0, 0.25f));
             }
             steps(world, 2);
             double[] transform = new double[7];
             for (Body body : bodies) {
                 B3.bodyGetTransform(body.id(), transform);
-                assertEquals(transform[1], body.position(new Vector3d()).y, 1e-9, "the 65th body and on are not frozen");
+                assertEquals(
+                        transform[1], body.position(new Vector3d()).y, 1e-9, "the 65th body and on are not frozen");
             }
             assertEquals(bodies.length, world.movedBodies().size());
         }
@@ -408,7 +436,8 @@ class PhysicsApiTest {
             Set<Body> all = new HashSet<>();
             for (int i = 0; i < 30; i++) {
                 // dropped from different heights, so they fall asleep in different steps
-                Body ball = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(i * 1.2 - 18, 1 + 0.1 * i, 0));
+                Body ball =
+                        world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(i * 1.2 - 18, 1 + 0.1 * i, 0));
                 ball.createShape(new ShapeDef(), new Geometry.Sphere(0, 0, 0, 0.25f));
                 all.add(ball);
             }
@@ -423,7 +452,8 @@ class PhysicsApiTest {
             for (Body ball : all) {
                 assertFalse(ball.isAwake());
             }
-            assertEquals(all, reported, "every body that went to sleep, whichever of the frame's three steps it was in");
+            assertEquals(
+                    all, reported, "every body that went to sleep, whichever of the frame's three steps it was in");
         }
     }
 
@@ -617,11 +647,9 @@ class PhysicsApiTest {
 
     // ---- attachments ------------------------------------------------------------------------------
 
-    private record ModA(String value) {
-    }
+    private record ModA(String value) {}
 
-    private record ModB(int value) {
-    }
+    private record ModB(int value) {}
 
     @Test
     void eachModAttachesItsOwnValueByType() {
@@ -655,8 +683,8 @@ class PhysicsApiTest {
             wall.createShape(new ShapeDef(), Geometry.Box.of(0.5f, 5, 5));
             Geometry box = Geometry.Box.of(1, 1, 1);
             CastHit straight = world.castShapeClosest(box, 0, 0, 0, new Quaternionf(), 20, 0, 0, QueryFilter.ALL);
-            CastHit turned = world.castShapeClosest(box, 0, 0, 0, new Quaternionf().rotationY((float) Math.PI / 4), 20, 0, 0,
-                    QueryFilter.ALL);
+            CastHit turned = world.castShapeClosest(
+                    box, 0, 0, 0, new Quaternionf().rotationY((float) Math.PI / 4), 20, 0, 0, QueryFilter.ALL);
             assertNotNull(straight);
             assertNotNull(turned);
             // a face 1 ahead against a corner √2 ahead
@@ -664,7 +692,8 @@ class PhysicsApiTest {
             assertEquals((9.5 - Math.sqrt(2)) / 20, turned.fraction(), 1e-3);
 
             // a box's own turn counts the same
-            Geometry ownTurn = new Geometry.Box(1, 1, 1, 0, 0, 0, 0, (float) Math.sin(Math.PI / 8), 0, (float) Math.cos(Math.PI / 8));
+            Geometry ownTurn = new Geometry.Box(
+                    1, 1, 1, 0, 0, 0, 0, (float) Math.sin(Math.PI / 8), 0, (float) Math.cos(Math.PI / 8));
             CastHit own = world.castShapeClosest(ownTurn, 0, 0, 0, new Quaternionf(), 20, 0, 0, QueryFilter.ALL);
             assertNotNull(own);
             assertEquals(turned.fraction(), own.fraction(), 1e-4);
@@ -692,7 +721,8 @@ class PhysicsApiTest {
 
     private static void dropAWorld() {
         PhysicsWorld world = world();
-        world.createVoxelGrid(new ShapeDef()).setCells(new int[]{0, 0, 0, 0}, 1);
-        world.createBody(new BodyDef().type(BodyType.DYNAMIC)).createShape(new ShapeDef(), new Geometry.Sphere(0, 0, 0, 1));
+        world.createVoxelGrid(new ShapeDef()).setCells(new int[] {0, 0, 0, 0}, 1);
+        world.createBody(new BodyDef().type(BodyType.DYNAMIC))
+                .createShape(new ShapeDef(), new Geometry.Sphere(0, 0, 0, 1));
     }
 }

@@ -1,10 +1,9 @@
 package com.lowdragmc.minebox3d.physics;
 
-import org.jetbrains.annotations.Nullable;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * <b>What happened in a world's steps</b> since the frame began ({@link PhysicsWorld#beginInterpolationFrame()}): touches
@@ -23,41 +22,51 @@ import java.util.List;
 public final class WorldEvents {
 
     /** Two shapes began touching. */
-    public record ContactBegin(@Nullable Shape shapeA, @Nullable Shape shapeB, long shapeIdA, long shapeIdB) {
-    }
+    public record ContactBegin(@Nullable Shape shapeA, @Nullable Shape shapeB, long shapeIdA, long shapeIdB) {}
 
     /** Two shapes stopped touching, or one of them went. */
-    public record ContactEnd(@Nullable Shape shapeA, @Nullable Shape shapeB, long shapeIdA, long shapeIdB) {
-    }
+    public record ContactEnd(@Nullable Shape shapeA, @Nullable Shape shapeB, long shapeIdA, long shapeIdB) {}
 
     /**
      * Two shapes met faster than the world's hit threshold. {@code x, y, z} is where, the normal points from A to B.
      * When one of them is voxel terrain, {@code terrainSide} says which (1 = A, 2 = B, 0 = neither) and {@code cell}
      * the block cell.
      */
-    public record ContactHit(@Nullable Shape shapeA, @Nullable Shape shapeB, long shapeIdA, long shapeIdB, double x, double y,
-                             double z, float normalX, float normalY, float normalZ, float approachSpeed, long materialA,
-                             long materialB, int terrainSide, int cellX, int cellY, int cellZ) {
+    public record ContactHit(
+            @Nullable Shape shapeA,
+            @Nullable Shape shapeB,
+            long shapeIdA,
+            long shapeIdB,
+            double x,
+            double y,
+            double z,
+            float normalX,
+            float normalY,
+            float normalZ,
+            float approachSpeed,
+            long materialA,
+            long materialB,
+            int terrainSide,
+            int cellX,
+            int cellY,
+            int cellZ) {
         public boolean onTerrain() {
             return terrainSide != 0;
         }
     }
 
     /** A shape began overlapping a sensor. */
-    public record SensorBegin(@Nullable Shape sensor, @Nullable Shape visitor, long sensorId, long visitorId) {
-    }
+    public record SensorBegin(@Nullable Shape sensor, @Nullable Shape visitor, long sensorId, long visitorId) {}
 
     /** A shape stopped overlapping a sensor, or one of them went. */
-    public record SensorEnd(@Nullable Shape sensor, @Nullable Shape visitor, long sensorId, long visitorId) {
-    }
+    public record SensorEnd(@Nullable Shape sensor, @Nullable Shape visitor, long sensorId, long visitorId) {}
 
     /**
      * A joint whose force or torque passed its threshold ({@link JointDef#forceThreshold}) in a step, while awake. Box3D
      * only reports it: breaking the joint is the reader's call ({@link Joint#destroy}). {@code null} for a joint made
      * outside the API.
      */
-    public record JointEvent(@Nullable Joint joint, long jointId) {
-    }
+    public record JointEvent(@Nullable Joint joint, long jointId) {}
 
     final List<ContactBegin> contactBegins = new ArrayList<>();
     final List<ContactEnd> contactEnds = new ArrayList<>();
@@ -66,8 +75,7 @@ public final class WorldEvents {
     final List<SensorEnd> sensorEnds = new ArrayList<>();
     final List<JointEvent> jointEvents = new ArrayList<>();
 
-    WorldEvents() {
-    }
+    WorldEvents() {}
 
     /** Joints past their thresholds, once per step they were. */
     public List<JointEvent> jointEvents() {

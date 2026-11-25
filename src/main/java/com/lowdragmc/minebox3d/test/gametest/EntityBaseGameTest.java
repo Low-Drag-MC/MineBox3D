@@ -55,7 +55,8 @@ public final class EntityBaseGameTest {
     /** A kinematic platform, still until it is given a velocity, its top at {@code y + hy}. */
     private static Body platform(GameTestHelper helper, double x, double y, double z, float hx, float hy, float hz) {
         Vec3 at = helper.absoluteVec(new Vec3(x, y, z));
-        Body body = physics(helper).createBody(new BodyDef().type(BodyType.KINEMATIC).position(at.x, at.y, at.z));
+        Body body = physics(helper)
+                .createBody(new BodyDef().type(BodyType.KINEMATIC).position(at.x, at.y, at.z));
         body.createShape(new ShapeDef(), Geometry.Box.of(hx, hy, hz));
         return body;
     }
@@ -101,11 +102,13 @@ public final class EntityBaseGameTest {
                     double went = relative(helper, deck).x - 2.5;
                     helper.assertTrue(went > 4, "the deck went along: " + went);
                     Vec3 now = offset(stand, deck);
-                    helper.assertTrue(now.distanceTo(start[0]) < 0.05, "the stand stayed where it stood on it: " + start[0]
-                            + " then, " + now + " now");
+                    helper.assertTrue(
+                            now.distanceTo(start[0]) < 0.05,
+                            "the stand stayed where it stood on it: " + start[0] + " then, " + now + " now");
                     helper.assertTrue(stand.onGround() && EntityBases.baseOf(stand) == deck, "on it all along");
                     Vector3f v = EntityBases.baseVelocity(stand, new Vector3f());
-                    helper.assertTrue(Math.abs(v.x - 3) < 0.01 && Math.abs(v.y) < 0.01, "the base's speed under it: " + v);
+                    helper.assertTrue(
+                            Math.abs(v.x - 3) < 0.01 && Math.abs(v.y) < 0.01, "the base's speed under it: " + v);
                     deck.destroy();
                     stand.discard();
                     done(helper, 12, 4);
@@ -123,15 +126,18 @@ public final class EntityBaseGameTest {
                 .thenWaitUntil(() -> helper.assertTrue(standsOn(helper, stand, deck), "the stand stands on the deck"))
                 .thenExecute(() -> {
                     yaw[0] = stand.getYRot();
-                    deck.setAngularVelocity(0, (float) (Math.PI / 2), 0); // a quarter turn a second, counter-clockwise from above
+                    deck.setAngularVelocity(
+                            0, (float) (Math.PI / 2), 0); // a quarter turn a second, counter-clockwise from above
                 })
                 .thenExecuteAfter(20, () -> {
                     deck.setAngularVelocity(0, 0, 0);
                     // a quarter turn about +Y takes east (+X) to north (-Z)
                     Vec3 now = offset(stand, deck);
-                    helper.assertTrue(Math.abs(now.x) < 0.1 && Math.abs(now.z + 1) < 0.1, "carried round a quarter: " + now);
+                    helper.assertTrue(
+                            Math.abs(now.x) < 0.1 && Math.abs(now.z + 1) < 0.1, "carried round a quarter: " + now);
                     float turned = stand.getYRot() - yaw[0];
-                    helper.assertTrue(Math.abs(turned + 90) < 5, "and turned with it (yaw clockwise from above): " + turned);
+                    helper.assertTrue(
+                            Math.abs(turned + 90) < 5, "and turned with it (yaw clockwise from above): " + turned);
                     deck.destroy();
                     stand.discard();
                     done(helper, 6, 6);
@@ -151,8 +157,9 @@ public final class EntityBaseGameTest {
                     lift.setLinearVelocity(0, 0, 0);
                     double top = relative(helper, lift).y + 0.25, feet = relative(helper, stand).y;
                     helper.assertTrue(top > 2.8, "the lift rose two blocks: its top at " + top);
-                    helper.assertTrue(feet - top > 0 && feet - top < 0.02, "the stand on it still: its feet " + (feet - top)
-                            + " above the top");
+                    helper.assertTrue(
+                            feet - top > 0 && feet - top < 0.02,
+                            "the stand on it still: its feet " + (feet - top) + " above the top");
                     lift.destroy();
                     stand.discard();
                     done(helper, 4, 4);
@@ -173,11 +180,13 @@ public final class EntityBaseGameTest {
                     start[0] = offset(stand, deck);
                     stand.setDeltaMovement(0, 0.42, 0); // a jump
                 })
-                .thenWaitUntil(() -> helper.assertTrue(stand.getDeltaMovement().y < 0 && stand.onGround(), "down again"))
+                .thenWaitUntil(
+                        () -> helper.assertTrue(stand.getDeltaMovement().y < 0 && stand.onGround(), "down again"))
                 .thenExecute(() -> {
                     Vec3 now = offset(stand, deck);
-                    helper.assertTrue(Math.abs(now.x - start[0].x) < 0.1, "where it went up, on the moving deck: "
-                            + start[0] + " then, " + now + " now");
+                    helper.assertTrue(
+                            Math.abs(now.x - start[0].x) < 0.1,
+                            "where it went up, on the moving deck: " + start[0] + " then, " + now + " now");
                     helper.assertTrue(EntityBases.baseOf(stand) == deck, "on it again");
                     deck.destroy();
                     stand.discard();
@@ -199,11 +208,13 @@ public final class EntityBaseGameTest {
                     left[0] = relative(helper, stand).x;
                     stand.setDeltaMovement(0, 0, 0.6); // off the side
                 })
-                .thenWaitUntil(() -> helper.assertTrue(relative(helper, stand).y < 0.01 && stand.onGround(), "on the floor"))
+                .thenWaitUntil(
+                        () -> helper.assertTrue(relative(helper, stand).y < 0.01 && stand.onGround(), "on the floor"))
                 .thenExecute(() -> {
                     landed[0] = relative(helper, stand).x;
-                    helper.assertTrue(landed[0] - left[0] > 0.5, "carried along the deck's way as it fell: "
-                            + (landed[0] - left[0]));
+                    helper.assertTrue(
+                            landed[0] - left[0] > 0.5,
+                            "carried along the deck's way as it fell: " + (landed[0] - left[0]));
                     helper.assertTrue(EntityBases.baseOf(stand) == null, "and has no base now");
                 })
                 .thenExecuteAfter(5, () -> {
@@ -231,16 +242,17 @@ public final class EntityBaseGameTest {
                 .thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper), "the area ticks"))
                 .thenExecute(() -> deck.setLinearVelocity(2, 0, 0))
                 .thenExecuteAfter(2, () -> stand[0] = stand(helper, 4.5, 3, 1.5))
-                .thenWaitUntil(() -> helper.assertTrue(stand[0].onGround() && EntityBases.baseOf(stand[0]) == deck,
-                        "it landed on the deck"))
+                .thenWaitUntil(() -> helper.assertTrue(
+                        stand[0].onGround() && EntityBases.baseOf(stand[0]) == deck, "it landed on the deck"))
                 .thenExecute(() -> landed[0] = offset(stand[0], deck))
                 .thenExecuteAfter(15, () -> landed[1] = offset(stand[0], deck))
                 .thenExecuteAfter(15, () -> {
                     Vec3 now = offset(stand[0], deck);
                     double slid = landed[1].x - landed[0].x;
                     helper.assertTrue(slid < 0 && slid > -0.3, "slid back a little on landing: " + slid);
-                    helper.assertTrue(Math.abs(now.x - landed[1].x) < 0.01, "then rode along where it stopped: " + landed[1]
-                            + " then, " + now + " now");
+                    helper.assertTrue(
+                            Math.abs(now.x - landed[1].x) < 0.01,
+                            "then rode along where it stopped: " + landed[1] + " then, " + now + " now");
                     deck.destroy();
                     stand[0].discard();
                     done(helper, 16, 4);
@@ -254,7 +266,8 @@ public final class EntityBaseGameTest {
         area(helper, 14, 4);
         Body deck = platform(helper, 3, 1.25, 1.5, 2.5f, 0.25f, 1); // from 0.5 to 5.5
         Vec3 at = helper.absoluteVec(new Vec3(6.75, 2.75, 1.5));
-        Body wall = physics(helper).createBody(new BodyDef().position(at.x, at.y, at.z)); // its face at x = 6.5, above the deck
+        Body wall = physics(helper)
+                .createBody(new BodyDef().position(at.x, at.y, at.z)); // its face at x = 6.5, above the deck
         wall.createShape(new ShapeDef(), Geometry.Box.of(0.25f, 1.25f, 1));
         ArmorStand stand = stand(helper, 4, 2, 1.5);
         helper.startSequence()
@@ -290,8 +303,9 @@ public final class EntityBaseGameTest {
                     put[0] = relative(helper, stand).z;
                 })
                 .thenExecuteAfter(3, () -> {
-                    helper.assertTrue(Math.abs(relative(helper, stand).z - put[0]) < 0.01, "not pulled back: z = "
-                            + relative(helper, stand).z + ", put at " + put[0]);
+                    helper.assertTrue(
+                            Math.abs(relative(helper, stand).z - put[0]) < 0.01,
+                            "not pulled back: z = " + relative(helper, stand).z + ", put at " + put[0]);
                     deck.destroy();
                 })
                 .thenExecuteAfter(10, () -> {
@@ -320,10 +334,12 @@ public final class EntityBaseGameTest {
                     Vec3 at = helper.absoluteVec(put);
                     stand.teleportTo(at.x, at.y, at.z);
                 })
-                .thenWaitUntil(() -> helper.assertTrue(stand.onGround() && relative(helper, stand).y < 0.01, "on the floor"))
+                .thenWaitUntil(
+                        () -> helper.assertTrue(stand.onGround() && relative(helper, stand).y < 0.01, "on the floor"))
                 .thenExecuteAfter(5, () -> {
                     Vec3 now = relative(helper, stand);
-                    helper.assertTrue(Math.abs(now.x - put.x) < 0.01 && Math.abs(now.z - put.z) < 0.01,
+                    helper.assertTrue(
+                            Math.abs(now.x - put.x) < 0.01 && Math.abs(now.z - put.z) < 0.01,
                             "straight down under where it was put: " + now);
                     helper.assertTrue(EntityBases.baseOf(stand) == null, "with no base");
                     deck.destroy();
@@ -341,7 +357,8 @@ public final class EntityBaseGameTest {
         ArmorStand stand = stand(helper, 3, 2, 1.5);
         Entity boat = helper.spawn(EntityType.BOAT, new Vec3(4, 0, 4.5));
         helper.startSequence()
-                .thenWaitUntil(() -> helper.assertTrue(standsOn(helper, stand, deck) && TestArea.ticks(helper, boat),
+                .thenWaitUntil(() -> helper.assertTrue(
+                        standsOn(helper, stand, deck) && TestArea.ticks(helper, boat),
                         "the stand stands on the deck, the boat ticks"))
                 .thenExecute(() -> {
                     deck.setLinearVelocity(3, 0, 0);
@@ -349,8 +366,9 @@ public final class EntityBaseGameTest {
                 })
                 .thenExecuteAfter(10, () -> {
                     helper.assertTrue(EntityBases.baseOf(stand) == null, "no base while seated");
-                    helper.assertTrue(stand.getVehicle() == boat && stand.distanceTo(boat) < 1.5, "where the boat has it: "
-                            + relative(helper, stand));
+                    helper.assertTrue(
+                            stand.getVehicle() == boat && stand.distanceTo(boat) < 1.5,
+                            "where the boat has it: " + relative(helper, stand));
                     deck.destroy();
                     stand.discard();
                     boat.discard();
@@ -373,7 +391,8 @@ public final class EntityBaseGameTest {
                     Vec3 far = helper.absoluteVec(new Vec3(2.5, 30, 1.5));
                     deck.setTransform(far.x, far.y, far.z, new Quaternionf());
                 })
-                .thenWaitUntil(() -> helper.assertTrue(stand.onGround() && relative(helper, stand).y < 0.01, "on the floor"))
+                .thenWaitUntil(
+                        () -> helper.assertTrue(stand.onGround() && relative(helper, stand).y < 0.01, "on the floor"))
                 .thenExecute(() -> {
                     helper.assertTrue(EntityBases.baseOf(stand) == null, "let go");
                     helper.assertTrue(Math.abs(relative(helper, stand).x - x[0]) < 0.01, "straight down");
@@ -401,8 +420,9 @@ public final class EntityBaseGameTest {
                 .thenExecute(() -> {
                     int air = stand.tickCount - since[0];
                     helper.assertTrue(air > 17 && air <= 22, "after its 20 ticks in the air: " + air);
-                    helper.assertTrue(!stand.onGround() && stand.getDeltaMovement().x > 0.1, "going on along the deck's way: "
-                            + stand.getDeltaMovement());
+                    helper.assertTrue(
+                            !stand.onGround() && stand.getDeltaMovement().x > 0.1,
+                            "going on along the deck's way: " + stand.getDeltaMovement());
                     deck.destroy();
                     stand.discard();
                     done(helper, 16, 4);
@@ -417,7 +437,8 @@ public final class EntityBaseGameTest {
         Body first = platform(helper, 2, 1.25, 1.5, 1.5f, 0.25f, 1); // x 0.5 to 3.5
         Vec3 at = helper.absoluteVec(new Vec3(3.5, 1.5, 0.5));
         Body next = physics(helper).createBody(new BodyDef().position(at.x, at.y, at.z));
-        MeshData quad = MeshData.create(new float[]{0, 0, 0, 3, 0, 0, 0, 0, 2, 3, 0, 2}, new int[]{0, 2, 1, 1, 2, 3}, true);
+        MeshData quad =
+                MeshData.create(new float[] {0, 0, 0, 3, 0, 0, 0, 0, 2, 3, 0, 2}, new int[] {0, 2, 1, 1, 2, 3}, true);
         next.createShape(new ShapeDef(), Geometry.Mesh.of(quad)); // x 3.5 to 6.5, at the first one's top
         quad.close();
         ArmorStand stand = stand(helper, 2, 2, 1.5);
@@ -457,8 +478,9 @@ public final class EntityBaseGameTest {
                     deck.setLinearVelocity(2, 0, 0);
                 })
                 .thenExecuteAfter(10, () -> {
-                    helper.assertTrue(Math.abs(relative(helper, stand).x - x[0]) < 0.05, "not carried: "
-                            + (relative(helper, stand).x - x[0]));
+                    helper.assertTrue(
+                            Math.abs(relative(helper, stand).x - x[0]) < 0.05,
+                            "not carried: " + (relative(helper, stand).x - x[0]));
                     helper.assertTrue(EntityBases.baseOf(stand) == deck, "its base kept, for its mod");
                     deck.destroy();
                     stand.discard();
@@ -472,16 +494,20 @@ public final class EntityBaseGameTest {
         area(helper, 8, 4);
         Vec3 pivot = helper.absoluteVec(new Vec3(4, 2.5, 1.5));
         Body anchor = physics(helper).createBody(new BodyDef().position(pivot.x, pivot.y, pivot.z));
-        Body plank = physics(helper).createBody(new BodyDef().type(BodyType.DYNAMIC).position(pivot.x, pivot.y, pivot.z));
+        Body plank =
+                physics(helper).createBody(new BodyDef().type(BodyType.DYNAMIC).position(pivot.x, pivot.y, pivot.z));
         plank.createShape(new ShapeDef().density(100), Geometry.Box.of(2.5f, 0.1f, 0.5f)); // 100 kg, x from 1.5 to 6.5
-        var hinge = physics(helper).world().createJoint(new RevoluteJointDef().bodies(anchor, plank)
-                .worldFrame(pivot.x, pivot.y, pivot.z)); // about z
+        var hinge = physics(helper)
+                .world()
+                .createJoint(
+                        new RevoluteJointDef().bodies(anchor, plank).worldFrame(pivot.x, pivot.y, pivot.z)); // about z
         ArmorStand[] stand = new ArmorStand[1];
         helper.startSequence()
                 // once its chunks tick: on it a moment, it tips the plank and slides off
                 .thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper), "the area ticks"))
                 .thenExecute(() -> stand[0] = stand(helper, 6, 3, 1.5)) // over the east end
-                .thenWaitUntil(() -> helper.assertTrue(standsOn(helper, stand[0], plank), "the stand stands on the plank"))
+                .thenWaitUntil(
+                        () -> helper.assertTrue(standsOn(helper, stand[0], plank), "the stand stands on the plank"))
                 .thenExecuteAfter(10, () -> {
                     Vector3f east = plank.rotation(new Quaternionf()).transform(new Vector3f(1, 0, 0));
                     helper.assertTrue(east.y < -0.05, "the east end went down under it: " + east);
@@ -500,15 +526,18 @@ public final class EntityBaseGameTest {
         area(helper, 8, 4);
         Vec3 pivot = helper.absoluteVec(new Vec3(4, 2.5, 1.5));
         Body anchor = physics(helper).createBody(new BodyDef().position(pivot.x, pivot.y, pivot.z));
-        Body plank = physics(helper).createBody(new BodyDef().type(BodyType.DYNAMIC).position(pivot.x, pivot.y, pivot.z));
+        Body plank =
+                physics(helper).createBody(new BodyDef().type(BodyType.DYNAMIC).position(pivot.x, pivot.y, pivot.z));
         plank.createShape(new ShapeDef().density(100), Geometry.Box.of(2.5f, 0.1f, 0.5f));
-        var hinge = physics(helper).world().createJoint(new RevoluteJointDef().bodies(anchor, plank)
-                .worldFrame(pivot.x, pivot.y, pivot.z));
+        var hinge = physics(helper)
+                .world()
+                .createJoint(new RevoluteJointDef().bodies(anchor, plank).worldFrame(pivot.x, pivot.y, pivot.z));
         ArmorStand[] stand = new ArmorStand[1];
         helper.startSequence()
                 .thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper), "the area ticks"))
                 .thenExecute(() -> stand[0] = EntityAuthorityGameTest.pushingNothing(stand(helper, 6, 3, 1.5)))
-                .thenWaitUntil(() -> helper.assertTrue(standsOn(helper, stand[0], plank), "the stand stands on the plank"))
+                .thenWaitUntil(
+                        () -> helper.assertTrue(standsOn(helper, stand[0], plank), "the stand stands on the plank"))
                 .thenExecute(() -> {
                     // level and still again after the landing, which is no weight: from here only a weight would tip it
                     plank.setTransform(pivot.x, pivot.y, pivot.z, new Quaternionf());

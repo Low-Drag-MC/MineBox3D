@@ -1,13 +1,12 @@
 package com.lowdragmc.minebox3d.mc.sync;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import io.netty.buffer.Unpooled;
+import java.util.List;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /** The riders' payloads (doc 04 §11.2) read back what was written, the "on none" forms included. */
 class RiderPayloadsTest {
@@ -29,15 +28,19 @@ class RiderPayloadsTest {
         RiderPayload read = roundTrip(RiderPayload.CODEC, sent);
         assertEquals(sent, read);
         assertTrue(read.riders().get(0).sameAs(sent.riders().get(0)));
-        assertFalse(read.riders().get(0).sameAs(new RiderPayload.Rider(12, 0, 1.5f, -0.25f, 3, 90, -45.5f, 179, 0)),
+        assertFalse(
+                read.riders().get(0).sameAs(new RiderPayload.Rider(12, 0, 1.5f, -0.25f, 3, 90, -45.5f, 179, 0)),
                 "a new pitch is a change");
         assertEquals(new RiderPayload(List.of()), roundTrip(RiderPayload.CODEC, new RiderPayload(List.of())));
     }
 
     @Test
     void whereAPlayerStandsAndWhatItPushedAreReadAsWritten() {
-        for (StandingPayload sent : List.of(new StandingPayload(0, 1, 2, 3, false), new StandingPayload(9_999, -0.5f, 0, 7, true),
-                StandingPayload.off(false), StandingPayload.off(true))) {
+        for (StandingPayload sent : List.of(
+                new StandingPayload(0, 1, 2, 3, false),
+                new StandingPayload(9_999, -0.5f, 0, 7, true),
+                StandingPayload.off(false),
+                StandingPayload.off(true))) {
             assertEquals(sent, roundTrip(StandingPayload.CODEC, sent));
         }
         PushPayload push = new PushPayload(42, 10.5f, -1, 0, 0.25f, 0.5f, -0.75f);

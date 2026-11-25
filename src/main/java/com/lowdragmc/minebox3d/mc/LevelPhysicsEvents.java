@@ -17,16 +17,15 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.level.ChunkEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
 import net.neoforged.neoforge.event.server.ServerStoppedEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import net.neoforged.neoforge.event.tick.LevelTickEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.jetbrains.annotations.Nullable;
 
 /** Wires {@link LevelPhysics} to the level's life: its tick, its chunks, its unload. */
 @EventBusSubscriber(modid = MineBox3D.MOD_ID)
 public final class LevelPhysicsEvents {
 
-    private LevelPhysicsEvents() {
-    }
+    private LevelPhysicsEvents() {}
 
     /**
      * Server levels step at the end of their own tick (which fires even while {@code /tick freeze} holds the level;
@@ -103,14 +102,16 @@ public final class LevelPhysicsEvents {
     @SubscribeEvent
     public static void onChunkLoad(ChunkEvent.Load event) {
         if (event.getLevel() instanceof Level level) {
-            TerrainStreamer.forLevel(level, streamer -> streamer.onChunkLoaded(event.getChunk().getPos()));
+            TerrainStreamer.forLevel(
+                    level, streamer -> streamer.onChunkLoaded(event.getChunk().getPos()));
         }
     }
 
     @SubscribeEvent
     public static void onChunkUnload(ChunkEvent.Unload event) {
         if (event.getLevel() instanceof Level level) {
-            TerrainStreamer.forLevel(level, streamer -> streamer.onChunkUnloaded(event.getChunk().getPos()));
+            TerrainStreamer.forLevel(
+                    level, streamer -> streamer.onChunkUnloaded(event.getChunk().getPos()));
         }
     }
 

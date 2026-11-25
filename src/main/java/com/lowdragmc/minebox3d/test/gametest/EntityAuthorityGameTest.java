@@ -34,8 +34,7 @@ public final class EntityAuthorityGameTest {
         });
     }
 
-    private EntityAuthorityGameTest() {
-    }
+    private EntityAuthorityGameTest() {}
 
     /** A mod's say that the entity's moves push no body ({@link EntityAuthority#pushesBodies}): Unreal's Mover. */
     static <T extends Entity> T pushingNothing(T entity) {
@@ -64,7 +63,8 @@ public final class EntityAuthorityGameTest {
         player.removeTag(SERVER_MOVES);
         helper.assertTrue(EntityAuthority.clientMoves(player), "with no say, Minecraft's rule again");
 
-        helper.assertTrue(EntityAuthority.pushesBodies(player) && EntityAuthority.pushesBodies(pig),
+        helper.assertTrue(
+                EntityAuthority.pushesBodies(player) && EntityAuthority.pushesBodies(pig),
                 "the moves of a player and of a mob push bodies");
         pushingNothing(player);
         helper.assertFalse(EntityAuthority.pushesBodies(player), "unless a mod says its moves push none");

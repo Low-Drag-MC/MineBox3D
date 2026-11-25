@@ -25,8 +25,7 @@ import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 @EventBusSubscriber(modid = MineBox3D.MOD_ID, value = Dist.CLIENT)
 public final class ClientPhysicsEvents {
 
-    private ClientPhysicsEvents() {
-    }
+    private ClientPhysicsEvents() {}
 
     /** A client tick starts: an entity move a thrown error left open on this thread is let go (EntityCollisions). */
     @SubscribeEvent
@@ -44,8 +43,10 @@ public final class ClientPhysicsEvents {
                 physics.tick();
                 // after the step: our player's pushes on replicas told to the server, and the others the server says
                 // stand on bodies put there (design doc 04 §11.2 #3, §11.5)
-                physics.sync().riders().afterClientTick(minecraft.player,
-                        connection != null && connection.hasChannel(StandingPayload.TYPE));
+                physics.sync()
+                        .riders()
+                        .afterClientTick(
+                                minecraft.player, connection != null && connection.hasChannel(StandingPayload.TYPE));
             }
         }
         LevelPhysicsEvents.drainLog();
@@ -62,8 +63,11 @@ public final class ClientPhysicsEvents {
             return;
         }
         Minecraft minecraft = Minecraft.getInstance();
-        PhysicsDebugRenderer.render(event.getPoseStack(), minecraft.renderBuffers().bufferSource(),
-                event.getCamera().getPosition(), event.getPartialTick().getGameTimeDeltaPartialTick(false));
+        PhysicsDebugRenderer.render(
+                event.getPoseStack(),
+                minecraft.renderBuffers().bufferSource(),
+                event.getCamera().getPosition(),
+                event.getPartialTick().getGameTimeDeltaPartialTick(false));
     }
 
     @SubscribeEvent
@@ -76,11 +80,14 @@ public final class ClientPhysicsEvents {
         }));
         for (Playground.Kind kind : Playground.Kind.values()) {
             String name = kind.name().toLowerCase(java.util.Locale.ROOT);
-            root.then(Commands.literal("spawn").then(Commands.literal(name)
-                    .executes(context -> spawned(context, Playground.spawn(kind, 1)))
-                    .then(Commands.argument("count", IntegerArgumentType.integer(1, 256))
-                            .executes(context -> spawned(context,
-                                    Playground.spawn(kind, IntegerArgumentType.getInteger(context, "count")))))));
+            root.then(Commands.literal("spawn")
+                    .then(Commands.literal(name)
+                            .executes(context -> spawned(context, Playground.spawn(kind, 1)))
+                            .then(Commands.argument("count", IntegerArgumentType.integer(1, 256))
+                                    .executes(context -> spawned(
+                                            context,
+                                            Playground.spawn(
+                                                    kind, IntegerArgumentType.getInteger(context, "count")))))));
         }
         root.then(Commands.literal("clear").executes(context -> {
             say(context, "removed " + Playground.clear() + " bodies");

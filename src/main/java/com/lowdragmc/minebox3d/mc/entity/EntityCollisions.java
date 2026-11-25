@@ -20,6 +20,9 @@ import com.lowdragmc.minebox3d.physics.PhysicsWorld;
 import com.lowdragmc.minebox3d.physics.QueryFilter;
 import com.lowdragmc.minebox3d.physics.Shape;
 import it.unimi.dsi.fastutil.floats.FloatArrays;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
@@ -34,10 +37,6 @@ import org.joml.Quaternionf;
 import org.joml.Quaternionfc;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * <b>Bodies in the way of Minecraft entities</b> (design doc {@code 04-entities-and-bodies.md} §11, batch 4c-1): an
@@ -83,8 +82,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public final class EntityCollisions {
 
     /** An entity's sweep: shapes that are not terrain or proxies and accept entities. */
-    public static final QueryFilter FILTER = new QueryFilter(CollisionCategories.ENTITY,
-            ~(CollisionCategories.TERRAIN | CollisionCategories.ENTITY));
+    public static final QueryFilter FILTER =
+            new QueryFilter(CollisionCategories.ENTITY, ~(CollisionCategories.TERRAIN | CollisionCategories.ENTITY));
     /** How far a body that moved into an entity may have gone in and still be pushed out of, beyond the box's size. */
     private static final double PUSH_OUT_REACH = 2.0;
     /** How much thinner across its move a swept box is (sweeping): twice Box3D's linear slop. */
@@ -95,14 +94,14 @@ public final class EntityCollisions {
     private static final double STEPPED_OVER = 1.0e-4;
     /** The least upward normal a top is stood and stepped on at: Unreal's walkable floor angle, 44.765 degrees. */
     private static final float WALKABLE = 0.7f;
+
     private static final Quaternionfc NO_TURN = new Quaternionf();
     private static final int MAX_DEPTH = 8;
     private static final Direction.Axis[] AXES = Direction.Axis.values();
 
     private static final ThreadLocal<Movers> MOVERS = ThreadLocal.withInitial(Movers::new);
 
-    private EntityCollisions() {
-    }
+    private EntityCollisions() {}
 
     /** Whether entities push a body by mass rather than stop at it: dynamic, and {@linkplain LevelBodies#pushedByEntities pushed}. */
     public static boolean pushable(Body body) {
@@ -220,14 +219,25 @@ public final class EntityCollisions {
                 return out;
             }
             Overlaps overlaps = new Overlaps(8);
-            double far = Math.max(Math.max(Math.abs(region.minX), Math.abs(region.maxX)),
+            double far = Math.max(
+                    Math.max(Math.abs(region.minX), Math.abs(region.maxX)),
                     Math.max(Math.abs(region.minZ), Math.abs(region.maxZ)));
             double margin = 2 * Math.ulp((float) far);
-            int count = physics.world().overlapAABB(region.minX - margin, region.minY - margin, region.minZ - margin,
-                    region.maxX + margin, region.maxY + margin, region.maxZ + margin, FILTER, overlaps);
+            int count = physics.world()
+                    .overlapAABB(
+                            region.minX - margin,
+                            region.minY - margin,
+                            region.minZ - margin,
+                            region.maxX + margin,
+                            region.maxY + margin,
+                            region.maxZ + margin,
+                            FILTER,
+                            overlaps);
             for (int i = 0; i < count; i++) {
                 Shape shape = overlaps.shape(i);
-                if (shape != null && shape.isValid() && !shape.isSensor()
+                if (shape != null
+                        && shape.isValid()
+                        && !shape.isSensor()
                         && (mover == null || !LevelBodies.ignores(shape.body(), mover))) {
                     out.add(shape);
                 }
@@ -245,9 +255,21 @@ public final class EntityCollisions {
      *
      * @param ignore a body not met, or {@code null}: the base the entity is being carried with ({@link PhysicsWorld#sweepBox})
      */
-    public static boolean sweepBox(Level level, double x, double y, double z, Quaternionfc rotation, float hx, float hy,
-                                   float hz, float tx, float ty, float tz, boolean ignoreExits, @Nullable Body ignore,
-                                   BoxSweep out) {
+    public static boolean sweepBox(
+            Level level,
+            double x,
+            double y,
+            double z,
+            Quaternionfc rotation,
+            float hx,
+            float hy,
+            float hz,
+            float tx,
+            float ty,
+            float tz,
+            boolean ignoreExits,
+            @Nullable Body ignore,
+            BoxSweep out) {
         return sweepBox(level, x, y, z, rotation, hx, hy, hz, tx, ty, tz, ignoreExits, ignore, null, out);
     }
 
@@ -257,17 +279,48 @@ public final class EntityCollisions {
      * ({@link LevelBodies#setIgnoredEntity}), and nothing for one whose physics collision is off
      * ({@link EntityShapes#hasPhysicsCollision}).
      */
-    public static boolean sweepBox(Level level, double x, double y, double z, Quaternionfc rotation, float hx, float hy,
-                                   float hz, float tx, float ty, float tz, boolean ignoreExits, @Nullable Body ignore,
-                                   @Nullable Entity mover, BoxSweep out) {
+    public static boolean sweepBox(
+            Level level,
+            double x,
+            double y,
+            double z,
+            Quaternionfc rotation,
+            float hx,
+            float hy,
+            float hz,
+            float tx,
+            float ty,
+            float tz,
+            boolean ignoreExits,
+            @Nullable Body ignore,
+            @Nullable Entity mover,
+            BoxSweep out) {
         LevelPhysics physics = LevelPhysics.existing(level);
-        if (physics == null || !physics.world().isOpen() || !LevelThreads.isLevelThread(level)
+        if (physics == null
+                || !physics.world().isOpen()
+                || !LevelThreads.isLevelThread(level)
                 || mover != null && !EntityShapes.hasPhysicsCollision(mover)) {
             return false;
         }
         try (PhysicsWorld.Use use = physics.world().tryUse()) {
-            return use != null && physics.world().sweepBox(x, y, z, rotation, hx, hy, hz, tx, ty, tz, FILTER, ignoreExits,
-                    ignore, mover == null ? 0L : EntityShapes.tagOf(mover), out);
+            return use != null
+                    && physics.world()
+                            .sweepBox(
+                                    x,
+                                    y,
+                                    z,
+                                    rotation,
+                                    hx,
+                                    hy,
+                                    hz,
+                                    tx,
+                                    ty,
+                                    tz,
+                                    FILTER,
+                                    ignoreExits,
+                                    ignore,
+                                    mover == null ? 0L : EntityShapes.tagOf(mover),
+                                    out);
         }
     }
 
@@ -280,8 +333,17 @@ public final class EntityCollisions {
      *
      * @param geometry a box or hull: a sphere or capsule cannot stop short of a mesh body ({@link Shape#castShape})
      */
-    public static boolean sweep(Level level, Geometry geometry, double x, double y, double z, Quaternionfc rotation,
-                                float tx, float ty, float tz, CastResult out) {
+    public static boolean sweep(
+            Level level,
+            Geometry geometry,
+            double x,
+            double y,
+            double z,
+            Quaternionfc rotation,
+            float tx,
+            float ty,
+            float tz,
+            CastResult out) {
         return sweep(level, geometry, x, y, z, rotation, tx, ty, tz, null, out);
     }
 
@@ -289,17 +351,29 @@ public final class EntityCollisions {
      * {@link #sweep(Level, Geometry, double, double, double, Quaternionfc, float, float, float, CastResult)} as
      * {@code mover}'s own shape, {@code null} for nobody's ({@link #shapesNear(Level, AABB, Entity, List)}).
      */
-    public static boolean sweep(Level level, Geometry geometry, double x, double y, double z, Quaternionfc rotation,
-                                float tx, float ty, float tz, @Nullable Entity mover, CastResult out) {
+    public static boolean sweep(
+            Level level,
+            Geometry geometry,
+            double x,
+            double y,
+            double z,
+            Quaternionfc rotation,
+            float tx,
+            float ty,
+            float tz,
+            @Nullable Entity mover,
+            CastResult out) {
         // the swept shape's reach, whatever its turn: a sphere round its farthest point
         float reach = reach(geometry);
-        AABB region = new AABB(x - reach, y - reach, z - reach, x + reach, y + reach, z + reach).expandTowards(tx, ty, tz);
+        AABB region =
+                new AABB(x - reach, y - reach, z - reach, x + reach, y + reach, z + reach).expandTowards(tx, ty, tz);
         Shape best = null;
         float fraction = Float.POSITIVE_INFINITY;
         Vector3f normal = new Vector3f();
         for (Shape shape : shapesNear(level, region, mover, new ArrayList<>())) {
             if (shape.castShape(geometry, x, y, z, rotation, tx, ty, tz, true, out)
-                    && out.normal(normal).lengthSquared() >= 0.25f && out.fraction() < fraction) {
+                    && out.normal(normal).lengthSquared() >= 0.25f
+                    && out.fraction() < fraction) {
                 best = shape;
                 fraction = out.fraction();
             }
@@ -309,8 +383,9 @@ public final class EntityCollisions {
 
     private static float reach(Geometry geometry) {
         return switch (geometry) {
-            case Geometry.Box b -> (float) (Math.sqrt(b.cx() * b.cx() + b.cy() * b.cy() + b.cz() * b.cz())
-                    + Math.sqrt(b.hx() * b.hx() + b.hy() * b.hy() + b.hz() * b.hz()));
+            case Geometry.Box b ->
+                (float) (Math.sqrt(b.cx() * b.cx() + b.cy() * b.cy() + b.cz() * b.cz())
+                        + Math.sqrt(b.hx() * b.hx() + b.hy() * b.hy() + b.hz() * b.hz()));
             case Geometry.Hull h -> {
                 float most = 0;
                 float[] p = h.points();
@@ -336,8 +411,8 @@ public final class EntityCollisions {
         if (!LevelThreads.isLevelThread(level)) {
             return false;
         }
-        Geometry.Box query = Geometry.Box.of((float) (box.getXsize() / 2), (float) (box.getYsize() / 2),
-                (float) (box.getZsize() / 2));
+        Geometry.Box query = Geometry.Box.of(
+                (float) (box.getXsize() / 2), (float) (box.getYsize() / 2), (float) (box.getZsize() / 2));
         Vec3 center = box.getCenter();
         CastResult hit = new CastResult();
         for (Shape shape : shapesNear(level, box, mover, new ArrayList<>())) {
@@ -354,7 +429,12 @@ public final class EntityCollisions {
      * it kicks a player for flying, widened by a block.
      */
     public static boolean isBodyUnder(Entity entity) {
-        return anyBodyIn(entity.level(), entity.getBoundingBox().inflate(0.0625).expandTowards(0, -0.55, 0).inflate(1),
+        return anyBodyIn(
+                entity.level(),
+                entity.getBoundingBox()
+                        .inflate(0.0625)
+                        .expandTowards(0, -0.55, 0)
+                        .inflate(1),
                 entity);
     }
 
@@ -390,7 +470,10 @@ public final class EntityCollisions {
         if (mover != null && mover.entity == entity) {
             mover.settle();
         }
-        if (mover != null && !entity.noPhysics && !isClientMoved(entity) && LevelThreads.isLevelThread(entity.level())) {
+        if (mover != null
+                && !entity.noPhysics
+                && !isClientMoved(entity)
+                && LevelThreads.isLevelThread(entity.level())) {
             EntityBases.afterMove(entity, mover.entity == entity ? mover.ground : null);
         }
         movers.pop();
@@ -460,7 +543,9 @@ public final class EntityCollisions {
         if (main) {
             mover.sweptX = dx;
             mover.sweptZ = dz;
-        } else if (mover != Mover.NONE && dy > 0 && (dx != 0 || dz != 0)
+        } else if (mover != Mover.NONE
+                && dy > 0
+                && (dx != 0 || dz != 0)
                 && mover.landsWhereItMayNotStep(from.move(dx, dy, dz))) {
             // a step-up's sweep that would end on a shape it may not step onto goes nowhere sideways, so Minecraft does
             // not take it — Unreal's step down onto "!CanStepUpOnHitSurface" while going up
@@ -489,10 +574,12 @@ public final class EntityCollisions {
      */
     @ApiStatus.Internal
     public static boolean canFallInto(Entity entity, AABB box, boolean blocksFree) {
-        // thinner across than the sweep down that finds what it stands on (sweeping) by more than Box3D's "touching" (a slop
+        // thinner across than the sweep down that finds what it stands on (sweeping) by more than Box3D's "touching" (a
+        // slop
         // and a quarter): where this still touches, that still stands
-        return blocksFree && !(LevelPhysics.existing(entity.level()) != null
-                && anyBodyIn(entity.level(), box.deflate(2 * SKIN, 0, 2 * SKIN), entity));
+        return blocksFree
+                && !(LevelPhysics.existing(entity.level()) != null
+                        && anyBodyIn(entity.level(), box.deflate(2 * SKIN, 0, 2 * SKIN), entity));
     }
 
     /**
@@ -524,7 +611,11 @@ public final class EntityCollisions {
         try {
             mover.gather(entity, carry);
             AABB box = entity.getBoundingBox();
-            Vec3 allowed = Entity.collideBoundingBox(entity, carry, box, entity.level(),
+            Vec3 allowed = Entity.collideBoundingBox(
+                    entity,
+                    carry,
+                    box,
+                    entity.level(),
                     entity.level().getEntityCollisions(entity, box.expandTowards(carry)));
             entity.setPos(entity.getX() + allowed.x, entity.getY() + allowed.y, entity.getZ() + allowed.z);
             return allowed;
@@ -546,7 +637,9 @@ public final class EntityCollisions {
             if (depth == MAX_DEPTH) {
                 if (!warned) {
                     warned = true;
-                    MineBox3D.LOGGER.warn("entity moves nested {} deep on {}: starting over", MAX_DEPTH,
+                    MineBox3D.LOGGER.warn(
+                            "entity moves nested {} deep on {}: starting over",
+                            MAX_DEPTH,
                             Thread.currentThread().getName());
                 }
                 reset();
@@ -597,7 +690,9 @@ public final class EntityCollisions {
      */
     private static Geometry.Box sweeping(AABB box, Direction.Axis axis) {
         float hx = (float) (box.getXsize() / 2), hy = (float) (box.getYsize() / 2), hz = (float) (box.getZsize() / 2);
-        return Geometry.Box.of(axis == Direction.Axis.X ? hx : thinner(hx), axis == Direction.Axis.Y ? hy : thinner(hy),
+        return Geometry.Box.of(
+                axis == Direction.Axis.X ? hx : thinner(hx),
+                axis == Direction.Axis.Y ? hy : thinner(hy),
                 axis == Direction.Axis.Z ? hz : thinner(hz));
     }
 
@@ -611,8 +706,10 @@ public final class EntityCollisions {
         if (half <= 2 * OVERLAP) {
             return query;
         }
-        return Geometry.Box.of(axis == Direction.Axis.X ? half - OVERLAP : query.hx(),
-                axis == Direction.Axis.Y ? half - OVERLAP : query.hy(), axis == Direction.Axis.Z ? half - OVERLAP : query.hz());
+        return Geometry.Box.of(
+                axis == Direction.Axis.X ? half - OVERLAP : query.hx(),
+                axis == Direction.Axis.Y ? half - OVERLAP : query.hy(),
+                axis == Direction.Axis.Z ? half - OVERLAP : query.hz());
     }
 
     /** One entity's move: the solid shapes near it, what the sweeps need, and what the move pushed. */
@@ -622,13 +719,16 @@ public final class EntityCollisions {
 
         @Nullable
         Entity entity;
+
         @Nullable
         LevelPhysics physics;
+
         final List<Shape> shapes = new ArrayList<>();
         /** the entity's mass, NaN until a pushable body asks */
         float mass = Float.NaN;
         /** {@link EntityAuthority#pushesBodies}: no, and every body is a wall to the move */
         boolean pushes;
+
         double intentX, intentZ;
         /** the body whose top stopped the move's fall, if one did */
         @Nullable
@@ -638,6 +738,7 @@ public final class EntityCollisions {
         Body base;
         /** per axis, in the move's own sweep: cut by a block or a body it does not push; the body it pushes, where, how fast */
         final boolean[] stopped = new boolean[3];
+
         final Shape[] pushed = new Shape[3];
         final Vector3d[] pushedAt = {new Vector3d(), new Vector3d(), new Vector3d()};
         final double[] pushedBy = new double[3];
@@ -685,7 +786,9 @@ public final class EntityCollisions {
          * physics collision is off. Not the bodies that never meet it.
          */
         boolean gather(Entity entity, Vec3 motion) {
-            if (entity.noPhysics || isClientMoved(entity) || !LevelThreads.isLevelThread(entity.level())
+            if (entity.noPhysics
+                    || isClientMoved(entity)
+                    || !LevelThreads.isLevelThread(entity.level())
                     || !EntityShapes.hasPhysicsCollision(entity)) {
                 return false;
             }
@@ -703,14 +806,25 @@ public final class EntityCollisions {
                 }
                 AABB box = entity.getBoundingBox().expandTowards(motion).expandTowards(0, entity.maxUpStep(), 0);
                 // the broad phase keeps float bounds: wider far out, where a float is coarser
-                double far = Math.max(Math.max(Math.abs(box.minX), Math.abs(box.maxX)),
+                double far = Math.max(
+                        Math.max(Math.abs(box.minX), Math.abs(box.maxX)),
                         Math.max(Math.abs(box.minZ), Math.abs(box.maxZ)));
                 double margin = 0.05 + 2 * Math.ulp((float) far);
-                int count = world.overlapAABB(box.minX - margin, box.minY - margin, box.minZ - margin, box.maxX + margin,
-                        box.maxY + margin, box.maxZ + margin, FILTER, overlaps);
+                int count = world.overlapAABB(
+                        box.minX - margin,
+                        box.minY - margin,
+                        box.minZ - margin,
+                        box.maxX + margin,
+                        box.maxY + margin,
+                        box.maxZ + margin,
+                        FILTER,
+                        overlaps);
                 for (int i = 0; i < count; i++) {
                     Shape shape = overlaps.shape(i);
-                    if (shape != null && shape.isValid() && !shape.isSensor() && !LevelBodies.ignores(shape.body(), entity)) {
+                    if (shape != null
+                            && shape.isValid()
+                            && !shape.isSensor()
+                            && !LevelBodies.ignores(shape.body(), entity)) {
                         shapes.add(shape);
                     }
                 }
@@ -759,12 +873,14 @@ public final class EntityCollisions {
                 if (hit.normal(normal).lengthSquared() >= 0.25f) {
                     reach = hit.fraction() * d;
                 } else {
-                    // inside it. Barely (a body that moved a hair into the box) is touching: the box shorter along the move
+                    // inside it. Barely (a body that moved a hair into the box) is touching: the box shorter along the
+                    // move
                     // by more than that meets it moving in, and not moving out
                     if (shorter == null) {
                         shorter = shorter(query, axis);
                     }
-                    if (shorter == query || !shape.castShape(shorter, cx, cy, cz, NO_TURN, tx, ty, tz, true, hit)
+                    if (shorter == query
+                            || !shape.castShape(shorter, cx, cy, cz, NO_TURN, tx, ty, tz, true, hit)
                             || hit.normal(normal).lengthSquared() < 0.25f) {
                         continue;
                     }
@@ -778,7 +894,9 @@ public final class EntityCollisions {
                 }
             }
             if (axis == Direction.Axis.Y && d < 0) {
-                ground = top ? stopping.body() : null; // a fall ended on a body's top; otherwise on blocks, or not at all
+                ground = top
+                        ? stopping.body()
+                        : null; // a fall ended on a body's top; otherwise on blocks, or not at all
             }
             if (main && stopping != null) {
                 int i = axis.ordinal();
@@ -788,7 +906,8 @@ public final class EntityCollisions {
                     pushed[i] = stopping;
                     pushedBy[i] = d;
                     // where on the face it pushes: the sweep's point is any of the touching face's (a crate's edge, as
-                    // often as not, which would flip it); the body's centre as near as the entity's face reaches instead —
+                    // often as not, which would flip it); the body's centre as near as the entity's face reaches
+                    // instead —
                     // a crate it covers is pushed straight, a plank by its end is turned
                     Body body = stopping.body();
                     massCenter(body, center);
@@ -843,7 +962,8 @@ public final class EntityCollisions {
             Geometry.Box query = sweeping(end, Direction.Axis.Y);
             double cx = (end.minX + end.maxX) / 2, cy = (end.minY + end.maxY) / 2, cz = (end.minZ + end.maxZ) / 2;
             for (Shape shape : shapes) {
-                if (!mayStepOnto(shape) && shape.castShape(query, cx, cy + SKIN, cz, NO_TURN, 0, -2 * SKIN, 0, true, hit)
+                if (!mayStepOnto(shape)
+                        && shape.castShape(query, cx, cy + SKIN, cz, NO_TURN, 0, -2 * SKIN, 0, true, hit)
                         && hit.normal(normal).y >= WALKABLE) {
                     return true;
                 }
@@ -876,27 +996,36 @@ public final class EntityCollisions {
                 Vector3d at = pushedAt[i];
                 boolean replica = SyncedBodies.isReplica(body);
                 // a wall: against something that does not give. The server judges a replica's
-                if (!replica && isPinned(body, axis == Direction.Axis.X ? sign : 0, axis == Direction.Axis.Y ? sign : 0,
-                        axis == Direction.Axis.Z ? sign : 0)) {
+                if (!replica
+                        && isPinned(
+                                body,
+                                axis == Direction.Axis.X ? sign : 0,
+                                axis == Direction.Axis.Y ? sign : 0,
+                                axis == Direction.Axis.Z ? sign : 0)) {
                     stopped[i] = true;
                     continue;
                 }
                 body.pointVelocity(at.x, at.y, at.z, velocity);
-                double bodyV = (axis == Direction.Axis.X ? velocity.x : axis == Direction.Axis.Y ? velocity.y : velocity.z) / 20;
+                double bodyV =
+                        (axis == Direction.Axis.X ? velocity.x : axis == Direction.Axis.Y ? velocity.y : velocity.z)
+                                / 20;
                 if ((v - bodyV) * sign <= 0) {
                     continue; // it is getting away as fast
                 }
                 float m = effectiveMass(body, at, axis, sign);
                 float entityMass = entityMass();
-                double shared = entityMass == Float.POSITIVE_INFINITY ? v : (entityMass * v + m * bodyV) / (entityMass + m);
+                double shared =
+                        entityMass == Float.POSITIVE_INFINITY ? v : (entityMass * v + m * bodyV) / (entityMass + m);
                 // blocks a tick to metres a second
                 float impulse = (float) (m * (shared - bodyV) * 20);
-                float ix = axis == Direction.Axis.X ? impulse : 0, iy = axis == Direction.Axis.Y ? impulse : 0,
+                float ix = axis == Direction.Axis.X ? impulse : 0,
+                        iy = axis == Direction.Axis.Y ? impulse : 0,
                         iz = axis == Direction.Axis.Z ? impulse : 0;
                 if (!replica) {
                     body.applyLinearImpulse(ix, iy, iz, at.x, at.y, at.z);
                 } else if (entity.isControlledByLocalInstance() && EntityAuthority.clientMoves(entity)) {
-                    // told to the server, which takes this client's word for where it is; not simulated here — walked on
+                    // told to the server, which takes this client's word for where it is; not simulated here — walked
+                    // on
                     // past what this client lacks (a body not synced), it would stand where the server holds the body,
                     // and nothing would pull it back
                     physics.sync().riders().pushed(body, ix, iy, iz, at);
@@ -923,8 +1052,11 @@ public final class EntityCollisions {
             body.position(center);
             body.rotation(rotation);
             arm.set(massData.centerX, massData.centerY, massData.centerZ).rotate(rotation);
-            arm.set((float) (at.x - center.x - arm.x), (float) (at.y - center.y - arm.y), (float) (at.z - center.z - arm.z));
-            arm.cross(axis == Direction.Axis.X ? sign : 0, axis == Direction.Axis.Y ? sign : 0,
+            arm.set((float) (at.x - center.x - arm.x), (float) (at.y - center.y - arm.y), (float)
+                    (at.z - center.z - arm.z));
+            arm.cross(
+                    axis == Direction.Axis.X ? sign : 0,
+                    axis == Direction.Axis.Y ? sign : 0,
                     axis == Direction.Axis.Z ? sign : 0);
             float inverseMass = 1 / massData.mass;
             if (Math.abs(inverse.set(massData.inertia).determinant()) > 0) {
@@ -972,23 +1104,27 @@ public final class EntityCollisions {
             if (stepHeight <= 0) {
                 return heights;
             }
-            // Unreal asks it of what stopped the move before it tries: a shape it may not step onto, and no step at all —
+            // Unreal asks it of what stopped the move before it tries: a shape it may not step onto, and no step at all
+            // —
             // nor onto a block beside it
             if (!mayStepOnto(cutBy[Direction.Axis.X.ordinal()]) || !mayStepOnto(cutBy[Direction.Axis.Z.ordinal()])) {
                 return new float[0];
             }
-            // the whole box, not one a centimetre thinner: a move into a body by less than that is still cut, and a top it
-            // did not find is a push instead of a step — then pushed on at its pace, a crate is never more than grazed again
+            // the whole box, not one a centimetre thinner: a move into a body by less than that is still cut, and a top
+            // it
+            // did not find is a push instead of a step — then pushed on at its pace, a crate is never more than grazed
+            // again
             // (Minecraft takes every top in the move's way)
-            Geometry.Box query = Geometry.Box.of((float) (box.getXsize() / 2), (float) (box.getYsize() / 2),
-                    (float) (box.getZsize() / 2));
+            Geometry.Box query = Geometry.Box.of(
+                    (float) (box.getXsize() / 2), (float) (box.getYsize() / 2), (float) (box.getZsize() / 2));
             // from a step's height above where the move goes, down
             double cx = (box.minX + box.maxX) / 2 + intentX, cz = (box.minZ + box.maxZ) / 2 + intentZ;
             double cy = (box.minY + box.maxY) / 2 + stepHeight;
             float[] more = null;
             int added = 0;
             for (Shape shape : shapes) {
-                if (!shape.isValid() || !mayStepOnto(shape)
+                if (!shape.isValid()
+                        || !mayStepOnto(shape)
                         || !shape.castShape(query, cx, cy, cz, NO_TURN, 0, -stepHeight, 0, true, hit)) {
                     continue;
                 }
@@ -998,7 +1134,8 @@ public final class EntityCollisions {
                     continue;
                 }
                 float height = stepHeight * (1 - hit.fraction());
-                // a top less than the skin up is no step: the move's own sweep slides over it already. One tried anyway —
+                // a top less than the skin up is no step: the move's own sweep slides over it already. One tried anyway
+                // —
                 // the body it stands on, found a hair off its feet — tries the move again for nothing
                 if (height >= SKIN && height <= stepHeight) {
                     if (more == null) {
@@ -1030,12 +1167,14 @@ public final class EntityCollisions {
         void pushOut() {
             Entity entity = this.entity;
             AABB box = entity.getBoundingBox();
-            Geometry.Box query = Geometry.Box.of((float) (box.getXsize() / 2), (float) (box.getYsize() / 2),
-                    (float) (box.getZsize() / 2));
+            Geometry.Box query = Geometry.Box.of(
+                    (float) (box.getXsize() / 2), (float) (box.getYsize() / 2), (float) (box.getZsize() / 2));
             double cx = (box.minX + box.maxX) / 2, cy = (box.minY + box.maxY) / 2, cz = (box.minZ + box.maxZ) / 2;
             Body ownBase = EntityBases.carriesItself(entity) ? EntityBases.carryingBase(entity) : null;
             for (Shape shape : shapes) {
-                if (!shape.isValid() || shape.body() == ownBase || massOf(shape.body())
+                if (!shape.isValid()
+                        || shape.body() == ownBase
+                        || massOf(shape.body())
                         // a nudge, to tell inside (a hit at 0 with no normal) from touching
                         || !shape.castShape(query, cx, cy, cz, NO_TURN, 0, -1e-3f, 0, true, hit)
                         || hit.normal(normal).lengthSquared() >= 0.25f) {
@@ -1046,15 +1185,25 @@ public final class EntityCollisions {
                     double reach = PUSH_OUT_REACH + box.getSize();
                     double nx = direction.getStepX(), ny = direction.getStepY(), nz = direction.getStepZ();
                     // from outside along the direction back in: where it first meets the shape is where it is out
-                    if (!shape.castShape(query, cx + nx * reach, cy + ny * reach, cz + nz * reach, NO_TURN,
-                            (float) (-nx * reach), (float) (-ny * reach), (float) (-nz * reach), false, hit)
+                    if (!shape.castShape(
+                                    query,
+                                    cx + nx * reach,
+                                    cy + ny * reach,
+                                    cz + nz * reach,
+                                    NO_TURN,
+                                    (float) (-nx * reach),
+                                    (float) (-ny * reach),
+                                    (float) (-nz * reach),
+                                    false,
+                                    hit)
                             || hit.fraction() == 0) {
                         continue; // through it, or deeper than the reach
                     }
                     double out = reach * (1 - hit.fraction());
                     AABB moved = box.move(nx * out, ny * out, nz * out);
                     // not into blocks, nor into another body (touching the one it leaves is fine)
-                    if (out < best && entity.level().noCollision(entity, moved)
+                    if (out < best
+                            && entity.level().noCollision(entity, moved)
                             && !anyBodyIn(entity.level(), moved.deflate(2 * SKIN), entity)) {
                         best = out;
                         bestX = nx * out;

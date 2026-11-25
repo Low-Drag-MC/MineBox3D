@@ -1,12 +1,11 @@
 package com.lowdragmc.minebox3d.physics;
 
-import com.lowdragmc.minebox3d.physics.VoxelTerrainTest.Terrain;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
 import static com.lowdragmc.minebox3d.physics.VoxelTerrainTest.FULL;
 import static org.junit.jupiter.api.Assertions.*;
+
+import com.lowdragmc.minebox3d.physics.VoxelTerrainTest.Terrain;
+import java.util.List;
+import org.junit.jupiter.api.Test;
 
 /** <b>What a frame's steps report</b> (design doc 03 §6.3): touches, hits, sensors, gathered per frame. */
 class WorldEventsTest {
@@ -122,7 +121,7 @@ class WorldEventsTest {
     /** Box3D takes a hit's point and materials from one contact point: the cell must be that point's too. */
     @Test
     void aHitAcrossTwoBlocksNamesTheBlockItsMaterialIsFrom() {
-        for (double x : new double[]{3.9, 4.0, 4.1}) {
+        for (double x : new double[] {3.9, 4.0, 4.1}) {
             try (Terrain t = quietTerrain()) {
                 SurfaceMaterial stone = new SurfaceMaterial();
                 stone.userMaterialId = 1;
@@ -131,7 +130,8 @@ class WorldEventsTest {
                 int stoneId = t.grid.addCollider(FULL, 1, t.grid.addMaterial(stone));
                 int dirtId = t.grid.addCollider(FULL, 1, t.grid.addMaterial(dirt));
                 t.floor(0, 8, 0, 8, 0, (cx, cz) -> cx < 4 ? stoneId : dirtId);
-                Body box = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(x, 3, 3.5));
+                Body box =
+                        t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(x, 3, 3.5));
                 box.createShape(new ShapeDef().enableHitEvents(true), Geometry.Box.of(0.5f, 0.25f, 0.5f));
                 List<WorldEvents.ContactHit> hits = List.of();
                 for (int i = 0; i < 60 && hits.isEmpty(); i++) {
@@ -142,7 +142,8 @@ class WorldEventsTest {
                 assertFalse(hits.isEmpty(), "landed at x = " + x);
                 WorldEvents.ContactHit hit = hits.getFirst();
                 long material = hit.terrainSide() == 1 ? hit.materialA() : hit.materialB();
-                assertEquals(hit.cellX() < 4 ? 1 : 2, material, "cell " + hit.cellX() + " and material agree at x = " + x);
+                assertEquals(
+                        hit.cellX() < 4 ? 1 : 2, material, "cell " + hit.cellX() + " and material agree at x = " + x);
             }
         }
     }
@@ -167,7 +168,8 @@ class WorldEventsTest {
         try (Terrain t = quietTerrain()) {
             t.world.setGravity(0, 0, 0);
             Body sensorBody = t.world.createBody(new BodyDef().position(5, 5, 5));
-            Shape sensor = sensorBody.createShape(new ShapeDef().sensor(true).enableSensorEvents(true), Geometry.Box.of(1, 1, 1));
+            Shape sensor = sensorBody.createShape(
+                    new ShapeDef().sensor(true).enableSensorEvents(true), Geometry.Box.of(1, 1, 1));
             Body visitor = ball(t, new ShapeDef().enableSensorEvents(true), 2, 5, 5);
             visitor.setLinearVelocity(4, 0, 0);
 

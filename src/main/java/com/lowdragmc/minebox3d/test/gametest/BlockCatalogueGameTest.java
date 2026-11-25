@@ -4,6 +4,9 @@ import com.lowdragmc.minebox3d.MineBox3D;
 import com.lowdragmc.minebox3d.mc.CollisionCategories;
 import com.lowdragmc.minebox3d.physics.CastHit;
 import com.lowdragmc.minebox3d.physics.QueryFilter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -24,10 +27,6 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-
 /**
  * <b>Every kind of block shape, as Minecraft has it</b> (design doc {@code 01-voxel-terrain.md} §3.1): blocks whose
  * collision is several boxes, thinner than a block, taller than one, or offset by their position are streamed in, and
@@ -40,6 +39,7 @@ public final class BlockCatalogueGameTest {
     private static final int COLUMNS = 10, SPACING = 3, Y = 2;
     /** ray offsets across a face, never on a sixteenth of a block, out past the cell for shapes that reach out */
     private static final double[] SAMPLES = {-0.289, -0.078, 0.133, 0.344, 0.555, 0.766, 0.977, 1.188, 1.399};
+
     private static final double NEAR = -1.2, FAR = 2.2;
     private static final int OFFSET_COPIES = 3;
 
@@ -47,26 +47,56 @@ public final class BlockCatalogueGameTest {
         List<BlockState> states = new ArrayList<>();
         for (Direction facing : Direction.Plane.HORIZONTAL) {
             for (Half half : Half.values()) {
-                states.add(Blocks.STONE_STAIRS.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, facing)
+                states.add(Blocks.STONE_STAIRS
+                        .defaultBlockState()
+                        .setValue(BlockStateProperties.HORIZONTAL_FACING, facing)
                         .setValue(BlockStateProperties.HALF, half));
             }
         }
         states.add(Blocks.STONE_SLAB.defaultBlockState().setValue(BlockStateProperties.SLAB_TYPE, SlabType.TOP));
         states.add(Blocks.STONE_SLAB.defaultBlockState().setValue(BlockStateProperties.SLAB_TYPE, SlabType.BOTTOM));
         // posts standing alone; fences and walls 1.5 high
-        for (Block block : new Block[]{Blocks.OAK_FENCE, Blocks.COBBLESTONE_WALL, Blocks.IRON_BARS, Blocks.GLASS_PANE,
-                Blocks.OAK_FENCE_GATE, Blocks.CHORUS_PLANT}) {
+        for (Block block : new Block[] {
+            Blocks.OAK_FENCE,
+            Blocks.COBBLESTONE_WALL,
+            Blocks.IRON_BARS,
+            Blocks.GLASS_PANE,
+            Blocks.OAK_FENCE_GATE,
+            Blocks.CHORUS_PLANT
+        }) {
             states.add(block.defaultBlockState());
         }
         for (Direction.Axis axis : Direction.Axis.values()) {
             states.add(Blocks.CHAIN.defaultBlockState().setValue(BlockStateProperties.AXIS, axis));
         }
         // several boxes
-        for (Block block : new Block[]{Blocks.CAULDRON, Blocks.HOPPER, Blocks.LECTERN, Blocks.ANVIL, Blocks.BREWING_STAND,
-                Blocks.ENCHANTING_TABLE, Blocks.CAMPFIRE, Blocks.BELL, Blocks.STONECUTTER, Blocks.CHEST, Blocks.CONDUIT,
-                Blocks.FLOWER_POT, Blocks.DECORATED_POT, Blocks.SCULK_SENSOR, Blocks.SCULK_SHRIEKER, Blocks.HEAVY_CORE,
-                Blocks.LIGHTNING_ROD, Blocks.AMETHYST_CLUSTER, Blocks.AZALEA, Blocks.SNIFFER_EGG, Blocks.SKELETON_SKULL,
-                Blocks.DAYLIGHT_DETECTOR, Blocks.REPEATER, Blocks.BEEHIVE, Blocks.RED_BED}) {
+        for (Block block : new Block[] {
+            Blocks.CAULDRON,
+            Blocks.HOPPER,
+            Blocks.LECTERN,
+            Blocks.ANVIL,
+            Blocks.BREWING_STAND,
+            Blocks.ENCHANTING_TABLE,
+            Blocks.CAMPFIRE,
+            Blocks.BELL,
+            Blocks.STONECUTTER,
+            Blocks.CHEST,
+            Blocks.CONDUIT,
+            Blocks.FLOWER_POT,
+            Blocks.DECORATED_POT,
+            Blocks.SCULK_SENSOR,
+            Blocks.SCULK_SHRIEKER,
+            Blocks.HEAVY_CORE,
+            Blocks.LIGHTNING_ROD,
+            Blocks.AMETHYST_CLUSTER,
+            Blocks.AZALEA,
+            Blocks.SNIFFER_EGG,
+            Blocks.SKELETON_SKULL,
+            Blocks.DAYLIGHT_DETECTOR,
+            Blocks.REPEATER,
+            Blocks.BEEHIVE,
+            Blocks.RED_BED
+        }) {
             states.add(block.defaultBlockState());
         }
         states.add(Blocks.END_PORTAL_FRAME.defaultBlockState());
@@ -83,8 +113,15 @@ public final class BlockCatalogueGameTest {
             states.add(Blocks.SNOW.defaultBlockState().setValue(BlockStateProperties.LAYERS, layers));
         }
         // lower than a block
-        for (Block block : new Block[]{Blocks.SOUL_SAND, Blocks.FARMLAND, Blocks.DIRT_PATH, Blocks.HONEY_BLOCK, Blocks.MUD,
-                Blocks.WHITE_CARPET, Blocks.LILY_PAD}) {
+        for (Block block : new Block[] {
+            Blocks.SOUL_SAND,
+            Blocks.FARMLAND,
+            Blocks.DIRT_PATH,
+            Blocks.HONEY_BLOCK,
+            Blocks.MUD,
+            Blocks.WHITE_CARPET,
+            Blocks.LILY_PAD
+        }) {
             states.add(block.defaultBlockState());
         }
         states.add(Blocks.SEA_PICKLE.defaultBlockState().setValue(BlockStateProperties.PICKLES, 4));
@@ -94,13 +131,16 @@ public final class BlockCatalogueGameTest {
         states.add(Blocks.OAK_TRAPDOOR.defaultBlockState());
         states.add(Blocks.OAK_TRAPDOOR.defaultBlockState().setValue(BlockStateProperties.HALF, Half.TOP));
         states.add(Blocks.OAK_TRAPDOOR.defaultBlockState().setValue(BlockStateProperties.OPEN, true));
-        states.add(Blocks.OAK_DOOR.defaultBlockState().setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.LOWER));
+        states.add(Blocks.OAK_DOOR
+                .defaultBlockState()
+                .setValue(BlockStateProperties.DOUBLE_BLOCK_HALF, DoubleBlockHalf.LOWER));
         states.add(Blocks.OAK_DOOR.defaultBlockState().setValue(BlockStateProperties.OPEN, true));
         states.add(Blocks.LADDER.defaultBlockState());
         states.add(Blocks.END_ROD.defaultBlockState());
         states.add(Blocks.END_ROD.defaultBlockState().setValue(BlockStateProperties.FACING, Direction.EAST));
         states.add(Blocks.BIG_DRIPLEAF.defaultBlockState());
-        // offset by their position: read at the block, not per state. Three of each, at three places, so a collider cached
+        // offset by their position: read at the block, not per state. Three of each, at three places, so a collider
+        // cached
         // for the first would put the others' in the wrong place
         for (int i = 0; i < OFFSET_COPIES; i++) {
             states.add(Blocks.BAMBOO.defaultBlockState());
@@ -124,7 +164,7 @@ public final class BlockCatalogueGameTest {
             helper.setBlock(pos, states.get(i));
             positions.add(helper.absolutePos(pos));
         }
-        for (Block offset : new Block[]{Blocks.BAMBOO, Blocks.POINTED_DRIPSTONE}) {
+        for (Block offset : new Block[] {Blocks.BAMBOO, Blocks.POINTED_DRIPSTONE}) {
             List<Vec3> offsets = new ArrayList<>();
             for (BlockPos pos : positions) {
                 BlockState state = helper.getLevel().getBlockState(pos);
@@ -132,11 +172,15 @@ public final class BlockCatalogueGameTest {
                     offsets.add(state.getOffset(helper.getLevel(), pos));
                 }
             }
-            helper.assertTrue(offsets.size() == OFFSET_COPIES && offsets.stream().distinct().count() > 1,
-                    offset + " sits at the same offset everywhere: nothing would tell a per-state cache apart, " + offsets);
+            helper.assertTrue(
+                    offsets.size() == OFFSET_COPIES
+                            && offsets.stream().distinct().count() > 1,
+                    offset + " sits at the same offset everywhere: nothing would tell a per-state cache apart, "
+                            + offsets);
         }
 
-        StringBuilder report = new StringBuilder("\n=== block catalogue: rays that disagree with VoxelShape.clip ===\n");
+        StringBuilder report =
+                new StringBuilder("\n=== block catalogue: rays that disagree with VoxelShape.clip ===\n");
         int rays = 0;
         List<String> wrong = new ArrayList<>();
         try (PrivatePhysics physics = new PrivatePhysics(helper, 0)) {
@@ -171,7 +215,8 @@ public final class BlockCatalogueGameTest {
         } finally {
             TestArea.clear(helper, -2, 0, -2, COLUMNS * SPACING, Y + 4, rows * SPACING);
         }
-        report.append(String.format(Locale.ROOT, "  %d states, %d rays, %d states disagree%n", states.size(), rays, wrong.size()));
+        report.append(String.format(
+                Locale.ROOT, "  %d states, %d rays, %d states disagree%n", states.size(), rays, wrong.size()));
         MineBox3D.LOGGER.info(report.toString());
         helper.assertTrue(wrong.isEmpty(), wrong.size() + " block shapes differ from Minecraft's: " + wrong);
         helper.succeed();
@@ -196,11 +241,14 @@ public final class BlockCatalogueGameTest {
         }
         double[] aims = {-0.17, 0.13};
         for (int corner = 0; corner < 8; corner++) {
-            double cx = (corner & 1) == 0 ? NEAR : FAR, cy = (corner & 2) == 0 ? NEAR : FAR, cz = (corner & 4) == 0 ? NEAR : FAR;
+            double cx = (corner & 1) == 0 ? NEAR : FAR,
+                    cy = (corner & 2) == 0 ? NEAR : FAR,
+                    cz = (corner & 4) == 0 ? NEAR : FAR;
             for (double ax : aims) {
                 for (double ay : aims) {
                     for (double az : aims) {
-                        rays.add(new double[]{cx, cy, cz, 2 * (0.5 + ax - cx), 2 * (0.6 + ay - cy), 2 * (0.5 + az - cz)});
+                        rays.add(new double[] {cx, cy, cz, 2 * (0.5 + ax - cx), 2 * (0.6 + ay - cy), 2 * (0.5 + az - cz)
+                        });
                     }
                 }
             }
@@ -212,14 +260,27 @@ public final class BlockCatalogueGameTest {
     private static String compare(PrivatePhysics physics, VoxelShape shape, BlockPos pos, Vec3 from, Vec3 to) {
         BlockHitResult expected = shape.isEmpty() ? null : shape.clip(from, to, pos);
         Vec3 d = to.subtract(from);
-        CastHit actual = physics.world.castRayClosest(from.x, from.y, from.z, (float) d.x, (float) d.y, (float) d.z,
+        CastHit actual = physics.world.castRayClosest(
+                from.x,
+                from.y,
+                from.z,
+                (float) d.x,
+                (float) d.y,
+                (float) d.z,
                 QueryFilter.only(CollisionCategories.TERRAIN));
         if (expected == null && actual == null) {
             return null;
         }
         Vec3 relative = from.subtract(Vec3.atLowerCornerOf(pos));
-        String ray = String.format(Locale.ROOT, "from (%.3f, %.3f, %.3f) along (%.2f, %.2f, %.2f)", relative.x, relative.y,
-                relative.z, d.x, d.y, d.z);
+        String ray = String.format(
+                Locale.ROOT,
+                "from (%.3f, %.3f, %.3f) along (%.2f, %.2f, %.2f)",
+                relative.x,
+                relative.y,
+                relative.z,
+                d.x,
+                d.y,
+                d.z);
         if (expected == null) {
             return ray + ": Minecraft misses, the grid hits at " + point(actual.x(), actual.y(), actual.z(), pos);
         }
@@ -227,10 +288,13 @@ public final class BlockCatalogueGameTest {
         if (actual == null) {
             return ray + ": the grid misses, Minecraft hits at " + point(e.x, e.y, e.z, pos);
         }
-        double error = Math.sqrt((e.x - actual.x()) * (e.x - actual.x()) + (e.y - actual.y()) * (e.y - actual.y())
+        double error = Math.sqrt((e.x - actual.x()) * (e.x - actual.x())
+                + (e.y - actual.y()) * (e.y - actual.y())
                 + (e.z - actual.z()) * (e.z - actual.z()));
-        return error < 2e-3 ? null : ray + ": Minecraft hits at " + point(e.x, e.y, e.z, pos) + ", the grid at "
-                + point(actual.x(), actual.y(), actual.z(), pos);
+        return error < 2e-3
+                ? null
+                : ray + ": Minecraft hits at " + point(e.x, e.y, e.z, pos) + ", the grid at "
+                        + point(actual.x(), actual.y(), actual.z(), pos);
     }
 
     private static String point(double x, double y, double z, BlockPos pos) {

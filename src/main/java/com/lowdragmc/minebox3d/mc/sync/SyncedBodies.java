@@ -20,6 +20,13 @@ import com.lowdragmc.minebox3d.physics.SurfaceMaterial;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerLevel;
@@ -37,14 +44,6 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * <b>Bodies copied from the server to the clients of the players near them</b> (design doc
@@ -157,14 +156,14 @@ public final class SyncedBodies {
     private final Int2ObjectOpenHashMap<Body> replicas = new Int2ObjectOpenHashMap<>();
     /** What each body the server sent here is, by its number — replicas and a predictor's own alike */
     private final Int2ObjectOpenHashMap<Sent> sent = new Int2ObjectOpenHashMap<>();
+
     @Nullable
     private Predictor predictor;
     /** The network number of the predictor's own body, which has no replica; -1 for none */
     private int ownId = -1;
 
     /** How a body the server sent is told apart: what a predictor's {@link Predictor#isOwn} is asked of. */
-    private record Sent(long tag, @Nullable String name) {
-    }
+    private record Sent(long tag, @Nullable String name) {}
 
     /**
      * Sets what predicts this client's body — see {@link Predictor}; {@code null} when nothing does. Client only. Its own
@@ -237,17 +236,27 @@ public final class SyncedBodies {
             return;
         }
         var registrar = event.registrar("6").optional();
-        registrar.playToClient(BodySyncPayload.TYPE, BodySyncPayload.CODEC,
-                (payload, context) -> context.enqueueWork(() -> receive(payload, context.player().level())));
-        registrar.playToClient(RiderPayload.TYPE, RiderPayload.CODEC,
-                (payload, context) -> context.enqueueWork(() -> SyncedRiders.receive(payload, context.player().level())));
-        registrar.playToServer(StandingPayload.TYPE, StandingPayload.CODEC,
+        registrar.playToClient(
+                BodySyncPayload.TYPE,
+                BodySyncPayload.CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> receive(payload, context.player().level())));
+        registrar.playToClient(
+                RiderPayload.TYPE,
+                RiderPayload.CODEC,
+                (payload, context) -> context.enqueueWork(
+                        () -> SyncedRiders.receive(payload, context.player().level())));
+        registrar.playToServer(
+                StandingPayload.TYPE,
+                StandingPayload.CODEC,
                 (payload, context) -> context.enqueueWork(() -> {
                     if (context.player() instanceof ServerPlayer player) {
                         SyncedRiders.receive(payload, player);
                     }
                 }));
-        registrar.playToServer(PushPayload.TYPE, PushPayload.CODEC,
+        registrar.playToServer(
+                PushPayload.TYPE,
+                PushPayload.CODEC,
                 (payload, context) -> context.enqueueWork(() -> {
                     if (context.player() instanceof ServerPlayer player) {
                         SyncedRiders.receive(payload, player);
@@ -307,8 +316,8 @@ public final class SyncedBodies {
             center.add(replica.rotation(new Quaternionf()).transform(new Vector3d(r.centre.x, r.centre.y, r.centre.z)));
         }
         double rx = x - center.x, ry = y - center.y, rz = z - center.z;
-        return out.set((float) (r.vx + r.wy * rz - r.wz * ry), (float) (r.vy + r.wz * rx - r.wx * rz),
-                (float) (r.vz + r.wx * ry - r.wy * rx));
+        return out.set((float) (r.vx + r.wy * rz - r.wz * ry), (float) (r.vy + r.wz * rx - r.wx * rz), (float)
+                (r.vz + r.wx * ry - r.wy * rx));
     }
 
     /**
@@ -379,7 +388,7 @@ public final class SyncedBodies {
                 remove(level, spawn.id(), events, gone);
                 sent.put(spawn.id(), new Sent(spawn.tag(), spawn.name()));
                 if (predictor != null && predictor.isOwn(spawn.tag(), spawn.name())) {
-                    ownId = spawn.id();   // its own: the body here is it
+                    ownId = spawn.id(); // its own: the body here is it
                     continue;
                 }
                 Body body = build(world, spawn);
@@ -400,7 +409,8 @@ public final class SyncedBodies {
                 }
             }
             // the predictor's tick for what the server's tick ran of its frames: what the states are held against
-            long local = predictor == null || payload.frame() == BodySyncPayload.NO_FRAME ? Long.MIN_VALUE
+            long local = predictor == null || payload.frame() == BodySyncPayload.NO_FRAME
+                    ? Long.MIN_VALUE
                     : predictor.localTickOf(payload.frame());
             for (BodySyncPayload.State state : payload.states()) {
                 if (!state.isUsable()) {
@@ -444,8 +454,10 @@ public final class SyncedBodies {
 
     private void know(long tick, Body body, BodySyncPayload.State s) {
         Quaternionf q = new Quaternionf(s.qx(), s.qy(), s.qz(), s.qw()).normalize();
-        physics.rewind().know(tick, body, s.x(), s.y(), s.z(), q.x, q.y, q.z, q.w, s.vx(), s.vy(), s.vz(), s.wx(), s.wy(),
-                s.wz());
+        physics.rewind()
+                .know(
+                        tick, body, s.x(), s.y(), s.z(), q.x, q.y, q.z, q.w, s.vx(), s.vy(), s.vz(), s.wx(), s.wy(),
+                        s.wz());
     }
 
     /** A replica, whole, or {@code null} (and nothing left behind) if it could not be built. */
@@ -459,13 +471,19 @@ public final class SyncedBodies {
         Quaternionf rotation = new Quaternionf(s.qx(), s.qy(), s.qz(), s.qw()).normalize();
         // never asleep: Box3D ignores a sleeping kinematic body's targets below its sleep speed, and it would rest
         // millimetres off the server's
-        Body body = world.createBody(new BodyDef().type(BodyType.KINEMATIC).position(s.x(), s.y(), s.z()).rotation(rotation)
-                .name(spawn.name()).userData(spawn.userData()).enableSleep(false));
+        Body body = world.createBody(new BodyDef()
+                .type(BodyType.KINEMATIC)
+                .position(s.x(), s.y(), s.z())
+                .rotation(rotation)
+                .name(spawn.name())
+                .userData(spawn.userData())
+                .enableSleep(false));
         try {
             // nothing of the client's own runs off a replica: it brings no terrain and no entity proxies
             LevelBodies.setNeedsTerrain(body, false);
             LevelBodies.setPushedByEntities(body, false);
-            // what the server's body never meets — an entity's tag is its id, the same on both sides; before the shapes,
+            // what the server's body never meets — an entity's tag is its id, the same on both sides; before the
+            // shapes,
             // so none has pairs to find again
             body.setTag(spawn.tag());
             body.setIgnoredTag(spawn.ignoredTag());
@@ -514,8 +532,10 @@ public final class SyncedBodies {
             }
             body.position(position);
             // round what predicts here, a body the server simulates is simulated here too (doc 61 §3.9)
-            boolean simulate = centre != null && r.reproducible(body, own) && position.distanceSquared(centre.x, centre.y,
-                    centre.z) <= LevelRewind.BUBBLE_RADIUS * LevelRewind.BUBBLE_RADIUS
+            boolean simulate = centre != null
+                    && r.reproducible(body, own)
+                    && position.distanceSquared(centre.x, centre.y, centre.z)
+                            <= LevelRewind.BUBBLE_RADIUS * LevelRewind.BUBBLE_RADIUS
                     && predictor.simulates(body.tag(), body.name());
             if (simulate != r.simulated) {
                 simulate(body, r, simulate);
@@ -540,8 +560,12 @@ public final class SyncedBodies {
             } else if (r.coasting < MAX_COAST && (r.vx != 0 || r.vy != 0 || r.vz != 0)) {
                 // on along the line only; the turn is held (a guessed turn that is wrong shows more than a held one)
                 r.coasting++;
-                body.setTargetTransform(position.x + r.vx * timeStep, position.y + r.vy * timeStep,
-                        position.z + r.vz * timeStep, body.rotation(rotation), timeStep);
+                body.setTargetTransform(
+                        position.x + r.vx * timeStep,
+                        position.y + r.vy * timeStep,
+                        position.z + r.vz * timeStep,
+                        body.rotation(rotation),
+                        timeStep);
             } else {
                 body.setTargetTransform(position.x, position.y, position.z, body.rotation(rotation), timeStep);
             }
@@ -604,14 +628,18 @@ public final class SyncedBodies {
                 continue;
             }
             body.position(position);
-            if (!player.getChunkTrackingView().contains(SectionPos.blockToSectionCoord(position.x),
-                    SectionPos.blockToSectionCoord(position.z))) {
+            if (!player.getChunkTrackingView()
+                    .contains(SectionPos.blockToSectionCoord(position.x), SectionPos.blockToSectionCoord(position.z))) {
                 continue; // it is not this client's to have
             }
             body.bounds(bounds);
             // the bounds are floats: a block or two coarse far out, and the player may be just off the edge
-            if (player.getX() > bounds[0] - 2 && player.getX() < bounds[3] + 2 && player.getY() > bounds[1] - 3
-                    && player.getY() < bounds[4] + 2 && player.getZ() > bounds[2] - 2 && player.getZ() < bounds[5] + 2) {
+            if (player.getX() > bounds[0] - 2
+                    && player.getX() < bounds[3] + 2
+                    && player.getY() > bounds[1] - 3
+                    && player.getY() < bounds[4] + 2
+                    && player.getZ() > bounds[2] - 2
+                    && player.getZ() < bounds[5] + 2) {
                 return true;
             }
         }
@@ -660,9 +688,12 @@ public final class SyncedBodies {
                 if (!player.getChunkTrackingView().contains(cx, cz)) {
                     continue;
                 }
-                // ⚠️ not ChunkMap.getPlayers: it counts a chunk in view but not loaded yet as the client's, then not while
-                // it waits to be sent, then again — a body there (which, unlike an entity, may be in a chunk not loaded)
-                // would come, go and come. So: seen from when its chunk has reached the client, until it leaves the view.
+                // ⚠️ not ChunkMap.getPlayers: it counts a chunk in view but not loaded yet as the client's, then not
+                // while
+                // it waits to be sent, then again — a body there (which, unlike an entity, may be in a chunk not
+                // loaded)
+                // would come, go and come. So: seen from when its chunk has reached the client, until it leaves the
+                // view.
                 View view = views.get(player.connection);
                 if (view != null && view.known.containsKey(s.id)
                         || loaded && !player.connection.chunkSender.isPending(chunk)) {
@@ -670,9 +701,11 @@ public final class SyncedBodies {
                 }
             }
         }
-        // a player gone, or now elsewhere, has a client that dropped everything of this level (forget() does it at once,
+        // a player gone, or now elsewhere, has a client that dropped everything of this level (forget() does it at
+        // once,
         // from the player events; this is for a level that missed one)
-        views.values().removeIf(view -> view.connection.player.isRemoved() || view.connection.player.serverLevel() != level);
+        views.values()
+                .removeIf(view -> view.connection.player.isRemoved() || view.connection.player.serverLevel() != level);
         Prediction predicting = prediction;
         for (var it = views.values().iterator(); it.hasNext(); ) {
             View view = it.next();
@@ -750,12 +783,16 @@ public final class SyncedBodies {
                 }
                 if (s.motion != knownMotion.get(id) && body.type() == BodyType.DYNAMIC) {
                     knownMotion.put(id, s.motion);
-                    (tunings == null ? tunings = new ArrayList<>() : tunings).add(new BodySyncPayload.Tuning(id,
-                            BodySyncPayload.Dynamics.of(body.massData(new MassData()), body,
-                                    EntityCollisions.pushable(body))));
+                    (tunings == null ? tunings = new ArrayList<>() : tunings)
+                            .add(new BodySyncPayload.Tuning(
+                                    id,
+                                    BodySyncPayload.Dynamics.of(
+                                            body.massData(new MassData()), body, EntityCollisions.pushable(body))));
                 }
-                if (s.changed || centre != null && body.position(at).distanceSquared(centre.x, centre.y, centre.z)
-                        <= PREDICTED_RADIUS * PREDICTED_RADIUS) {
+                if (s.changed
+                        || centre != null
+                                && body.position(at).distanceSquared(centre.x, centre.y, centre.z)
+                                        <= PREDICTED_RADIUS * PREDICTED_RADIUS) {
                     (states == null ? states = new ArrayList<>() : states).add(seenBy(s.state, body, own));
                 }
             }
@@ -763,8 +800,13 @@ public final class SyncedBodies {
             if (removals == null && spawns == null && states == null && tunings == null) {
                 return null;
             }
-            return new BodySyncPayload(spawns == null ? List.of() : spawns, states == null ? List.of() : states,
-                    removals == null ? new int[0] : removals.toIntArray(), false, tick, frame,
+            return new BodySyncPayload(
+                    spawns == null ? List.of() : spawns,
+                    states == null ? List.of() : states,
+                    removals == null ? new int[0] : removals.toIntArray(),
+                    false,
+                    tick,
+                    frame,
                     tunings == null ? List.of() : tunings);
         }
 
@@ -774,9 +816,25 @@ public final class SyncedBodies {
          */
         private static BodySyncPayload.State seenBy(BodySyncPayload.State state, Body body, @Nullable Body own) {
             int theirs = own == null || own == body || state.joints() == 0 ? 0 : jointsBetween(body, own);
-            return theirs == 0 ? state : new BodySyncPayload.State(state.id(), state.x(), state.y(), state.z(), state.qx(),
-                    state.qy(), state.qz(), state.qw(), state.vx(), state.vy(), state.vz(), state.wx(), state.wy(),
-                    state.wz(), state.whole(), Math.max(0, state.joints() - theirs));
+            return theirs == 0
+                    ? state
+                    : new BodySyncPayload.State(
+                            state.id(),
+                            state.x(),
+                            state.y(),
+                            state.z(),
+                            state.qx(),
+                            state.qy(),
+                            state.qz(),
+                            state.qw(),
+                            state.vx(),
+                            state.vy(),
+                            state.vz(),
+                            state.wx(),
+                            state.wy(),
+                            state.wz(),
+                            state.whole(),
+                            Math.max(0, state.joints() - theirs));
         }
 
         private static BodySyncPayload.Spawn spawn(int id, Body body, Synced s, @Nullable Body own) {
@@ -785,23 +843,38 @@ public final class SyncedBodies {
             SurfaceMaterial surface = new SurfaceMaterial();
             for (Shape shape : body.shapes()) {
                 shape.filter(filter);
-                BodySyncPayload.SyncedShape synced = BodySyncPayload.SyncedShape.of(shape.geometry(), filter.categoryBits,
-                        filter.maskBits, filter.groupIndex, shape.isSensor(), shape.surfaceMaterial(surface),
+                BodySyncPayload.SyncedShape synced = BodySyncPayload.SyncedShape.of(
+                        shape.geometry(),
+                        filter.categoryBits,
+                        filter.maskBits,
+                        filter.groupIndex,
+                        shape.isSensor(),
+                        shape.surfaceMaterial(surface),
                         EntityCollisions.stepUpOn(shape));
                 if (synced != null) {
                     shapes.add(synced);
                 } else if (!s.warned) {
                     s.warned = true;
-                    MineBox3D.LOGGER.warn("a synced body ({}) has a {} shape, which is not sent to clients", body.name(),
+                    MineBox3D.LOGGER.warn(
+                            "a synced body ({}) has a {} shape, which is not sent to clients",
+                            body.name(),
                             shape.geometry().getClass().getSimpleName());
                 }
             }
             MassData data = body.type() == BodyType.DYNAMIC ? body.massData(new MassData()) : null;
-            BodySyncPayload.Dynamics dynamics = data == null ? null
-                    : BodySyncPayload.Dynamics.of(data, body, EntityCollisions.pushable(body));
+            BodySyncPayload.Dynamics dynamics =
+                    data == null ? null : BodySyncPayload.Dynamics.of(data, body, EntityCollisions.pushable(body));
             Vector3f centre = data == null ? null : new Vector3f(data.centerX, data.centerY, data.centerZ);
-            return new BodySyncPayload.Spawn(id, body.name(), body.userData(), body.tag(), body.ignoredTag(), shapes,
-                    seenBy(s.state, body, own), dynamics, centre);
+            return new BodySyncPayload.Spawn(
+                    id,
+                    body.name(),
+                    body.userData(),
+                    body.tag(),
+                    body.ignoredTag(),
+                    shapes,
+                    seenBy(s.state, body, own),
+                    dynamics,
+                    centre);
         }
 
         /**
@@ -831,10 +904,12 @@ public final class SyncedBodies {
     private static final class Synced {
         final int id;
         boolean changed, warned;
+
         @Nullable
         BodySyncPayload.State state;
         /** Whether all its shapes are sent, as of {@link #shapesRevision} */
         boolean complete;
+
         int shapesRevision = Integer.MIN_VALUE;
         /** Its damping, gravity scale and locks, hashed: a change goes out as a {@link BodySyncPayload.Tuning} */
         int motion;
@@ -847,19 +922,40 @@ public final class SyncedBodies {
         boolean update(Body body, ContactPoints contacts, Filter filter) {
             if (shapesRevision != body.shapesRevision()) {
                 shapesRevision = body.shapesRevision();
-                complete = body.shapes().stream().allMatch(shape -> BodySyncPayload.SyncedShape.isSent(shape.geometry()));
+                complete =
+                        body.shapes().stream().allMatch(shape -> BodySyncPayload.SyncedShape.isSent(shape.geometry()));
             }
             boolean dynamic = body.type() == BodyType.DYNAMIC;
-            motion = !dynamic ? 0 : 31 * (31 * (31 * Float.floatToIntBits(body.linearDamping())
-                    + Float.floatToIntBits(body.angularDamping())) + Float.floatToIntBits(body.gravityScale()))
-                    + (body.isFixedRotation() ? 1 : 0);
+            motion = !dynamic
+                    ? 0
+                    : 31
+                                    * (31
+                                                    * (31 * Float.floatToIntBits(body.linearDamping())
+                                                            + Float.floatToIntBits(body.angularDamping()))
+                                            + Float.floatToIntBits(body.gravityScale()))
+                            + (body.isFixedRotation() ? 1 : 0);
             Vector3d p = body.position(new Vector3d());
             Quaternionf q = body.rotation(new Quaternionf());
             Vector3f v = body.linearVelocity(new Vector3f());
             Vector3f w = body.angularVelocity(new Vector3f());
             boolean whole = !dynamic || touchesOnlyWhatClientsHave(body, contacts, filter);
-            BodySyncPayload.State now = new BodySyncPayload.State(id, p.x, p.y, p.z, q.x, q.y, q.z, q.w, v.x, v.y, v.z,
-                    w.x, w.y, w.z, whole, dynamic ? body.joints().size() : 0);
+            BodySyncPayload.State now = new BodySyncPayload.State(
+                    id,
+                    p.x,
+                    p.y,
+                    p.z,
+                    q.x,
+                    q.y,
+                    q.z,
+                    q.w,
+                    v.x,
+                    v.y,
+                    v.z,
+                    w.x,
+                    w.y,
+                    w.z,
+                    whole,
+                    dynamic ? body.joints().size() : 0);
             boolean moved = !now.equals(state);
             state = now;
             return moved;
@@ -880,7 +976,7 @@ public final class SyncedBodies {
                     return false;
                 }
                 if ((other.filter(filter).categoryBits & CollisionCategories.ENTITY) != 0) {
-                    continue;   // an entity's proxy: a client has the entity, and its own proxy of it
+                    continue; // an entity's proxy: a client has the entity, and its own proxy of it
                 }
                 Synced synced = other.body().attachment(Synced.class);
                 if (synced == null || !synced.complete) {
@@ -901,12 +997,16 @@ public final class SyncedBodies {
         int coasting;
         /** Simulated here, round what predicts, rather than driven to the server's states */
         boolean simulated;
+
         float vx, vy, vz, wx, wy, wz;
         /** As of the last state taken: whether all it touches is here too, and how many joints hold it there */
         boolean whole = true;
+
         int joints;
+
         @Nullable
         BodySyncPayload.Dynamics dynamics;
+
         @Nullable
         Vector3f centre;
 

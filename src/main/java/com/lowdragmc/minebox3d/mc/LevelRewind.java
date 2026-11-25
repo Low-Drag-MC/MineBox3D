@@ -4,16 +4,15 @@ import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.PhysicsWorld;
 import com.lowdragmc.minebox3d.physics.RewindHistory;
-import net.minecraft.world.phys.Vec3;
-import org.joml.Quaternionf;
-import org.joml.Vector3d;
-
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Quaternionf;
+import org.joml.Vector3d;
 
 /**
  * <b>A level's physics rolled back and simulated again</b> (EntityStudio doc 61 §3.3, §3.8) — Unreal's networked physics
@@ -32,6 +31,7 @@ public final class LevelRewind {
     public static final int HISTORY_TICKS = 20;
     /** How far round what is watched bodies are recorded and run again, blocks (doc 61 §6: the bubble). */
     public static final double BUBBLE_RADIUS = 8;
+
     private static final float TICK_SECONDS = 1 / 20f;
 
     /** Past this far from where a body is known to have been, it is run again: Unreal's {@code ResimErrorThreshold}, 10 cm. */
@@ -44,6 +44,7 @@ public final class LevelRewind {
     private final Map<Object, Supplier<Vec3>> watched = new LinkedHashMap<>();
     /** By tick: the bodies whose state then is known ({@link #know}), not recorded — put there when run again. */
     private final java.util.TreeMap<Long, java.util.Set<Body>> known = new java.util.TreeMap<>();
+
     private long recordedTick = Long.MIN_VALUE;
     private long asked = Long.MAX_VALUE;
     private int resimulations;
@@ -99,7 +100,10 @@ public final class LevelRewind {
         }
         float[] bounds = new float[6];
         for (Body body : physics.world().bodies()) {
-            if (body.isValid() && body.type() != BodyType.STATIC && body.isEnabled() && near(body.bounds(bounds), centres)) {
+            if (body.isValid()
+                    && body.type() != BodyType.STATIC
+                    && body.isEnabled()
+                    && near(body.bounds(bounds), centres)) {
                 history.record(tick, body);
             }
         }
@@ -132,22 +136,39 @@ public final class LevelRewind {
      *
      * @return whether it was off
      */
-    public boolean know(long tick, Body body, double x, double y, double z, float qx, float qy, float qz, float qw,
-                        float vx, float vy, float vz, float wx, float wy, float wz) {
+    public boolean know(
+            long tick,
+            Body body,
+            double x,
+            double y,
+            double z,
+            float qx,
+            float qy,
+            float qz,
+            float qw,
+            float vx,
+            float vy,
+            float vz,
+            float wx,
+            float wy,
+            float wz) {
         Vector3d was = history.position(tick, body, new Vector3d());
         Quaternionf turned = history.rotation(tick, body, new Quaternionf());
         if (was == null || turned == null) {
-            // not recorded then — it came into the bubble since, or that is older than the history (Unreal's: not rolled
+            // not recorded then — it came into the bubble since, or that is older than the history (Unreal's: not
+            // rolled
             // back). ⚠️ Not put there either: a second old, it would throw away all that was run since
             return false;
         }
         double off = was.distance(x, y, z);
-        float degrees = (float) Math.toDegrees(2 * Math.acos(Math.min(1, Math.abs(turned.dot(new Quaternionf(qx, qy, qz, qw))))));
+        float degrees = (float)
+                Math.toDegrees(2 * Math.acos(Math.min(1, Math.abs(turned.dot(new Quaternionf(qx, qy, qz, qw))))));
         if (off <= POSITION_THRESHOLD && degrees <= ROTATION_THRESHOLD_DEGREES) {
             return false;
         }
         history.put(tick, body, x, y, z, qx, qy, qz, qw, vx, vy, vz, wx, wy, wz, true);
-        known.computeIfAbsent(tick, t -> java.util.Collections.newSetFromMap(new IdentityHashMap<>())).add(body);
+        known.computeIfAbsent(tick, t -> java.util.Collections.newSetFromMap(new IdentityHashMap<>()))
+                .add(body);
         requestResimulation(tick + 1);
         return true;
     }
@@ -209,7 +230,7 @@ public final class LevelRewind {
         for (Body body : inside) {
             Vector3d p = body.position(new Vector3d());
             Quaternionf q = body.rotation(new Quaternionf());
-            drawn.put(body, new double[]{p.x, p.y, p.z, q.x, q.y, q.z, q.w});
+            drawn.put(body, new double[] {p.x, p.y, p.z, q.x, q.y, q.z, q.w});
         }
         // the rest still: out of the simulation, and back as they are after
         RewindHistory held = new RewindHistory(1);
@@ -230,10 +251,14 @@ public final class LevelRewind {
             for (long tick = from; tick <= last; tick++) {
                 physics.tellResim(true, tick);
                 for (Body body : inside) {
-                    // a kinematic body goes as it was driven: from where it ended the last tick to where it ended this one
-                    if (body.isValid() && body.type() == BodyType.KINEMATIC && history.position(tick, body, target) != null) {
+                    // a kinematic body goes as it was driven: from where it ended the last tick to where it ended this
+                    // one
+                    if (body.isValid()
+                            && body.type() == BodyType.KINEMATIC
+                            && history.position(tick, body, target) != null) {
                         history.restore(tick - 1, body);
-                        body.setTargetTransform(target.x, target.y, target.z, history.rotation(tick, body, turn), TICK_SECONDS);
+                        body.setTargetTransform(
+                                target.x, target.y, target.z, history.rotation(tick, body, turn), TICK_SECONDS);
                     }
                 }
                 physics.stepWorld();
@@ -270,7 +295,8 @@ public final class LevelRewind {
             double[] was = drawn.get(body);
             body.position(now);
             body.rotation(q);
-            Quaternionf turned = new Quaternionf((float) was[3], (float) was[4], (float) was[5], (float) was[6]).mul(q.conjugate());
+            Quaternionf turned =
+                    new Quaternionf((float) was[3], (float) was[4], (float) was[5], (float) was[6]).mul(q.conjugate());
             double dx = was[0] - now.x, dy = was[1] - now.y, dz = was[2] - now.z;
             if (dx != 0 || dy != 0 || dz != 0 || Math.abs(turned.w) < 1) {
                 body.addRenderError(dx, dy, dz, turned);

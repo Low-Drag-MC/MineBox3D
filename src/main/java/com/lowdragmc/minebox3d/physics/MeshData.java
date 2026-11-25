@@ -2,7 +2,6 @@ package com.lowdragmc.minebox3d.physics;
 
 import com.lowdragmc.minebox3d.internal.B3;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
-
 import java.lang.ref.Cleaner;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -22,6 +21,7 @@ public final class MeshData implements AutoCloseable {
     private final long pointer;
     /** shapes alive + 1 for the owner until {@link #close()} */
     private final AtomicInteger references = new AtomicInteger(1);
+
     private final Owner owner;
     private final Cleaner.Cleanable cleanable;
 
@@ -52,8 +52,17 @@ public final class MeshData implements AutoCloseable {
         for (float value : vertices) {
             Checks.finite(value, "mesh vertex");
         }
-        long pointer = B3.createMesh(vertices, vertices.length / 3, indices, indices.length / 3, materialIndices,
-                1.0e-4f, true, false, identifyEdges, false);
+        long pointer = B3.createMesh(
+                vertices,
+                vertices.length / 3,
+                indices,
+                indices.length / 3,
+                materialIndices,
+                1.0e-4f,
+                true,
+                false,
+                identifyEdges,
+                false);
         return new MeshData(vertices.clone(), indices.clone(), pointer);
     }
 

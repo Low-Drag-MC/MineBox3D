@@ -1,10 +1,9 @@
 package com.lowdragmc.minebox3d.physics;
 
+import java.util.Arrays;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-
-import java.util.Arrays;
 
 /**
  * <b>Where a body touches things</b>, as of the last step: a result object the caller keeps and passes in again (design
@@ -22,6 +21,7 @@ public final class ContactPoints {
     long[] shapes;
     int[] cells;
     int count;
+
     @Nullable
     PhysicsWorld world;
 

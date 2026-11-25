@@ -18,8 +18,13 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(Player.class)
 public abstract class PlayerMixin {
 
-    @WrapOperation(method = "canFallAtLeast", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/level/Level;noCollision(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/phys/AABB;)Z"))
+    @WrapOperation(
+            method = "canFallAtLeast",
+            at =
+                    @At(
+                            value = "INVOKE",
+                            target =
+                                    "Lnet/minecraft/world/level/Level;noCollision(Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/phys/AABB;)Z"))
     private boolean minebox3d$noBodyBelow(Level level, Entity entity, AABB box, Operation<Boolean> original) {
         return EntityCollisions.canFallInto(entity, box, original.call(level, entity, box));
     }

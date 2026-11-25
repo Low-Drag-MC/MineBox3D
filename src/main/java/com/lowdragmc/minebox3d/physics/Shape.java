@@ -76,13 +76,16 @@ public final class Shape {
             try {
                 switch (next) {
                     case Geometry.Sphere s -> B3.shapeSetSphere(id, s.cx(), s.cy(), s.cz(), s.radius());
-                    case Geometry.Capsule c -> B3.shapeSetCapsule(id, c.ax(), c.ay(), c.az(), c.bx(), c.by(), c.bz(), c.radius());
-                    case Geometry.Box b -> B3.shapeSetBox(id, b.hx(), b.hy(), b.hz(), b.cx(), b.cy(), b.cz(), b.qx(), b.qy(),
-                            b.qz(), b.qw());
+                    case Geometry.Capsule c ->
+                        B3.shapeSetCapsule(id, c.ax(), c.ay(), c.az(), c.bx(), c.by(), c.bz(), c.radius());
+                    case Geometry.Box b ->
+                        B3.shapeSetBox(
+                                id, b.hx(), b.hy(), b.hz(), b.cx(), b.cy(), b.cz(), b.qx(), b.qy(), b.qz(), b.qw());
                     case Geometry.Hull h -> B3.shapeSetHull(id, h.points(), h.vertexCount());
                     case Geometry.Mesh m -> B3.shapeSetMesh(id, m.data().pointer(), m.sx(), m.sy(), m.sz());
                     case Geometry.HeightField f ->
-                            throw new IllegalArgumentException("Box3D cannot turn a shape into a height field; make a new shape");
+                        throw new IllegalArgumentException(
+                                "Box3D cannot turn a shape into a height field; make a new shape");
                 }
             } catch (RuntimeException e) {
                 if (next instanceof Geometry.Mesh mesh) {
@@ -390,8 +393,17 @@ public final class Shape {
      * hits at fraction 0, with no normal. ⚠️ Not a sphere or capsule against a mesh or height field: Box3D lets a rounded
      * shape in a little further at every such cast (fixed for one convex shape, not for each of many triangles).
      */
-    public boolean castShape(Geometry geometry, double x, double y, double z, Quaternionfc rotation, float tx, float ty,
-                             float tz, boolean canEncroach, CastResult out) {
+    public boolean castShape(
+            Geometry geometry,
+            double x,
+            double y,
+            double z,
+            Quaternionfc rotation,
+            float tx,
+            float ty,
+            float tz,
+            boolean canEncroach,
+            CastResult out) {
         PhysicsWorld world = body.world();
         world.enter();
         try {
@@ -405,8 +417,20 @@ public final class Shape {
             int count = world.queryProxy(geometry, rotation);
             CastHits hit = out.hit;
             hit.clear(world);
-            if (B3.shapeCastShape(id, x, y, z, world.queryPoints, count, world.queryRadius, tx, ty, tz, canEncroach,
-                    hit.doubles, hit.longs)) {
+            if (B3.shapeCastShape(
+                    id,
+                    x,
+                    y,
+                    z,
+                    world.queryPoints,
+                    count,
+                    world.queryRadius,
+                    tx,
+                    ty,
+                    tz,
+                    canEncroach,
+                    hit.doubles,
+                    hit.longs)) {
                 hit.count = 1;
             }
             return hit.count > 0;

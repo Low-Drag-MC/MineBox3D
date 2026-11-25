@@ -1,8 +1,7 @@
 package com.lowdragmc.minebox3d.physics;
 
-import org.jetbrains.annotations.Nullable;
-
 import java.util.Arrays;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * <b>The shapes an overlap query found</b>: a result object the caller keeps and passes in again (design doc
@@ -13,6 +12,7 @@ public final class Overlaps {
 
     long[] ids;
     int count;
+
     @Nullable
     PhysicsWorld world;
 

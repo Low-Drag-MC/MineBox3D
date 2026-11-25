@@ -1,10 +1,9 @@
 package com.lowdragmc.minebox3d.physics;
 
+import java.util.Arrays;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
-
-import java.util.Arrays;
 
 /**
  * <b>The collision planes around a character mover</b> ({@link PhysicsWorld#collideMover}): a result object the caller
@@ -15,12 +14,14 @@ public final class MoverPlanes {
 
     /** {@code [nx, ny, nz, offset, px, py, pz]} per plane */
     static final int FLOATS = 7;
+
     static final int CELL = 4;
 
     float[] floats;
     long[] shapes;
     int[] cells;
     int count;
+
     @Nullable
     PhysicsWorld world;
 

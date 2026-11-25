@@ -66,8 +66,8 @@ public final class VoxelGrid implements AutoCloseable {
         world.enter();
         try {
             if (boxCount < 1 || boxCount > MAX_BOXES || boxes.length < 6 * boxCount) {
-                throw new IllegalArgumentException("a collider is 1 to " + MAX_BOXES + " boxes of 6 floats, got " + boxCount
-                        + " in " + boxes.length + " floats");
+                throw new IllegalArgumentException("a collider is 1 to " + MAX_BOXES + " boxes of 6 floats, got "
+                        + boxCount + " in " + boxes.length + " floats");
             }
             for (int i = 0; i < 6 * boxCount; i++) {
                 Checks.finite(boxes[i], "collider box");
@@ -157,7 +157,8 @@ public final class VoxelGrid implements AutoCloseable {
      * {@code flags}; a flat edge is one the surface carries on past in the same plane. Returns how many
      * there are, which may be more than the arrays take. For debug drawing and tests: worked out on each call.
      */
-    public int exposedTriangles(int sectionX, int sectionY, int sectionZ, float[] bounds, float[] vertices, byte[] flags) {
+    public int exposedTriangles(
+            int sectionX, int sectionY, int sectionZ, float[] bounds, float[] vertices, byte[] flags) {
         world.enter();
         try {
             return B3.voxelGridCollectTriangles(pointer(), sectionX, sectionY, sectionZ, bounds, vertices, flags);

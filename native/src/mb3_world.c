@@ -205,11 +205,13 @@ MB3_JNI( void, worldGetProfile )( JNIEnv* env, jclass type, jint world, jfloatAr
 // ---- events ---------------------------------------------------------------------------------------------------------
 // All of them stay valid until the next step: a caller whose arrays were too small grows them and asks again.
 
-static bool mb3_lengths_at_least( JNIEnv* env, jarray a, int count, jarray b, int countB, jarray c, int countC, jarray d,
-								  int countD )
+static bool mb3_lengths_at_least( JNIEnv* env, jarray a, int count, jarray b, int countB, jarray c, int countC,
+								  jarray d, int countD )
 {
-	if ( ( a != NULL && ( *env )->GetArrayLength( env, a ) < count ) || ( b != NULL && ( *env )->GetArrayLength( env, b ) < countB ) ||
-		 ( c != NULL && ( *env )->GetArrayLength( env, c ) < countC ) || ( d != NULL && ( *env )->GetArrayLength( env, d ) < countD ) )
+	if ( ( a != NULL && ( *env )->GetArrayLength( env, a ) < count ) ||
+		 ( b != NULL && ( *env )->GetArrayLength( env, b ) < countB ) ||
+		 ( c != NULL && ( *env )->GetArrayLength( env, c ) < countC ) ||
+		 ( d != NULL && ( *env )->GetArrayLength( env, d ) < countD ) )
 	{
 		mb3_throw_illegal_argument( env, "event arrays are shorter than capacity" );
 		return false;
@@ -232,7 +234,8 @@ MB3_JNI( jint, worldGetBodyMoveEvents )( JNIEnv* env, jclass type, jint world, j
 		return events.moveCount;
 	}
 	if ( ids == NULL || transforms == NULL || states == NULL || fellAsleep == NULL ||
-		 mb3_lengths_at_least( env, ids, count, transforms, 7 * count, states, 12 * count, fellAsleep, count ) == false )
+		 mb3_lengths_at_least( env, ids, count, transforms, 7 * count, states, 12 * count, fellAsleep, count ) ==
+			 false )
 	{
 		if ( ( *env )->ExceptionCheck( env ) == false )
 			mb3_throw_illegal_argument( env, "event arrays must not be null" );
@@ -317,8 +320,8 @@ static void mb3_hit_cell( const b3ContactHitEvent* e, int side, int out[4] )
 	out[3] = (int)floor( e->point.z + into * e->normal.z );
 }
 
-MB3_JNI( void, worldGetContactEvents )( JNIEnv* env, jclass type, jint world, jlongArray begins, jlongArray ends, jlongArray hitIds,
-										jdoubleArray hitData, jintArray counts )
+MB3_JNI( void, worldGetContactEvents )( JNIEnv* env, jclass type, jint world, jlongArray begins, jlongArray ends,
+										jlongArray hitIds, jdoubleArray hitData, jintArray counts )
 {
 	(void)type;
 	b3ContactEvents events = b3World_GetContactEvents( mb3_world( world ) );
@@ -338,17 +341,19 @@ MB3_JNI( void, worldGetContactEvents )( JNIEnv* env, jclass type, jint world, jl
 	int beginCount = b3MinInt( events.beginCount, ( *env )->GetArrayLength( env, begins ) / 2 );
 	for ( int i = 0; i < beginCount; ++i )
 	{
-		jlong pair[2] = { mb3_pack_shape( events.beginEvents[i].shapeIdA ), mb3_pack_shape( events.beginEvents[i].shapeIdB ) };
+		jlong pair[2] = { mb3_pack_shape( events.beginEvents[i].shapeIdA ),
+						  mb3_pack_shape( events.beginEvents[i].shapeIdB ) };
 		( *env )->SetLongArrayRegion( env, begins, 2 * i, 2, pair );
 	}
 	int endCount = b3MinInt( events.endCount, ( *env )->GetArrayLength( env, ends ) / 2 );
 	for ( int i = 0; i < endCount; ++i )
 	{
-		jlong pair[2] = { mb3_pack_shape( events.endEvents[i].shapeIdA ), mb3_pack_shape( events.endEvents[i].shapeIdB ) };
+		jlong pair[2] = { mb3_pack_shape( events.endEvents[i].shapeIdA ),
+						  mb3_pack_shape( events.endEvents[i].shapeIdB ) };
 		( *env )->SetLongArrayRegion( env, ends, 2 * i, 2, pair );
 	}
-	int hitCount = b3MinInt( events.hitCount,
-							 b3MinInt( ( *env )->GetArrayLength( env, hitIds ) / 4, ( *env )->GetArrayLength( env, hitData ) / 11 ) );
+	int hitCount = b3MinInt( events.hitCount, b3MinInt( ( *env )->GetArrayLength( env, hitIds ) / 4,
+														( *env )->GetArrayLength( env, hitData ) / 11 ) );
 	for ( int i = 0; i < hitCount; ++i )
 	{
 		const b3ContactHitEvent* e = events.hitEvents + i;
@@ -365,15 +370,16 @@ MB3_JNI( void, worldGetContactEvents )( JNIEnv* env, jclass type, jint world, jl
 		jlong ids4[4] = { mb3_pack_shape( e->shapeIdA ), mb3_pack_shape( e->shapeIdB ),
 						  (jlong)( e->userMaterialIdA & MB3_USER_MATERIAL_BITS ),
 						  (jlong)( e->userMaterialIdB & MB3_USER_MATERIAL_BITS ) };
-		double values[11] = { e->point.x, e->point.y, e->point.z, e->normal.x, e->normal.y, e->normal.z, e->approachSpeed,
-							  side,		  cell[1],	  cell[2],	  cell[3] };
+		double values[11] = { e->point.x,		e->point.y, e->point.z, e->normal.x, e->normal.y, e->normal.z,
+							  e->approachSpeed, side,		cell[1],	cell[2],	 cell[3] };
 		( *env )->SetLongArrayRegion( env, hitIds, 4 * i, 4, ids4 );
 		( *env )->SetDoubleArrayRegion( env, hitData, 11 * i, 11, values );
 	}
 	mb3_check( env );
 }
 
-MB3_JNI( void, worldGetSensorEvents )( JNIEnv* env, jclass type, jint world, jlongArray begins, jlongArray ends, jintArray counts )
+MB3_JNI( void, worldGetSensorEvents )( JNIEnv* env, jclass type, jint world, jlongArray begins, jlongArray ends,
+									   jintArray counts )
 {
 	(void)type;
 	b3SensorEvents events = b3World_GetSensorEvents( mb3_world( world ) );
@@ -398,7 +404,8 @@ MB3_JNI( void, worldGetSensorEvents )( JNIEnv* env, jclass type, jint world, jlo
 	int endCount = b3MinInt( events.endCount, ( *env )->GetArrayLength( env, ends ) / 2 );
 	for ( int i = 0; i < endCount; ++i )
 	{
-		jlong pair[2] = { mb3_pack_shape( events.endEvents[i].sensorShapeId ), mb3_pack_shape( events.endEvents[i].visitorShapeId ) };
+		jlong pair[2] = { mb3_pack_shape( events.endEvents[i].sensorShapeId ),
+						  mb3_pack_shape( events.endEvents[i].visitorShapeId ) };
 		( *env )->SetLongArrayRegion( env, ends, 2 * i, 2, pair );
 	}
 }
@@ -430,9 +437,9 @@ void mb3_put_hit( JNIEnv* env, jdoubleArray doubles, jlongArray longs, int index
 	( *env )->SetLongArrayRegion( env, longs, MB3_HIT_LONGS * index, MB3_HIT_LONGS, l );
 }
 
-MB3_JNI( jboolean, worldCastRayClosest )( JNIEnv* env, jclass type, jint world, jdouble ox, jdouble oy, jdouble oz, jfloat tx,
-										  jfloat ty, jfloat tz, jlong categoryBits, jlong maskBits, jdoubleArray doubles,
-										  jlongArray longs )
+MB3_JNI( jboolean, worldCastRayClosest )( JNIEnv* env, jclass type, jint world, jdouble ox, jdouble oy, jdouble oz,
+										  jfloat tx, jfloat ty, jfloat tz, jlong categoryBits, jlong maskBits,
+										  jdoubleArray doubles, jlongArray longs )
 {
 	(void)type;
 	if ( mb3_hit_arrays( env, doubles, longs ) == false )
@@ -447,7 +454,8 @@ MB3_JNI( jboolean, worldCastRayClosest )( JNIEnv* env, jclass type, jint world, 
 	}
 	double d[MB3_HIT_DOUBLES];
 	jlong l[MB3_HIT_LONGS];
-	mb3_hit( result.shapeId, result.point, result.normal, result.fraction, result.userMaterialId, result.triangleIndex, d, l );
+	mb3_hit( result.shapeId, result.point, result.normal, result.fraction, result.userMaterialId, result.triangleIndex,
+			 d, l );
 	mb3_put_hit( env, doubles, longs, 0, d, l );
 	return mb3_check( env ) ? JNI_FALSE : JNI_TRUE;
 }
@@ -519,18 +527,20 @@ static float mb3_hit_list_fcn( b3ShapeId shapeId, b3Pos point, b3Vec3 normal, fl
 			list->outOfMemory = true;
 			return 0.0f; // ends the cast
 		}
-		mb3_hit( shapeId, point, normal, fraction, userMaterialId, triangleIndex, list->doubles + MB3_HIT_DOUBLES * list->count,
-				 list->longs + MB3_HIT_LONGS * list->count );
+		mb3_hit( shapeId, point, normal, fraction, userMaterialId, triangleIndex,
+				 list->doubles + MB3_HIT_DOUBLES * list->count, list->longs + MB3_HIT_LONGS * list->count );
 	}
 	list->count += 1;
 	return 1.0f;
 }
 
-// Ready for a cast reporting every hit, up to capacity of them; false (and a pending exception) when the arrays are short.
+// Ready for a cast reporting every hit, up to capacity of them; false (and a pending exception) when the arrays are
+// short.
 static bool mb3_hit_list_open( JNIEnv* env, jdoubleArray doubles, jlongArray longs, jint capacity, mb3_hit_room* local,
 							   mb3_hit_list* list )
 {
-	if ( capacity < 0 || doubles == NULL || longs == NULL || ( *env )->GetArrayLength( env, doubles ) < MB3_HIT_DOUBLES * capacity ||
+	if ( capacity < 0 || doubles == NULL || longs == NULL ||
+		 ( *env )->GetArrayLength( env, doubles ) < MB3_HIT_DOUBLES * capacity ||
 		 ( *env )->GetArrayLength( env, longs ) < MB3_HIT_LONGS * capacity )
 	{
 		mb3_throw_illegal_argument( env, "hit arrays are shorter than capacity" );
@@ -547,7 +557,8 @@ static bool mb3_hit_list_open( JNIEnv* env, jdoubleArray doubles, jlongArray lon
 	return true;
 }
 
-// The hits closest first into the Java arrays, when they all fitted; frees what the list grew. Returns how many there were.
+// The hits closest first into the Java arrays, when they all fitted; frees what the list grew. Returns how many there
+// were.
 static jint mb3_hit_list_close( JNIEnv* env, mb3_hit_list* list, jdoubleArray doubles, jlongArray longs )
 {
 	double* d = list->doubles;
@@ -592,8 +603,9 @@ static jint mb3_hit_list_close( JNIEnv* env, mb3_hit_list* list, jdoubleArray do
 
 // More hits than capacity writes nothing: Box3D reports them in no order, so the closest are not known until all are,
 // and the caller asks again with room for all.
-MB3_JNI( jint, worldCastRay )( JNIEnv* env, jclass type, jint world, jdouble ox, jdouble oy, jdouble oz, jfloat tx, jfloat ty,
-							   jfloat tz, jlong categoryBits, jlong maskBits, jdoubleArray doubles, jlongArray longs, jint capacity )
+MB3_JNI( jint, worldCastRay )( JNIEnv* env, jclass type, jint world, jdouble ox, jdouble oy, jdouble oz, jfloat tx,
+							   jfloat ty, jfloat tz, jlong categoryBits, jlong maskBits, jdoubleArray doubles,
+							   jlongArray longs, jint capacity )
 {
 	(void)type;
 	mb3_hit_room local;
@@ -602,14 +614,15 @@ MB3_JNI( jint, worldCastRay )( JNIEnv* env, jclass type, jint world, jdouble ox,
 	{
 		return 0;
 	}
-	b3World_CastRay( mb3_world( world ), mb3_pos( ox, oy, oz ), mb3_vec3( tx, ty, tz ), mb3_query_filter( categoryBits, maskBits ),
-					 mb3_hit_list_fcn, &list );
+	b3World_CastRay( mb3_world( world ), mb3_pos( ox, oy, oz ), mb3_vec3( tx, ty, tz ),
+					 mb3_query_filter( categoryBits, maskBits ), mb3_hit_list_fcn, &list );
 	return mb3_hit_list_close( env, &list, doubles, longs );
 }
 
 bool mb3_proxy( JNIEnv* env, jfloatArray points, jint count, jfloat radius, b3Vec3* storage, b3ShapeProxy* proxy )
 {
-	if ( points == NULL || count < 1 || count > B3_MAX_SHAPE_CAST_POINTS || ( *env )->GetArrayLength( env, points ) < 3 * count )
+	if ( points == NULL || count < 1 || count > B3_MAX_SHAPE_CAST_POINTS ||
+		 ( *env )->GetArrayLength( env, points ) < 3 * count )
 	{
 		mb3_throw_illegal_argument( env, "a query shape is 1 to B3_MAX_SHAPE_CAST_POINTS points, 3 floats each" );
 		return false;
@@ -620,13 +633,15 @@ bool mb3_proxy( JNIEnv* env, jfloatArray points, jint count, jfloat radius, b3Ve
 }
 
 MB3_JNI( jboolean, worldCastShapeClosest )( JNIEnv* env, jclass type, jint world, jdouble ox, jdouble oy, jdouble oz,
-											jfloatArray points, jint count, jfloat radius, jfloat tx, jfloat ty, jfloat tz,
-											jlong categoryBits, jlong maskBits, jdoubleArray doubles, jlongArray longs )
+											jfloatArray points, jint count, jfloat radius, jfloat tx, jfloat ty,
+											jfloat tz, jlong categoryBits, jlong maskBits, jdoubleArray doubles,
+											jlongArray longs )
 {
 	(void)type;
 	b3Vec3 storage[B3_MAX_SHAPE_CAST_POINTS];
 	b3ShapeProxy proxy;
-	if ( mb3_proxy( env, points, count, radius, storage, &proxy ) == false || mb3_hit_arrays( env, doubles, longs ) == false )
+	if ( mb3_proxy( env, points, count, radius, storage, &proxy ) == false ||
+		 mb3_hit_arrays( env, doubles, longs ) == false )
 	{
 		return JNI_FALSE;
 	}
@@ -645,17 +660,18 @@ MB3_JNI( jboolean, worldCastShapeClosest )( JNIEnv* env, jclass type, jint world
 }
 
 // Every shape a swept shape meets, closest first, one hit each; more than capacity writes nothing (as worldCastRay).
-MB3_JNI( jint, worldCastShape )( JNIEnv* env, jclass type, jint world, jdouble ox, jdouble oy, jdouble oz, jfloatArray points,
-								 jint count, jfloat radius, jfloat tx, jfloat ty, jfloat tz, jlong categoryBits, jlong maskBits,
-								 jdoubleArray doubles, jlongArray longs, jint capacity )
+MB3_JNI( jint, worldCastShape )( JNIEnv* env, jclass type, jint world, jdouble ox, jdouble oy, jdouble oz,
+								 jfloatArray points, jint count, jfloat radius, jfloat tx, jfloat ty, jfloat tz,
+								 jlong categoryBits, jlong maskBits, jdoubleArray doubles, jlongArray longs,
+								 jint capacity )
 {
 	(void)type;
 	b3Vec3 storage[B3_MAX_SHAPE_CAST_POINTS];
 	b3ShapeProxy proxy;
 	mb3_hit_room local;
 	mb3_hit_list list;
-	if ( mb3_proxy( env, points, count, radius, storage, &proxy ) == false
-		 || mb3_hit_list_open( env, doubles, longs, capacity, &local, &list ) == false )
+	if ( mb3_proxy( env, points, count, radius, storage, &proxy ) == false ||
+		 mb3_hit_list_open( env, doubles, longs, capacity, &local, &list ) == false )
 	{
 		return 0;
 	}
@@ -760,8 +776,9 @@ MB3_JNI( jint, worldOverlapShape )( JNIEnv* env, jclass type, jint world, jdoubl
 }
 
 // The broad phase keeps float bounds, so the box is rounded outwards.
-MB3_JNI( jint, worldOverlapAABB )( JNIEnv* env, jclass type, jint world, jdouble minX, jdouble minY, jdouble minZ, jdouble maxX,
-								   jdouble maxY, jdouble maxZ, jlong categoryBits, jlong maskBits, jlongArray shapeIds )
+MB3_JNI( jint, worldOverlapAABB )( JNIEnv* env, jclass type, jint world, jdouble minX, jdouble minY, jdouble minZ,
+								   jdouble maxX, jdouble maxY, jdouble maxZ, jlong categoryBits, jlong maskBits,
+								   jlongArray shapeIds )
 {
 	(void)type;
 	if ( shapeIds == NULL )
@@ -770,15 +787,18 @@ MB3_JNI( jint, worldOverlapAABB )( JNIEnv* env, jclass type, jint world, jdouble
 		return 0;
 	}
 	b3AABB box = {
-		{ nextafterf( (float)minX, -INFINITY ), nextafterf( (float)minY, -INFINITY ), nextafterf( (float)minZ, -INFINITY ) },
-		{ nextafterf( (float)maxX, INFINITY ), nextafterf( (float)maxY, INFINITY ), nextafterf( (float)maxZ, INFINITY ) },
+		{ nextafterf( (float)minX, -INFINITY ), nextafterf( (float)minY, -INFINITY ),
+		  nextafterf( (float)minZ, -INFINITY ) },
+		{ nextafterf( (float)maxX, INFINITY ), nextafterf( (float)maxY, INFINITY ),
+		  nextafterf( (float)maxZ, INFINITY ) },
 	};
 
 	// asked once for every Minecraft entity move near a body
 	jlong local[MB3_OVERLAP_ROOM];
 	mb3_overlaps overlaps;
 	mb3_overlaps_open( &overlaps, local, ( *env )->GetArrayLength( env, shapeIds ) );
-	b3World_OverlapAABB( mb3_world( world ), box, mb3_query_filter( categoryBits, maskBits ), mb3_overlap_fcn, &overlaps );
+	b3World_OverlapAABB( mb3_world( world ), box, mb3_query_filter( categoryBits, maskBits ), mb3_overlap_fcn,
+						 &overlaps );
 	return mb3_overlaps_close( env, &overlaps, shapeIds );
 }
 
@@ -862,8 +882,9 @@ static bool mb3_mover_plane_fcn( b3ShapeId shapeId, const b3PlaneResult* planes,
 }
 
 MB3_JNI( jint, worldCollideMover )( JNIEnv* env, jclass type, jint world, jdouble ox, jdouble oy, jdouble oz, jfloat x1,
-									jfloat y1, jfloat z1, jfloat x2, jfloat y2, jfloat z2, jfloat radius, jlong categoryBits,
-									jlong maskBits, jfloatArray planes, jlongArray shapeIds, jintArray cells )
+									jfloat y1, jfloat z1, jfloat x2, jfloat y2, jfloat z2, jfloat radius,
+									jlong categoryBits, jlong maskBits, jfloatArray planes, jlongArray shapeIds,
+									jintArray cells )
 {
 	(void)type;
 	if ( planes == NULL || shapeIds == NULL || cells == NULL )
@@ -873,7 +894,8 @@ MB3_JNI( jint, worldCollideMover )( JNIEnv* env, jclass type, jint world, jdoubl
 	}
 
 	jsize capacity = ( *env )->GetArrayLength( env, shapeIds );
-	if ( ( *env )->GetArrayLength( env, cells ) < 4 * capacity || ( *env )->GetArrayLength( env, planes ) < 7 * capacity )
+	if ( ( *env )->GetArrayLength( env, cells ) < 4 * capacity ||
+		 ( *env )->GetArrayLength( env, planes ) < 7 * capacity )
 	{
 		mb3_throw_illegal_argument( env, "7 floats and 4 cell ints per plane" );
 		return 0;
@@ -886,7 +908,14 @@ MB3_JNI( jint, worldCollideMover )( JNIEnv* env, jclass type, jint world, jdoubl
 	b3Capsule mover = { mb3_vec3( x1, y1, z1 ), mb3_vec3( x2, y2, z2 ), radius };
 	mb3_plane_room local;
 	mb3_mover_planes out = {
-		local.planes, local.shapeIds, local.cells, &local, capacity < MB3_PLANE_ROOM ? capacity : MB3_PLANE_ROOM, capacity, 0, false,
+		local.planes,
+		local.shapeIds,
+		local.cells,
+		&local,
+		capacity < MB3_PLANE_ROOM ? capacity : MB3_PLANE_ROOM,
+		capacity,
+		0,
+		false,
 	};
 	b3World_CollideMover( mb3_world( world ), mb3_pos( ox, oy, oz ), &mover, mb3_query_filter( categoryBits, maskBits ),
 						  mb3_mover_plane_fcn, &out );
@@ -923,7 +952,7 @@ MB3_JNI( jfloat, worldGetCounters )( JNIEnv* env, jclass type, jint world, jintA
 		mb3_throw_illegal_argument( env, "output int[] is null or too short" );
 		return 0;
 	}
-	jint values[6] = { counters.bodyCount,	 counters.shapeCount,  counters.contactCount,
+	jint values[6] = { counters.bodyCount,	counters.shapeCount,  counters.contactCount,
 					   counters.jointCount, counters.islandCount, counters.awakeContactCount };
 	( *env )->SetIntArrayRegion( env, out, 0, 6, values );
 	return profile.step;

@@ -7,10 +7,11 @@ import net.neoforged.neoforge.common.util.LogicalSidedProvider;
 /** Which thread a level belongs to: the server thread for server levels, the client thread for the client's. */
 public final class LevelThreads {
 
-    private LevelThreads() {
-    }
+    private LevelThreads() {}
 
     public static boolean isLevelThread(Level level) {
-        return LogicalSidedProvider.WORKQUEUE.get(level.isClientSide ? LogicalSide.CLIENT : LogicalSide.SERVER).isSameThread();
+        return LogicalSidedProvider.WORKQUEUE
+                .get(level.isClientSide ? LogicalSide.CLIENT : LogicalSide.SERVER)
+                .isSameThread();
     }
 }

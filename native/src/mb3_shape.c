@@ -26,19 +26,19 @@ static jlong mb3_shape_created( JNIEnv* env, b3ShapeId id )
 }
 
 // Reads the definition, creates the shape with `call`, and releases what the definition copied.
-#define MB3_CREATE_SHAPE( env, definition, call )                                                                              \
-	do                                                                                                                         \
-	{                                                                                                                          \
-		b3ShapeDef def;                                                                                                        \
-		char name[MB3_NAME_CAPACITY];                                                                                          \
-		if ( mb3_shape_def_from_java( env, definition, &def, name, MB3_NAME_CAPACITY ) == false )                              \
-		{                                                                                                                      \
-			return 0;                                                                                                          \
-		}                                                                                                                      \
-		b3ShapeId id = call;                                                                                                   \
-		mb3_shape_def_release( &def );                                                                                         \
-		return mb3_shape_created( env, id );                                                                                   \
-	}                                                                                                                          \
+#define MB3_CREATE_SHAPE( env, definition, call )                                                                      \
+	do                                                                                                                 \
+	{                                                                                                                  \
+		b3ShapeDef def;                                                                                                \
+		char name[MB3_NAME_CAPACITY];                                                                                  \
+		if ( mb3_shape_def_from_java( env, definition, &def, name, MB3_NAME_CAPACITY ) == false )                      \
+		{                                                                                                              \
+			return 0;                                                                                                  \
+		}                                                                                                              \
+		b3ShapeId id = call;                                                                                           \
+		mb3_shape_def_release( &def );                                                                                 \
+		return mb3_shape_created( env, id );                                                                           \
+	}                                                                                                                  \
 	while ( 0 )
 
 // A hull around `count` points [x, y, z, ...], at most B3_MAX_HULL_VERTICES vertices; NULL with an exception pending
@@ -98,7 +98,8 @@ MB3_JNI( jint, getMaxHullVertices )( JNIEnv* env, jclass type )
 	return B3_MAX_HULL_VERTICES;
 }
 
-MB3_JNI( jlong, createHullShape )( JNIEnv* env, jclass type, jlong body, jobject definition, jfloatArray points, jint count )
+MB3_JNI( jlong, createHullShape )( JNIEnv* env, jclass type, jlong body, jobject definition, jfloatArray points,
+								   jint count )
 {
 	(void)type;
 	b3HullData* hull = mb3_hull_from_java( env, points, count );
@@ -123,13 +124,14 @@ MB3_JNI( jlong, createHullShape )( JNIEnv* env, jclass type, jlong body, jobject
 // ⚠️ Like a mesh, Box3D keeps only a pointer to a height field: the Java HeightFieldData owns it and counts its shapes.
 
 MB3_JNI( jlong, createHeightField )( JNIEnv* env, jclass type, jfloatArray heights, jint countX, jint countZ,
-									 jbyteArray materials, jfloat sx, jfloat sy, jfloat sz, jfloat minHeight, jfloat maxHeight,
-									 jboolean clockwise )
+									 jbyteArray materials, jfloat sx, jfloat sy, jfloat sz, jfloat minHeight,
+									 jfloat maxHeight, jboolean clockwise )
 {
 	(void)type;
 	// as 64-bit: the int product wraps, and Box3D sizes its cells and triangles from it
 	int64_t points = (int64_t)countX * countZ;
-	if ( countX < 2 || countZ < 2 || points > ( 1 << 24 ) || heights == NULL || ( *env )->GetArrayLength( env, heights ) < points )
+	if ( countX < 2 || countZ < 2 || points > ( 1 << 24 ) || heights == NULL ||
+		 ( *env )->GetArrayLength( env, heights ) < points )
 	{
 		mb3_throw_illegal_argument( env, "a height field is 2 x 2 to 4096 x 4096 points, countX * countZ heights" );
 		return 0;
@@ -194,7 +196,8 @@ MB3_JNI( jlong, createHeightFieldShape )( JNIEnv* env, jclass type, jlong body, 
 		mb3_throw_illegal_argument( env, "height field is null" );
 		return 0;
 	}
-	MB3_CREATE_SHAPE( env, definition, b3CreateHeightFieldShape( mb3_body( body ), &def, (const b3HeightFieldData*)(intptr_t)field ) );
+	MB3_CREATE_SHAPE( env, definition,
+					  b3CreateHeightFieldShape( mb3_body( body ), &def, (const b3HeightFieldData*)(intptr_t)field ) );
 }
 
 // ---- changing the geometry in place ---------------------------------------------------------------------------------
@@ -209,8 +212,8 @@ MB3_JNI( void, shapeSetSphere )( JNIEnv* env, jclass type, jlong shape, jfloat c
 	mb3_check( env );
 }
 
-MB3_JNI( void, shapeSetCapsule )( JNIEnv* env, jclass type, jlong shape, jfloat x1, jfloat y1, jfloat z1, jfloat x2, jfloat y2,
-								  jfloat z2, jfloat radius )
+MB3_JNI( void, shapeSetCapsule )( JNIEnv* env, jclass type, jlong shape, jfloat x1, jfloat y1, jfloat z1, jfloat x2,
+								  jfloat y2, jfloat z2, jfloat radius )
 {
 	(void)type;
 	b3Capsule capsule = { mb3_vec3( x1, y1, z1 ), mb3_vec3( x2, y2, z2 ), radius };
@@ -218,8 +221,8 @@ MB3_JNI( void, shapeSetCapsule )( JNIEnv* env, jclass type, jlong shape, jfloat 
 	mb3_check( env );
 }
 
-MB3_JNI( void, shapeSetBox )( JNIEnv* env, jclass type, jlong shape, jfloat hx, jfloat hy, jfloat hz, jfloat cx, jfloat cy,
-							  jfloat cz, jfloat qx, jfloat qy, jfloat qz, jfloat qw )
+MB3_JNI( void, shapeSetBox )( JNIEnv* env, jclass type, jlong shape, jfloat hx, jfloat hy, jfloat hz, jfloat cx,
+							  jfloat cy, jfloat cz, jfloat qx, jfloat qy, jfloat qz, jfloat qw )
 {
 	(void)type;
 	b3Transform transform = { mb3_vec3( cx, cy, cz ), mb3_quat( qx, qy, qz, qw ) };
@@ -415,21 +418,20 @@ float mb3_closest_point( b3ShapeId shape, b3WorldTransform bodyTransform, b3Pos 
 	{
 		case b3_sphereShape:
 			sphere = b3Shape_GetSphere( shape );
-			proxy = ( b3ShapeProxy ){ &sphere.center, 1, sphere.radius };
+			proxy = (b3ShapeProxy){ &sphere.center, 1, sphere.radius };
 			break;
 		case b3_capsuleShape:
 			// center1 and center2 sit next to each other: the two points of the proxy
 			capsule = b3Shape_GetCapsule( shape );
-			proxy = ( b3ShapeProxy ){ &capsule.center1, 2, capsule.radius };
+			proxy = (b3ShapeProxy){ &capsule.center1, 2, capsule.radius };
 			break;
 		case b3_hullShape:
 		{
 			const b3HullData* hull = b3Shape_GetHull( shape );
-			proxy = ( b3ShapeProxy ){ b3GetHullPoints( hull ), hull->vertexCount, 0.0f };
+			proxy = (b3ShapeProxy){ b3GetHullPoints( hull ), hull->vertexCount, 0.0f };
 			break;
 		}
-		default:
-			return FLT_MAX;
+		default: return FLT_MAX;
 	}
 
 	// Frame A is the body's, placed relative to the target; B is the target, at that origin
@@ -437,17 +439,18 @@ float mb3_closest_point( b3ShapeId shape, b3WorldTransform bodyTransform, b3Pos 
 	b3Transform body = b3ToRelativeTransform( bodyTransform, target );
 	b3DistanceInput input;
 	input.proxyA = proxy;
-	input.proxyB = ( b3ShapeProxy ){ &origin, 1, 0.0f };
+	input.proxyB = (b3ShapeProxy){ &origin, 1, 0.0f };
 	input.transform = b3InvMulTransforms( body, b3Transform_identity );
 	input.useRadii = true;
 	b3SimplexCache cache = { 0 };
 	b3DistanceOutput output = b3ShapeDistance( &input, &cache, NULL, 0 );
 	b3Vec3 offset = b3TransformPoint( body, output.pointA );
-	*closest = ( b3Pos ){ target.x + offset.x, target.y + offset.y, target.z + offset.z };
+	*closest = (b3Pos){ target.x + offset.x, target.y + offset.y, target.z + offset.z };
 	return output.distance;
 }
 
-MB3_JNI( jfloat, shapeGetClosestPoint )( JNIEnv* env, jclass type, jlong shape, jdouble x, jdouble y, jdouble z, jdoubleArray out )
+MB3_JNI( jfloat, shapeGetClosestPoint )( JNIEnv* env, jclass type, jlong shape, jdouble x, jdouble y, jdouble z,
+										 jdoubleArray out )
 {
 	(void)type;
 	b3ShapeId id = mb3_shape( shape );
@@ -465,19 +468,21 @@ MB3_JNI( jfloat, shapeGetClosestPoint )( JNIEnv* env, jclass type, jlong shape, 
 	return distance;
 }
 
-MB3_JNI( jboolean, shapeCastShape )( JNIEnv* env, jclass type, jlong shape, jdouble ox, jdouble oy, jdouble oz, jfloatArray points,
-									 jint count, jfloat radius, jfloat tx, jfloat ty, jfloat tz, jboolean canEncroach,
-									 jdoubleArray doubles, jlongArray longs )
+MB3_JNI( jboolean, shapeCastShape )( JNIEnv* env, jclass type, jlong shape, jdouble ox, jdouble oy, jdouble oz,
+									 jfloatArray points, jint count, jfloat radius, jfloat tx, jfloat ty, jfloat tz,
+									 jboolean canEncroach, jdoubleArray doubles, jlongArray longs )
 {
 	(void)type;
 	b3Vec3 storage[B3_MAX_SHAPE_CAST_POINTS];
 	b3ShapeProxy proxy;
-	if ( mb3_proxy( env, points, count, radius, storage, &proxy ) == false || mb3_hit_arrays( env, doubles, longs ) == false )
+	if ( mb3_proxy( env, points, count, radius, storage, &proxy ) == false ||
+		 mb3_hit_arrays( env, doubles, longs ) == false )
 	{
 		return JNI_FALSE;
 	}
 	b3ShapeId id = mb3_shape( shape );
-	b3WorldCastOutput output = b3Shape_CastShape( id, mb3_pos( ox, oy, oz ), &proxy, mb3_vec3( tx, ty, tz ), canEncroach );
+	b3WorldCastOutput output =
+		b3Shape_CastShape( id, mb3_pos( ox, oy, oz ), &proxy, mb3_vec3( tx, ty, tz ), canEncroach );
 	if ( mb3_check( env ) || output.hit == false )
 	{
 		return JNI_FALSE;
@@ -490,8 +495,8 @@ MB3_JNI( jboolean, shapeCastShape )( JNIEnv* env, jclass type, jlong shape, jdou
 	return mb3_check( env ) ? JNI_FALSE : JNI_TRUE;
 }
 
-MB3_JNI( jlong, createSphereShape )( JNIEnv* env, jclass type, jlong body, jobject definition, jfloat cx, jfloat cy, jfloat cz,
-									jfloat radius )
+MB3_JNI( jlong, createSphereShape )( JNIEnv* env, jclass type, jlong body, jobject definition, jfloat cx, jfloat cy,
+									 jfloat cz, jfloat radius )
 {
 	(void)type;
 	b3Sphere sphere = { mb3_vec3( cx, cy, cz ), radius };
@@ -499,7 +504,7 @@ MB3_JNI( jlong, createSphereShape )( JNIEnv* env, jclass type, jlong body, jobje
 }
 
 MB3_JNI( jlong, createCapsuleShape )( JNIEnv* env, jclass type, jlong body, jobject definition, jfloat x1, jfloat y1,
-									 jfloat z1, jfloat x2, jfloat y2, jfloat z2, jfloat radius )
+									  jfloat z1, jfloat x2, jfloat y2, jfloat z2, jfloat radius )
 {
 	(void)type;
 	b3Capsule capsule = { mb3_vec3( x1, y1, z1 ), mb3_vec3( x2, y2, z2 ), radius };
@@ -507,8 +512,9 @@ MB3_JNI( jlong, createCapsuleShape )( JNIEnv* env, jclass type, jlong body, jobj
 }
 
 // A box is a hull. Box3D copies hulls into its own per-world database, so the stack copy is enough.
-MB3_JNI( jlong, createBoxShape )( JNIEnv* env, jclass type, jlong body, jobject definition, jfloat hx, jfloat hy, jfloat hz,
-								 jfloat cx, jfloat cy, jfloat cz, jfloat qx, jfloat qy, jfloat qz, jfloat qw )
+MB3_JNI( jlong, createBoxShape )( JNIEnv* env, jclass type, jlong body, jobject definition, jfloat hx, jfloat hy,
+								  jfloat hz, jfloat cx, jfloat cy, jfloat cz, jfloat qx, jfloat qy, jfloat qz,
+								  jfloat qw )
 {
 	(void)type;
 	b3Transform transform = { mb3_vec3( cx, cy, cz ), mb3_quat( qx, qy, qz, qw ) };
@@ -541,8 +547,8 @@ MB3_JNI( jlong, shapeGetBody )( JNIEnv* env, jclass type, jlong shape )
 	return mb3_pack_body( body );
 }
 
-MB3_JNI( void, shapeSetFilter )( JNIEnv* env, jclass type, jlong shape, jlong categoryBits, jlong maskBits, jint groupIndex,
-								 jboolean invokeContacts )
+MB3_JNI( void, shapeSetFilter )( JNIEnv* env, jclass type, jlong shape, jlong categoryBits, jlong maskBits,
+								 jint groupIndex, jboolean invokeContacts )
 {
 	(void)type;
 	b3Filter filter = { (uint64_t)categoryBits, (uint64_t)maskBits, groupIndex };

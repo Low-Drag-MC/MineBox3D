@@ -40,14 +40,10 @@ static float mb3_combine( int mode, float a, float b )
 {
 	switch ( mode )
 	{
-		case MB3_COMBINE_MIN:
-			return a < b ? a : b;
-		case MB3_COMBINE_MULTIPLY:
-			return a * b;
-		case MB3_COMBINE_MAX:
-			return a > b ? a : b;
-		default:
-			return 0.5f * ( a + b );
+		case MB3_COMBINE_MIN: return a < b ? a : b;
+		case MB3_COMBINE_MULTIPLY: return a * b;
+		case MB3_COMBINE_MAX: return a > b ? a : b;
+		default: return 0.5f * ( a + b );
 	}
 }
 

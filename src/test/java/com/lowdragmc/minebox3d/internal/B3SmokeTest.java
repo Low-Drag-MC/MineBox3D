@@ -1,5 +1,7 @@
 package com.lowdragmc.minebox3d.internal;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;
@@ -8,8 +10,6 @@ import com.lowdragmc.minebox3d.physics.ShapeDef;
 import com.lowdragmc.minebox3d.physics.WorldDef;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /** The bridge end to end: the library loads, a world steps, a body falls and lands. */
 class B3SmokeTest {
@@ -26,7 +26,7 @@ class B3SmokeTest {
         try {
             float[] v = new float[3];
             B3.worldGetGravity(world, v);
-            assertArrayEquals(new float[]{0, -9, 0}, v);
+            assertArrayEquals(new float[] {0, -9, 0}, v);
             B3.worldSetFlag(world, 1, false); // continuous: no visible effect without a tunnelling setup
             assertFalse(B3.worldGetFlag(world, 1));
 
@@ -96,7 +96,8 @@ class B3SmokeTest {
             long ground = B3.createBody(world, new BodyDef());
             B3.createBoxShape(ground, new ShapeDef(), 10, 0.5f, 10, 0, 0, 0, 0, 0, 0, 1);
 
-            long ball = B3.createBody(world, new BodyDef().type(BodyType.DYNAMIC).position(0, 5, 0));
+            long ball =
+                    B3.createBody(world, new BodyDef().type(BodyType.DYNAMIC).position(0, 5, 0));
             B3.createSphereShape(ball, new ShapeDef().density(1000), 0, 0, 0, 0.25f);
             assertTrue(B3.bodyGetMass(ball) > 0, "the shape gave the body mass");
 
@@ -122,7 +123,8 @@ class B3SmokeTest {
         int world = B3.createWorld(new WorldDef().gravity(0, 0, 0));
         try {
             double x = 29_999_000.317, z = -29_999_000.719;
-            long body = B3.createBody(world, new BodyDef().type(BodyType.DYNAMIC).position(x, 64.5, z));
+            long body =
+                    B3.createBody(world, new BodyDef().type(BodyType.DYNAMIC).position(x, 64.5, z));
             B3.createSphereShape(body, new ShapeDef(), 0, 0, 0, 0.5f);
             B3.worldStep(world, 1 / 60f, 4);
             double[] transform = new double[7];
@@ -140,8 +142,8 @@ class B3SmokeTest {
         try {
             long body = B3.createBody(world, new BodyDef().type(BodyType.DYNAMIC));
             // a NaN position: Box3D asserts b3IsValidPosition (a rotation off unit length the bridge normalises)
-            Box3DException e = assertThrows(Box3DException.class,
-                    () -> B3.bodySetTransform(body, Double.NaN, 0, 0, 0, 0, 0, 1));
+            Box3DException e =
+                    assertThrows(Box3DException.class, () -> B3.bodySetTransform(body, Double.NaN, 0, 0, 0, 0, 0, 1));
             assertTrue(e.getMessage().contains("b3IsValidPosition"), e.getMessage());
             // and the next call on this thread is clean again
             B3.bodySetTransform(body, 0, 1, 0, 0, 0, 0, 1);
@@ -157,7 +159,8 @@ class B3SmokeTest {
             int n = 16;
             long[] ids = new long[n];
             for (int i = 0; i < n; i++) {
-                ids[i] = B3.createBody(world, new BodyDef().type(BodyType.DYNAMIC).position(i, 2 * i, -i));
+                ids[i] = B3.createBody(
+                        world, new BodyDef().type(BodyType.DYNAMIC).position(i, 2 * i, -i));
             }
             double[] out = new double[7 * n];
             B3.bodiesGetTransforms(ids, n, out);

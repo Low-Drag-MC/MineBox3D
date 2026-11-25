@@ -16,8 +16,9 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin {
 
-    @WrapOperation(method = "calculateEntityAnimation", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/util/Mth;length(DDD)D"))
+    @WrapOperation(
+            method = "calculateEntityAnimation",
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/util/Mth;length(DDD)D"))
     private double minebox3d$stepOnBody(double x, double y, double z, Operation<Double> original) {
         Entity self = (Entity) (Object) this;
         if (self.level().isClientSide && SyncedRiders.placedHere(self)) {

@@ -11,6 +11,7 @@ public final class WheelJointDef extends JointDef<WheelJoint, WheelJointDef> {
     public boolean enableSuspensionLimit;
     /** m along frame A's x axis. */
     public float lowerSuspensionLimit, upperSuspensionLimit;
+
     public boolean enableSpinMotor;
     /** N·m */
     public float maxSpinTorque;
@@ -18,12 +19,14 @@ public final class WheelJointDef extends JointDef<WheelJoint, WheelJointDef> {
     public float spinSpeed;
     /** False: the wheel points straight ahead. */
     public boolean enableSteering;
+
     public float steeringHertz;
     public float steeringDampingRatio;
     /** Radians. */
     public float targetSteeringAngle;
     /** N·m */
     public float maxSteeringTorque;
+
     public boolean enableSteeringLimit;
     /** Radians. */
     public float lowerSteeringLimit, upperSteeringLimit;

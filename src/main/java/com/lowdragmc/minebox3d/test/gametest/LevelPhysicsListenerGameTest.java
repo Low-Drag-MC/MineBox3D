@@ -8,15 +8,14 @@ import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.joml.Vector3d;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * <b>A mod's own part of each physics tick</b>: a tick listener is told before the steps and after them, once a tick — a
@@ -69,10 +68,12 @@ public final class LevelPhysicsListenerGameTest {
             try {
                 helper.assertTrue(heard.size() >= 10, "told every tick: " + heard);
                 for (int i = 0; i < heard.size(); i++) {
-                    helper.assertTrue(heard.get(i).equals(i % 2 == 0 ? "before" : "after"), "before, then after: " + heard);
+                    helper.assertTrue(
+                            heard.get(i).equals(i % 2 == 0 ? "before" : "after"), "before, then after: " + heard);
                 }
                 helper.assertTrue(movedBetween[0], "the falling body moved between the two, not before the first");
-                helper.assertTrue(brokenCalls[0] == 1, "the one that threw was taken off after it threw: " + brokenCalls[0]);
+                helper.assertTrue(
+                        brokenCalls[0] == 1, "the one that threw was taken off after it threw: " + brokenCalls[0]);
                 helper.assertFalse(physics.isStopped(), "and the physics went on");
             } finally {
                 physics.removeTickListener(told);

@@ -10,6 +10,7 @@ public final class PrismaticJointDef extends JointDef<PrismaticJoint, PrismaticJ
     public float dampingRatio;
     /** m: where the spring pulls to. */
     public float targetTranslation;
+
     public boolean enableLimit;
     public float lowerTranslation, upperTranslation;
     public boolean enableMotor;

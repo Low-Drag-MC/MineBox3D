@@ -1,9 +1,8 @@
 package com.lowdragmc.minebox3d.mc;
 
-import net.minecraft.resources.ResourceLocation;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
+import net.minecraft.resources.ResourceLocation;
 
 /**
  * <b>Box3D collision category bits</b> as MineBox3D uses them, and a registry for other mods' own.
@@ -24,8 +23,7 @@ public final class CollisionCategories {
     private static final int FIRST_FREE_BIT = 8;
     private static final Map<ResourceLocation, Long> REGISTERED = new LinkedHashMap<>();
 
-    private CollisionCategories() {
-    }
+    private CollisionCategories() {}
 
     /**
      * A category bit of a mod's own, the same bit for the same id for the life of the process.

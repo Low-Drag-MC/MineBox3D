@@ -15,7 +15,8 @@ import net.minecraft.resources.ResourceLocation;
  */
 public record StandingPayload(int body, float x, float y, float z, boolean vehicle) implements CustomPacketPayload {
 
-    public static final Type<StandingPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(MineBox3D.MOD_ID, "standing"));
+    public static final Type<StandingPayload> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(MineBox3D.MOD_ID, "standing"));
     public static final StreamCodec<FriendlyByteBuf, StandingPayload> CODEC = StreamCodec.of(
             (buffer, payload) -> {
                 buffer.writeBoolean(payload.vehicle);
@@ -29,8 +30,10 @@ public record StandingPayload(int body, float x, float y, float z, boolean vehic
             buffer -> {
                 boolean vehicle = buffer.readBoolean();
                 int body = buffer.readVarInt() - 1;
-                return body < 0 ? off(vehicle)
-                        : new StandingPayload(body, buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), vehicle);
+                return body < 0
+                        ? off(vehicle)
+                        : new StandingPayload(
+                                body, buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), vehicle);
             });
 
     /** On no body. */

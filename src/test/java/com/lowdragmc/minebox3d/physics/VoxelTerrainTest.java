@@ -1,20 +1,18 @@
 package com.lowdragmc.minebox3d.physics;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.Locale;
+import java.util.function.IntBinaryOperator;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3i;
 import org.junit.jupiter.api.Test;
-
-import java.util.Locale;
-import java.util.function.IntBinaryOperator;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * <b>Voxel terrain</b> (design doc {@code 01-voxel-terrain.md}, milestone V1): the Box3D fork's voxel
@@ -57,7 +55,7 @@ class VoxelTerrainTest {
         }
 
         void set(int x, int y, int z, int collider) {
-            grid.setCells(new int[]{x, y, z, collider}, 1);
+            grid.setCells(new int[] {x, y, z, collider}, 1);
         }
 
         /** A floor one cell thick at {@code y}, cell (x, z) taking {@code collider.applyAsInt(x, z)}. */
@@ -103,7 +101,10 @@ class VoxelTerrainTest {
     /** One exposed triangle: its normal, area, and per edge (1 to 2, 2 to 3, 3 to 1) midpoint and flatness. */
     record Face(Vector3f normal, float area, Vector3f[] midpoints, boolean[] flat) {
         Vector3f centre() {
-            return new Vector3f(midpoints[0]).add(midpoints[1]).add(midpoints[2]).div(3);
+            return new Vector3f(midpoints[0])
+                    .add(midpoints[1])
+                    .add(midpoints[2])
+                    .div(3);
         }
     }
 
@@ -118,7 +119,8 @@ class VoxelTerrainTest {
         for (int i = 0; i < count; i++) {
             Vector3f[] p = new Vector3f[3];
             for (int k = 0; k < 3; k++) {
-                p[k] = new Vector3f(v[9 * i + 3 * k], v[9 * i + 3 * k + 1], v[9 * i + 3 * k + 2]).add(16 * sx, 16 * sy, 16 * sz);
+                p[k] = new Vector3f(v[9 * i + 3 * k], v[9 * i + 3 * k + 1], v[9 * i + 3 * k + 2])
+                        .add(16 * sx, 16 * sy, 16 * sz);
             }
             Vector3f cross = new Vector3f(p[1]).sub(p[0]).cross(new Vector3f(p[2]).sub(p[0]));
             Vector3f[] midpoints = new Vector3f[3];
@@ -150,15 +152,16 @@ class VoxelTerrainTest {
             }
             java.util.List<Face> faces = faces(t, 0, 0, 0);
             assertEquals(6 * 9 * 2, faces.size(), "two triangles per outer block face, nothing between blocks");
-            for (float[] n : new float[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
-                assertEquals(9, area(faces, n[0], n[1], n[2]), 1e-4, "a 3 x 3 side facing " + java.util.Arrays.toString(n));
+            for (float[] n : new float[][] {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
+                assertEquals(
+                        9, area(faces, n[0], n[1], n[2]), 1e-4, "a 3 x 3 side facing " + java.util.Arrays.toString(n));
             }
             // an edge on the cube's rim is a real edge; every other one has the same plane carrying on past it
             for (Face face : faces) {
                 for (int e = 0; e < 3; e++) {
                     Vector3f m = face.midpoints[e];
                     int onRim = 0;
-                    for (float c : new float[]{m.x, m.y, m.z}) {
+                    for (float c : new float[] {m.x, m.y, m.z}) {
                         if (Math.abs(c - 1) < 1e-4f || Math.abs(c - 4) < 1e-4f) {
                             onRim++;
                         }
@@ -188,7 +191,9 @@ class VoxelTerrainTest {
             assertEquals(0.5, east, 1e-4);
             // the slab's west side is wholly against the stone
             for (Face face : faces) {
-                assertFalse(face.normal.x < -0.999f && Math.abs(face.midpoints[0].x - 6) < 1e-4f, "slab side against stone");
+                assertFalse(
+                        face.normal.x < -0.999f && Math.abs(face.midpoints[0].x - 6) < 1e-4f,
+                        "slab side against stone");
             }
             // the slab's top meets the stone's side rising above it: that edge is not flat
             for (Face face : faces) {
@@ -214,8 +219,10 @@ class VoxelTerrainTest {
                     }
                     for (int e = 0; e < 3; e++) {
                         Vector3f m = face.midpoints[e];
-                        boolean rim = Math.abs(m.x - 14) < 1e-4f || Math.abs(m.x - 18) < 1e-4f
-                                || Math.abs(m.z - 4) < 1e-4f || Math.abs(m.z - 6) < 1e-4f;
+                        boolean rim = Math.abs(m.x - 14) < 1e-4f
+                                || Math.abs(m.x - 18) < 1e-4f
+                                || Math.abs(m.z - 4) < 1e-4f
+                                || Math.abs(m.z - 6) < 1e-4f;
                         assertEquals(!rim, face.flat[e], "top edge at " + m + " in section " + sx);
                     }
                 }
@@ -231,8 +238,11 @@ class VoxelTerrainTest {
 
     @Test
     void bodiesRestOnTopOfTheFloorAcrossCellAndSectionCorners() {
-        Geometry[] shapes = {Geometry.Box.of(0.25f, 0.25f, 0.25f), new Geometry.Sphere(0, 0, 0, 0.25f),
-                new Geometry.Capsule(-0.3f, 0, 0, 0.3f, 0, 0, 0.25f)};
+        Geometry[] shapes = {
+            Geometry.Box.of(0.25f, 0.25f, 0.25f),
+            new Geometry.Sphere(0, 0, 0, 0.25f),
+            new Geometry.Capsule(-0.3f, 0, 0, 0.3f, 0, 0, 0.25f)
+        };
         // a cell's middle, a cell corner, a section corner (x = 16, z = 16), a negative section corner
         double[][] spots = {{3.5, 3.5}, {5, 7}, {16, 16}, {0, 0}};
         for (Geometry shape : shapes) {
@@ -260,12 +270,12 @@ class VoxelTerrainTest {
 
     // ---- ghost collisions ----------------------------------------------------------------------
 
-    private record Kick(float vertical, float angular) {
-    }
+    private record Kick(float vertical, float angular) {}
 
     /** From x = 8 to past x = 24 along +x, across cell borders and the section border at 16. */
     private static Kick slide(Terrain t, Geometry geometry, double restY, double z, float speed) {
-        Body slider = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(8, restY, z).enableSleep(false));
+        Body slider = t.world.createBody(
+                new BodyDef().type(BodyType.DYNAMIC).position(8, restY, z).enableSleep(false));
         slider.createShape(new ShapeDef().friction(0), geometry);
         t.step(30);
         slider.setLinearVelocity(speed, 0, 0);
@@ -291,7 +301,12 @@ class VoxelTerrainTest {
     }
 
     private enum FloorKind {
-        FULL, BOTTOM_SLABS, STONE_AND_TOP_SLABS, STAIR_TREADS, STONE_THEN_TOP_SLABS, STONE_AND_STAIR_TOPS
+        FULL,
+        BOTTOM_SLABS,
+        STONE_AND_TOP_SLABS,
+        STAIR_TREADS,
+        STONE_THEN_TOP_SLABS,
+        STONE_AND_STAIR_TOPS
     }
 
     /** A stair rising towards −z: its upper half is the front half of the cell, z in [0, 0.5]. */
@@ -300,8 +315,12 @@ class VoxelTerrainTest {
     @Test
     void slidingAcrossCellsAndSectionsDoesNotKick() {
         // small enough to fit on a stair's tread, z in [8, 8.5]
-        Geometry[] bodies = {Geometry.Box.of(0.2f, 0.2f, 0.2f), new Geometry.Capsule(-0.25f, 0, 0, 0.25f, 0, 0, 0.15f),
-                new Geometry.Capsule(0, 0, -0.1f, 0, 0, 0.1f, 0.1f), new Geometry.Sphere(0, 0, 0, 0.2f)};
+        Geometry[] bodies = {
+            Geometry.Box.of(0.2f, 0.2f, 0.2f),
+            new Geometry.Capsule(-0.25f, 0, 0, 0.25f, 0, 0, 0.15f),
+            new Geometry.Capsule(0, 0, -0.1f, 0, 0, 0.1f, 0.1f),
+            new Geometry.Sphere(0, 0, 0, 0.2f)
+        };
         String[] names = {"box", "capsule along", "capsule across", "sphere"};
         float[] halfHeights = {0.2f, 0.15f, 0.1f, 0.2f};
         float[] speeds = {2, 6, 12};
@@ -314,20 +333,26 @@ class VoxelTerrainTest {
             for (int b = 0; b < bodies.length; b++) {
                 for (float speed : speeds) {
                     try (Terrain t = new Terrain()) {
-                        IntBinaryOperator floor = switch (kind) {
-                            case FULL -> (x, z) -> t.full;
-                            case BOTTOM_SLABS -> (x, z) -> t.bottomSlab;
-                            case STONE_AND_TOP_SLABS -> (x, z) -> (x & 1) == 0 ? t.full : t.topSlab;
-                            case STAIR_TREADS -> (x, z) -> t.stairs;
-                            case STONE_THEN_TOP_SLABS -> (x, z) -> x < 16 ? t.full : t.topSlab;
-                            // the lane runs on the stairs' upper half, z in [8, 8.5], with a drop either side
-                            case STONE_AND_STAIR_TOPS -> (x, z) -> (x / 2) % 2 == 0 ? t.full : t.stairsNorth;
-                        };
+                        IntBinaryOperator floor =
+                                switch (kind) {
+                                    case FULL -> (x, z) -> t.full;
+                                    case BOTTOM_SLABS -> (x, z) -> t.bottomSlab;
+                                    case STONE_AND_TOP_SLABS -> (x, z) -> (x & 1) == 0 ? t.full : t.topSlab;
+                                    case STAIR_TREADS -> (x, z) -> t.stairs;
+                                    case STONE_THEN_TOP_SLABS -> (x, z) -> x < 16 ? t.full : t.topSlab;
+                                    // the lane runs on the stairs' upper half, z in [8, 8.5], with a drop either side
+                                    case STONE_AND_STAIR_TOPS -> (x, z) -> (x / 2) % 2 == 0 ? t.full : t.stairsNorth;
+                                };
                         t.floor(0, 32, 0, 16, 0, floor);
                         double top = kind == FloorKind.BOTTOM_SLABS || kind == FloorKind.STAIR_TREADS ? 0.5 : 1;
                         Kick kick = slide(t, bodies[b], top + halfHeights[b] + 0.01, 8.25, speed);
-                        report.append(String.format(Locale.ROOT, "  %-15s %4.0f m/s  vy %.3f  w %.3f%n", names[b], speed,
-                                kick.vertical(), kick.angular()));
+                        report.append(String.format(
+                                Locale.ROOT,
+                                "  %-15s %4.0f m/s  vy %.3f  w %.3f%n",
+                                names[b],
+                                speed,
+                                kick.vertical(),
+                                kick.angular()));
                         if (kick.vertical() > worstVy) {
                             worstVy = kick.vertical();
                             worst = kind + " " + names[b] + " " + speed;
@@ -356,8 +381,12 @@ class VoxelTerrainTest {
     void aCapsuleAcrossAStairsUpperHalfIsNotTurnedAsideAtTheSeam() {
         try (Terrain t = new Terrain()) {
             t.floor(0, 32, 0, 16, 0, (x, z) -> (x / 2) % 2 == 0 ? t.full : t.stairsNorth);
-            Body slider = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(1.5, 1.16, 8.25).enableSleep(false));
-            slider.createShape(new ShapeDef().friction(0).density(500), new Geometry.Capsule(0, 0, -0.2f, 0, 0, 0.2f, 0.15f));
+            Body slider = t.world.createBody(new BodyDef()
+                    .type(BodyType.DYNAMIC)
+                    .position(1.5, 1.16, 8.25)
+                    .enableSleep(false));
+            slider.createShape(
+                    new ShapeDef().friction(0).density(500), new Geometry.Capsule(0, 0, -0.2f, 0, 0, 0.2f, 0.15f));
             t.step(30);
             slider.setLinearVelocity(2, 0, 0);
             Vector3f v = new Vector3f(), w = new Vector3f();
@@ -553,7 +582,9 @@ class VoxelTerrainTest {
             // skimming along faces where the walk visits the very cells whose faces it runs along: the top of a floor
             // that is a section border (the walk clamps into the floor's own cells), its underside and its west side
             t.floor(0, 4, 0, 4, 15, (x, z) -> t.full);
-            assertNull(t.world.castRayClosest(-1, 16, 1.5, 10, 0, 0, QueryFilter.ALL), "along the top at a section border");
+            assertNull(
+                    t.world.castRayClosest(-1, 16, 1.5, 10, 0, 0, QueryFilter.ALL),
+                    "along the top at a section border");
             assertNull(t.world.castRayClosest(-1, 15, 1.5, 10, 0, 0, QueryFilter.ALL), "along the underside");
             assertNull(t.world.castRayClosest(0, 15.5, -1, 0, 0, 10, QueryFilter.ALL), "along the west side");
             CastHit inside = t.world.castRayClosest(-1, 15.5, 1.5, 10, 0, 0, QueryFilter.ALL);
@@ -571,7 +602,7 @@ class VoxelTerrainTest {
     void aRayAlongTheSeamBetweenSolidBlocksHitsThem() {
         try (Terrain t = new Terrain()) {
             t.floor(0, 20, 0, 4, 0, (x, z) -> t.full);
-            for (double[] at : new double[][]{{1, 1.5}, {1.5, 1}, {1, 1}, {16, 1.5}, {16, 2}}) {
+            for (double[] at : new double[][] {{1, 1.5}, {1.5, 1}, {1, 1}, {16, 1.5}, {16, 2}}) {
                 CastHit hit = t.world.castRayClosest(at[0], 5, at[1], 0, -10, 0, QueryFilter.ALL);
                 String where = "down at x " + at[0] + ", z " + at[1];
                 assertNotNull(hit, where);
@@ -597,7 +628,8 @@ class VoxelTerrainTest {
             assertEquals(1, hit.normalY(), 1e-4);
         }
         try (Terrain t = new Terrain()) {
-            // a stair's two boxes meet at y = 0.5 under its back half: inside it, a seam; over its front, its slab's top
+            // a stair's two boxes meet at y = 0.5 under its back half: inside it, a seam; over its front, its slab's
+            // top
             t.set(1, 0, 1, t.stairs);
             CastHit seam = t.world.castRayClosest(0, 0.5, 1.75, 5, 0, 0, QueryFilter.ALL);
             assertNotNull(seam, "between the stair's boxes");
@@ -631,8 +663,8 @@ class VoxelTerrainTest {
             t.floor(0, 32, 0, 16, 0, (x, z) -> t.full);
             t.set(20, 1, 8, t.full);
             // a box just above the floor (2 cm), swept along x across 15 seams and a section border
-            CastHit hit = t.world.castShapeClosest(Geometry.Box.of(0.2f, 0.2f, 0.2f), 4, 1.22, 8.5, new Quaternionf(), 20, 0, 0,
-                    QueryFilter.ALL);
+            CastHit hit = t.world.castShapeClosest(
+                    Geometry.Box.of(0.2f, 0.2f, 0.2f), 4, 1.22, 8.5, new Quaternionf(), 20, 0, 0, QueryFilter.ALL);
             assertNotNull(hit);
             assertEquals(20, hit.x(), 1e-2, "the wall's west face, not a seam on the way");
             assertEquals(-1, hit.normalX(), 1e-3);
@@ -700,7 +732,8 @@ class VoxelTerrainTest {
 
             Body onIce = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(2, 1.26, 1));
             onIce.createShape(new ShapeDef().friction(1), Geometry.Box.of(0.25f, 0.25f, 0.25f));
-            Body onRough = t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(2, 1.26, 3));
+            Body onRough =
+                    t.world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(2, 1.26, 3));
             onRough.createShape(new ShapeDef().friction(1), Geometry.Box.of(0.25f, 0.25f, 0.25f));
             t.step(20);
             onIce.setLinearVelocity(5, 0, 0);

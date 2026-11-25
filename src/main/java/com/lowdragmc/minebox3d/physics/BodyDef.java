@@ -18,9 +18,11 @@ public final class BodyDef {
     public double positionX, positionY, positionZ;
     /** Unit quaternion. */
     public float rotationX, rotationY, rotationZ, rotationW;
+
     public float linearVelocityX, linearVelocityY, linearVelocityZ;
     /** rad/s */
     public float angularVelocityX, angularVelocityY, angularVelocityZ;
+
     public float linearDamping;
     public float angularDamping;
     public float gravityScale;
@@ -28,14 +30,17 @@ public final class BodyDef {
     public float sleepThreshold;
     /** Continuous-collision safety factor, 0.01–0.5. */
     public float safetyFactor;
+
     @Nullable
     public String name;
+
     public long userData;
     /**
      * No turning: the inverse inertia is zero and the angular velocity kept at zero. To keep a body upright yet free to
      * turn about one axis, or to lock its movement along axes, give it a {@link MotionLockJointDef motion lock joint}.
      */
     public boolean fixedRotation;
+
     public boolean enableSleep;
     public boolean awake;
     public boolean bullet;

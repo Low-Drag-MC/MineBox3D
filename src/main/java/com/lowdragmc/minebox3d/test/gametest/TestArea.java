@@ -1,13 +1,12 @@
 package com.lowdragmc.minebox3d.test.gametest;
 
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.Blocks;
-
-import java.util.Collections;
-import java.util.Map;
-import java.util.WeakHashMap;
 
 /**
  * ⚠️ A GameTest structure is walled in barriers (StructureUtils.encaseStructure: the walls always, the
@@ -20,8 +19,7 @@ final class TestArea {
     /** each running test's forced area, relative: {x0, z0, x1, z1} */
     private static final Map<GameTestHelper, int[]> FORCED = Collections.synchronizedMap(new WeakHashMap<>());
 
-    private TestArea() {
-    }
+    private TestArea() {}
 
     /**
      * ⚠️ Entities beyond the structure's own chunk may not tick at all (a stand pushed 30 ticks with tickCount 0): the
@@ -37,7 +35,7 @@ final class TestArea {
             }
         }
         if (forced) {
-            FORCED.put(helper, new int[]{x0, z0, x1, z1});
+            FORCED.put(helper, new int[] {x0, z0, x1, z1});
         } else {
             FORCED.remove(helper);
         }

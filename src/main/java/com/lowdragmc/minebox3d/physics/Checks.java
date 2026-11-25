@@ -7,8 +7,7 @@ package com.lowdragmc.minebox3d.physics;
  */
 final class Checks {
 
-    private Checks() {
-    }
+    private Checks() {}
 
     static void finite(float value, String what) {
         if (!Float.isFinite(value)) {
@@ -58,7 +57,8 @@ final class Checks {
     static void rotation(float x, float y, float z, float w, String what) {
         float lengthSquared = x * x + y * y + z * z + w * w;
         if (!Float.isFinite(lengthSquared) || Math.abs(lengthSquared - 1) > 1e-3f) {
-            throw new IllegalArgumentException(what + " is not a unit quaternion: (" + x + ", " + y + ", " + z + ", " + w + ")");
+            throw new IllegalArgumentException(
+                    what + " is not a unit quaternion: (" + x + ", " + y + ", " + z + ", " + w + ")");
         }
     }
 
@@ -71,7 +71,8 @@ final class Checks {
         // rounding, relative to the size of the numbers (minors go with its square, the determinant its cube)
         double scale = Math.max(1, Math.max(Math.abs(m.m00()), Math.max(Math.abs(m.m11()), Math.abs(m.m22()))));
         double tolerance = 1e-5 * scale;
-        if (Math.abs(m.m01() - m.m10()) > tolerance || Math.abs(m.m02() - m.m20()) > tolerance
+        if (Math.abs(m.m01() - m.m10()) > tolerance
+                || Math.abs(m.m02() - m.m20()) > tolerance
                 || Math.abs(m.m12() - m.m21()) > tolerance) {
             throw new IllegalArgumentException("inertia is not symmetric: " + m);
         }
@@ -79,7 +80,12 @@ final class Checks {
         double xz = (double) m.m00() * m.m22() - (double) m.m02() * m.m20();
         double yz = (double) m.m11() * m.m22() - (double) m.m12() * m.m21();
         double minor = -tolerance * scale;
-        if (m.m00() < 0 || m.m11() < 0 || m.m22() < 0 || xy < minor || xz < minor || yz < minor
+        if (m.m00() < 0
+                || m.m11() < 0
+                || m.m22() < 0
+                || xy < minor
+                || xz < minor
+                || yz < minor
                 || m.determinant() < minor * scale) {
             throw new IllegalArgumentException("inertia is not positive semi-definite: " + m);
         }
@@ -87,7 +93,8 @@ final class Checks {
 
     static void range(float lower, float upper, String what) {
         if (!Float.isFinite(lower) || !Float.isFinite(upper) || lower > upper) {
-            throw new IllegalArgumentException(what + " must be two finite numbers, lower first: " + lower + ", " + upper);
+            throw new IllegalArgumentException(
+                    what + " must be two finite numbers, lower first: " + lower + ", " + upper);
         }
     }
 
@@ -95,7 +102,11 @@ final class Checks {
         notNegative(material.friction, what + " friction");
         notNegative(material.restitution, what + " restitution");
         notNegative(material.rollingResistance, what + " rolling resistance");
-        finite(material.tangentVelocityX, material.tangentVelocityY, material.tangentVelocityZ, what + " tangent velocity");
+        finite(
+                material.tangentVelocityX,
+                material.tangentVelocityY,
+                material.tangentVelocityZ,
+                what + " tangent velocity");
         if ((material.userMaterialId & ~SurfaceMaterial.USER_MATERIAL_BITS) != 0) {
             throw new IllegalArgumentException(what + " user material id uses the top byte, which is MineBox3D's: "
                     + Long.toHexString(material.userMaterialId));
@@ -123,14 +134,20 @@ final class Checks {
         positive(def.contactSpeed, "contact speed");
         positive(def.maximumLinearSpeed, "maximum linear speed");
         if (!(def.isotropicInertiaTolerance >= 0 && def.isotropicInertiaTolerance <= 1)) {
-            throw new IllegalArgumentException("isotropic inertia tolerance is 0 to 1: " + def.isotropicInertiaTolerance);
+            throw new IllegalArgumentException(
+                    "isotropic inertia tolerance is 0 to 1: " + def.isotropicInertiaTolerance);
         }
         if (def.restitutionIterations < 0 || def.workerCount < 0) {
             throw new IllegalArgumentException("restitution iterations and worker count must not be negative");
         }
         // Box3D sizes its arrays as int byte counts: a capacity in the tens of millions wraps
-        for (int capacity : new int[]{def.staticShapeCapacity, def.dynamicShapeCapacity, def.staticBodyCapacity,
-                def.dynamicBodyCapacity, def.contactCapacity}) {
+        for (int capacity : new int[] {
+            def.staticShapeCapacity,
+            def.dynamicShapeCapacity,
+            def.staticBodyCapacity,
+            def.dynamicBodyCapacity,
+            def.contactCapacity
+        }) {
             if (capacity < 0 || capacity > MAX_CAPACITY) {
                 throw new IllegalArgumentException("a capacity is 0 to " + MAX_CAPACITY + ": " + capacity);
             }
@@ -181,8 +198,7 @@ final class Checks {
                     throw new IllegalArgumentException("mesh scale has a zero axis");
                 }
             }
-            case Geometry.HeightField f -> {
-            }
+            case Geometry.HeightField f -> {}
         }
     }
 

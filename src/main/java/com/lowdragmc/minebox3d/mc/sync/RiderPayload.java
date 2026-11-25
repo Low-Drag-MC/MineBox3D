@@ -1,13 +1,12 @@
 package com.lowdragmc.minebox3d.mc.sync;
 
 import com.lowdragmc.minebox3d.MineBox3D;
+import java.util.ArrayList;
+import java.util.List;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * <b>Where entities stand on synced bodies</b> (design doc {@code 04-entities-and-bodies.md} §11.2 #3): server to one
@@ -19,7 +18,8 @@ import java.util.List;
  */
 public record RiderPayload(List<Rider> riders) implements CustomPacketPayload {
 
-    public static final Type<RiderPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(MineBox3D.MOD_ID, "riders"));
+    public static final Type<RiderPayload> TYPE =
+            new Type<>(ResourceLocation.fromNamespaceAndPath(MineBox3D.MOD_ID, "riders"));
     public static final StreamCodec<FriendlyByteBuf, RiderPayload> CODEC = StreamCodec.of(
             (buffer, payload) -> {
                 buffer.writeVarInt(payload.riders.size());
@@ -43,15 +43,26 @@ public record RiderPayload(List<Rider> riders) implements CustomPacketPayload {
                 for (int i = 0; i < count; i++) {
                     int entity = buffer.readVarInt();
                     int body = buffer.readVarInt() - 1;
-                    riders.add(body < 0 ? Rider.off(entity) : new Rider(entity, body, buffer.readFloat(), buffer.readFloat(),
-                            buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat(), buffer.readFloat()));
+                    riders.add(
+                            body < 0
+                                    ? Rider.off(entity)
+                                    : new Rider(
+                                            entity,
+                                            body,
+                                            buffer.readFloat(),
+                                            buffer.readFloat(),
+                                            buffer.readFloat(),
+                                            buffer.readFloat(),
+                                            buffer.readFloat(),
+                                            buffer.readFloat(),
+                                            buffer.readFloat()));
                 }
                 return new RiderPayload(riders);
             });
 
     /** An entity on a body, or off one ({@code body} -1). */
-    public record Rider(int entity, int body, float x, float y, float z, float yaw, float headYaw, float bodyYaw,
-                        float pitch) {
+    public record Rider(
+            int entity, int body, float x, float y, float z, float yaw, float headYaw, float bodyYaw, float pitch) {
 
         public static Rider off(int entity) {
             return new Rider(entity, -1, 0, 0, 0, 0, 0, 0, 0);
@@ -59,9 +70,14 @@ public record RiderPayload(List<Rider> riders) implements CustomPacketPayload {
 
         /** Whether the client, told {@code other}, would place the entity no differently. */
         boolean sameAs(Rider other) {
-            return other != null && other.body == body && Math.abs(other.x - x) < 1e-4f && Math.abs(other.y - y) < 1e-4f
-                    && Math.abs(other.z - z) < 1e-4f && Math.abs(other.yaw - yaw) < 0.05f
-                    && Math.abs(other.headYaw - headYaw) < 0.05f && Math.abs(other.bodyYaw - bodyYaw) < 0.05f
+            return other != null
+                    && other.body == body
+                    && Math.abs(other.x - x) < 1e-4f
+                    && Math.abs(other.y - y) < 1e-4f
+                    && Math.abs(other.z - z) < 1e-4f
+                    && Math.abs(other.yaw - yaw) < 0.05f
+                    && Math.abs(other.headYaw - headYaw) < 0.05f
+                    && Math.abs(other.bodyYaw - bodyYaw) < 0.05f
                     && Math.abs(other.pitch - pitch) < 0.05f;
         }
     }

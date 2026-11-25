@@ -2,9 +2,8 @@ package com.lowdragmc.minebox3d.physics;
 
 import com.lowdragmc.minebox3d.internal.B3;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
-import org.joml.Quaternionfc;
-
 import java.util.Objects;
+import org.joml.Quaternionfc;
 
 /**
  * Everything a {@link ConstraintJoint} does besides its bodies and frames — UE's {@code FConstraintProfileProperties},
@@ -21,6 +20,7 @@ public final class ConstraintJointSettings {
     public ConstraintMotion linearMotionZ = ConstraintMotion.LOCKED;
     /** How far the anchor may move along the limited axes together: within a sphere, a circle or a band. */
     public float linearLimit;
+
     public final ConstraintLimitResponse linearLimitResponse = new ConstraintLimitResponse();
 
     /** About frame B's x axis. */
@@ -33,12 +33,14 @@ public final class ConstraintJointSettings {
     public float lowerTwistLimit, upperTwistLimit;
     /** Each swing's half angle either way. */
     public float swing1Limit, swing2Limit;
+
     public SwingLimitShape swingLimitShape = SwingLimitShape.ELLIPSE;
     public final ConstraintLimitResponse twistLimitResponse = new ConstraintLimitResponse();
     public final ConstraintLimitResponse swingLimitResponse = new ConstraintLimitResponse();
 
     /** Along frame A's axes; a drive on a locked axis does nothing. */
     public final ConstraintDrive linearDriveX = new ConstraintDrive();
+
     public final ConstraintDrive linearDriveY = new ConstraintDrive();
     public final ConstraintDrive linearDriveZ = new ConstraintDrive();
     /** Where the linear drives pull frame B's anchor, in frame A. */
@@ -52,7 +54,10 @@ public final class ConstraintJointSettings {
     /** Both swings. */
     public final ConstraintDrive swingDrive = new ConstraintDrive();
     /** Frame B relative to frame A that the angular drive pulls toward. */
-    public float angularOrientationTargetX, angularOrientationTargetY, angularOrientationTargetZ, angularOrientationTargetW = 1;
+    public float angularOrientationTargetX,
+            angularOrientationTargetY,
+            angularOrientationTargetZ,
+            angularOrientationTargetW = 1;
     /** rad/s. Slerp: a vector in frame A; twist and swing: x the twist's rate, y swing 2's, z swing 1's. */
     public float angularVelocityTargetX, angularVelocityTargetY, angularVelocityTargetZ;
 
@@ -197,9 +202,14 @@ public final class ConstraintJointSettings {
         slerpDrive.check("slerp drive");
         twistDrive.check("twist drive");
         swingDrive.check("swing drive");
-        Checks.rotation(angularOrientationTargetX, angularOrientationTargetY, angularOrientationTargetZ,
-                angularOrientationTargetW, "angular orientation target");
-        Checks.finite(angularVelocityTargetX, angularVelocityTargetY, angularVelocityTargetZ, "angular velocity target");
+        Checks.rotation(
+                angularOrientationTargetX,
+                angularOrientationTargetY,
+                angularOrientationTargetZ,
+                angularOrientationTargetW,
+                "angular orientation target");
+        Checks.finite(
+                angularVelocityTargetX, angularVelocityTargetY, angularVelocityTargetZ, "angular velocity target");
         if (!(parentInverseMassScale >= 0 && parentInverseMassScale <= 1)) {
             throw new IllegalArgumentException("parent inverse mass scale must be 0 to 1: " + parentInverseMassScale);
         }
@@ -207,22 +217,34 @@ public final class ConstraintJointSettings {
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof ConstraintJointSettings s && linearMotionX == s.linearMotionX && linearMotionY == s.linearMotionY
-                && linearMotionZ == s.linearMotionZ && Float.compare(linearLimit, s.linearLimit) == 0
-                && linearLimitResponse.equals(s.linearLimitResponse) && twistMotion == s.twistMotion
-                && swing1Motion == s.swing1Motion && swing2Motion == s.swing2Motion
-                && Float.compare(lowerTwistLimit, s.lowerTwistLimit) == 0 && Float.compare(upperTwistLimit, s.upperTwistLimit) == 0
-                && Float.compare(swing1Limit, s.swing1Limit) == 0 && Float.compare(swing2Limit, s.swing2Limit) == 0
-                && swingLimitShape == s.swingLimitShape && twistLimitResponse.equals(s.twistLimitResponse)
-                && swingLimitResponse.equals(s.swingLimitResponse) && linearDriveX.equals(s.linearDriveX)
-                && linearDriveY.equals(s.linearDriveY) && linearDriveZ.equals(s.linearDriveZ)
+        return o instanceof ConstraintJointSettings s
+                && linearMotionX == s.linearMotionX
+                && linearMotionY == s.linearMotionY
+                && linearMotionZ == s.linearMotionZ
+                && Float.compare(linearLimit, s.linearLimit) == 0
+                && linearLimitResponse.equals(s.linearLimitResponse)
+                && twistMotion == s.twistMotion
+                && swing1Motion == s.swing1Motion
+                && swing2Motion == s.swing2Motion
+                && Float.compare(lowerTwistLimit, s.lowerTwistLimit) == 0
+                && Float.compare(upperTwistLimit, s.upperTwistLimit) == 0
+                && Float.compare(swing1Limit, s.swing1Limit) == 0
+                && Float.compare(swing2Limit, s.swing2Limit) == 0
+                && swingLimitShape == s.swingLimitShape
+                && twistLimitResponse.equals(s.twistLimitResponse)
+                && swingLimitResponse.equals(s.swingLimitResponse)
+                && linearDriveX.equals(s.linearDriveX)
+                && linearDriveY.equals(s.linearDriveY)
+                && linearDriveZ.equals(s.linearDriveZ)
                 && Float.compare(linearPositionTargetX, s.linearPositionTargetX) == 0
                 && Float.compare(linearPositionTargetY, s.linearPositionTargetY) == 0
                 && Float.compare(linearPositionTargetZ, s.linearPositionTargetZ) == 0
                 && Float.compare(linearVelocityTargetX, s.linearVelocityTargetX) == 0
                 && Float.compare(linearVelocityTargetY, s.linearVelocityTargetY) == 0
                 && Float.compare(linearVelocityTargetZ, s.linearVelocityTargetZ) == 0
-                && angularDriveMode == s.angularDriveMode && slerpDrive.equals(s.slerpDrive) && twistDrive.equals(s.twistDrive)
+                && angularDriveMode == s.angularDriveMode
+                && slerpDrive.equals(s.slerpDrive)
+                && twistDrive.equals(s.twistDrive)
                 && swingDrive.equals(s.swingDrive)
                 && Float.compare(angularOrientationTargetX, s.angularOrientationTargetX) == 0
                 && Float.compare(angularOrientationTargetY, s.angularOrientationTargetY) == 0
@@ -237,9 +259,30 @@ public final class ConstraintJointSettings {
 
     @Override
     public int hashCode() {
-        return Objects.hash(linearMotionX, linearMotionY, linearMotionZ, linearLimit, linearLimitResponse, twistMotion,
-                swing1Motion, swing2Motion, lowerTwistLimit, upperTwistLimit, swing1Limit, swing2Limit, swingLimitShape,
-                twistLimitResponse, swingLimitResponse, linearDriveX, linearDriveY, linearDriveZ, angularDriveMode,
-                slerpDrive, twistDrive, swingDrive, parentInverseMassScale, massConditioning);
+        return Objects.hash(
+                linearMotionX,
+                linearMotionY,
+                linearMotionZ,
+                linearLimit,
+                linearLimitResponse,
+                twistMotion,
+                swing1Motion,
+                swing2Motion,
+                lowerTwistLimit,
+                upperTwistLimit,
+                swing1Limit,
+                swing2Limit,
+                swingLimitShape,
+                twistLimitResponse,
+                swingLimitResponse,
+                linearDriveX,
+                linearDriveY,
+                linearDriveZ,
+                angularDriveMode,
+                slerpDrive,
+                twistDrive,
+                swingDrive,
+                parentInverseMassScale,
+                massConditioning);
     }
 }

@@ -16,6 +16,5 @@ public final class FilterJointDef extends JointDef<FilterJoint, FilterJointDef> 
     }
 
     @Override
-    void checkFields() {
-    }
+    void checkFields() {}
 }

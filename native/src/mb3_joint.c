@@ -22,9 +22,9 @@ typedef struct mb3_def_field
 	char kind;
 	size_t offset;
 	jfieldID id;
-	int classIndex;					  // 'E', 'O': the field's class in B3.boundClasses
-	const char* signature;			  // 'E', 'O'
-	struct mb3_def_field* fields;	  // 'O'
+	int classIndex;				  // 'E', 'O': the field's class in B3.boundClasses
+	const char* signature;		  // 'E', 'O'
+	struct mb3_def_field* fields; // 'O'
 	int count;
 } mb3_def_field;
 
@@ -32,9 +32,9 @@ typedef struct mb3_def_field
 #define MB3_TABLE( a ) a, (int)( sizeof( a ) / sizeof( ( a )[0] ) )
 #define MB3_F( type, member, javaName ) { javaName, 'F', offsetof( type, member ), NULL, 0, NULL, NULL, 0 }
 #define MB3_Z( type, member, javaName ) { javaName, 'Z', offsetof( type, member ), NULL, 0, NULL, NULL, 0 }
-#define MB3_E( type, member, javaName, classIndex, javaClass )                                                                   \
+#define MB3_E( type, member, javaName, classIndex, javaClass )                                                         \
 	{ javaName, 'E', offsetof( type, member ), NULL, classIndex, MB3_PHYSICS javaClass ";", NULL, 0 }
-#define MB3_O( type, member, javaName, classIndex, javaClass, table )                                                            \
+#define MB3_O( type, member, javaName, classIndex, javaClass, table )                                                  \
 	{ javaName, 'O', offsetof( type, member ), NULL, classIndex, MB3_PHYSICS javaClass ";", MB3_TABLE( table ) }
 
 // The constants of each Java enum a table names, by class index, for writing a C enum back
@@ -222,11 +222,13 @@ static mb3_def_field s_constraintResponseFields[] = {
 	MB3_F( b3ConstraintLimitResponse, restitution, "restitution" ),
 };
 
-#define MB3_MOTION( member ) MB3_E( b3ConstraintJointSettings, member, #member, MB3_CLASS_CONSTRAINT_MOTION, "ConstraintMotion" )
-#define MB3_DRIVE( member )                                                                                                     \
-	MB3_O( b3ConstraintJointSettings, member, #member, MB3_CLASS_CONSTRAINT_DRIVE, "ConstraintDrive", s_constraintDriveFields )
-#define MB3_RESPONSE( member )                                                                                                  \
-	MB3_O( b3ConstraintJointSettings, member, #member, MB3_CLASS_CONSTRAINT_LIMIT_RESPONSE, "ConstraintLimitResponse",          \
+#define MB3_MOTION( member )                                                                                           \
+	MB3_E( b3ConstraintJointSettings, member, #member, MB3_CLASS_CONSTRAINT_MOTION, "ConstraintMotion" )
+#define MB3_DRIVE( member )                                                                                            \
+	MB3_O( b3ConstraintJointSettings, member, #member, MB3_CLASS_CONSTRAINT_DRIVE, "ConstraintDrive",                  \
+		   s_constraintDriveFields )
+#define MB3_RESPONSE( member )                                                                                         \
+	MB3_O( b3ConstraintJointSettings, member, #member, MB3_CLASS_CONSTRAINT_LIMIT_RESPONSE, "ConstraintLimitResponse", \
 		   s_constraintResponseFields )
 
 static mb3_def_field s_constraintSettingsFields[] = {
@@ -242,7 +244,8 @@ static mb3_def_field s_constraintSettingsFields[] = {
 	MB3_F( b3ConstraintJointSettings, upperTwistLimit, "upperTwistLimit" ),
 	MB3_F( b3ConstraintJointSettings, swing1Limit, "swing1Limit" ),
 	MB3_F( b3ConstraintJointSettings, swing2Limit, "swing2Limit" ),
-	MB3_E( b3ConstraintJointSettings, swingLimitShape, "swingLimitShape", MB3_CLASS_SWING_LIMIT_SHAPE, "SwingLimitShape" ),
+	MB3_E( b3ConstraintJointSettings, swingLimitShape, "swingLimitShape", MB3_CLASS_SWING_LIMIT_SHAPE,
+		   "SwingLimitShape" ),
 	MB3_RESPONSE( twistLimitResponse ),
 	MB3_RESPONSE( swingLimitResponse ),
 	MB3_DRIVE( linearDriveX ),
@@ -254,7 +257,8 @@ static mb3_def_field s_constraintSettingsFields[] = {
 	MB3_F( b3ConstraintJointSettings, linearVelocityTarget.x, "linearVelocityTargetX" ),
 	MB3_F( b3ConstraintJointSettings, linearVelocityTarget.y, "linearVelocityTargetY" ),
 	MB3_F( b3ConstraintJointSettings, linearVelocityTarget.z, "linearVelocityTargetZ" ),
-	MB3_E( b3ConstraintJointSettings, angularDriveMode, "angularDriveMode", MB3_CLASS_ANGULAR_DRIVE_MODE, "AngularDriveMode" ),
+	MB3_E( b3ConstraintJointSettings, angularDriveMode, "angularDriveMode", MB3_CLASS_ANGULAR_DRIVE_MODE,
+		   "AngularDriveMode" ),
 	MB3_DRIVE( slerpDrive ),
 	MB3_DRIVE( twistDrive ),
 	MB3_DRIVE( swingDrive ),
@@ -305,7 +309,10 @@ static bool mb3_lookup_fields( JNIEnv* env, jobjectArray classes, jclass type, m
 	for ( int i = 0; i < count; ++i )
 	{
 		mb3_def_field* field = fields + i;
-		const char* signature = field->kind == 'F' ? "F" : field->kind == 'Z' ? "Z" : field->kind == 'J' ? "J" : field->signature;
+		const char* signature = field->kind == 'F'	 ? "F"
+								: field->kind == 'Z' ? "Z"
+								: field->kind == 'J' ? "J"
+													 : field->signature;
 		field->id = ( *env )->GetFieldID( env, type, field->name, signature );
 		if ( field->id == NULL )
 		{
@@ -374,9 +381,7 @@ static void mb3_fields_to_java( JNIEnv* env, jobject target, const void* def, co
 		const char* at = base + fields[i].offset;
 		switch ( fields[i].kind )
 		{
-			case 'F':
-				( *env )->SetFloatField( env, target, fields[i].id, *(const float*)at );
-				break;
+			case 'F': ( *env )->SetFloatField( env, target, fields[i].id, *(const float*)at ); break;
 			case 'Z':
 				( *env )->SetBooleanField( env, target, fields[i].id, *(const bool*)at ? JNI_TRUE : JNI_FALSE );
 				break;
@@ -402,9 +407,7 @@ static void mb3_fields_to_java( JNIEnv* env, jobject target, const void* def, co
 				}
 				break;
 			}
-			default:
-				( *env )->SetLongField( env, target, fields[i].id, (jlong)( *(void* const*)at ) );
-				break;
+			default: ( *env )->SetLongField( env, target, fields[i].id, (jlong)( *(void* const*)at ) ); break;
 		}
 	}
 }
@@ -418,12 +421,8 @@ static bool mb3_fields_from_java( JNIEnv* env, jobject source, void* def, const 
 		char* at = base + fields[i].offset;
 		switch ( fields[i].kind )
 		{
-			case 'F':
-				*(float*)at = ( *env )->GetFloatField( env, source, fields[i].id );
-				break;
-			case 'Z':
-				*(bool*)at = ( *env )->GetBooleanField( env, source, fields[i].id ) != JNI_FALSE;
-				break;
+			case 'F': *(float*)at = ( *env )->GetFloatField( env, source, fields[i].id ); break;
+			case 'Z': *(bool*)at = ( *env )->GetBooleanField( env, source, fields[i].id ) != JNI_FALSE; break;
 			case 'E':
 			{
 				jobject value = ( *env )->GetObjectField( env, source, fields[i].id );
@@ -453,9 +452,7 @@ static bool mb3_fields_from_java( JNIEnv* env, jobject source, void* def, const 
 				}
 				break;
 			}
-			default:
-				*(void**)at = (void*)(intptr_t)( *env )->GetLongField( env, source, fields[i].id );
-				break;
+			default: *(void**)at = (void*)(intptr_t)( *env )->GetLongField( env, source, fields[i].id ); break;
 		}
 	}
 	return true;
@@ -483,47 +480,20 @@ static bool mb3_default_joint_def( int jointType, mb3_any_joint_def* def )
 {
 	switch ( jointType )
 	{
-		case b3_parallelJoint:
-			def->parallel = b3DefaultParallelJointDef();
-			return true;
-		case b3_distanceJoint:
-			def->distance = b3DefaultDistanceJointDef();
-			return true;
-		case b3_filterJoint:
-			def->filter = b3DefaultFilterJointDef();
-			return true;
-		case b3_motorJoint:
-			def->motor = b3DefaultMotorJointDef();
-			return true;
-		case b3_prismaticJoint:
-			def->prismatic = b3DefaultPrismaticJointDef();
-			return true;
-		case b3_revoluteJoint:
-			def->revolute = b3DefaultRevoluteJointDef();
-			return true;
-		case b3_sphericalJoint:
-			def->spherical = b3DefaultSphericalJointDef();
-			return true;
-		case b3_weldJoint:
-			def->weld = b3DefaultWeldJointDef();
-			return true;
-		case b3_wheelJoint:
-			def->wheel = b3DefaultWheelJointDef();
-			return true;
-		case b3_moverJoint:
-			def->mover = b3DefaultMoverJointDef();
-			return true;
-		case b3_pogoJoint:
-			def->pogo = b3DefaultPogoJointDef();
-			return true;
-		case b3_motionLockJoint:
-			def->motionLock = b3DefaultMotionLockJointDef();
-			return true;
-		case b3_constraintJoint:
-			def->constraint = b3DefaultConstraintJointDef();
-			return true;
-		default:
-			return false;
+		case b3_parallelJoint: def->parallel = b3DefaultParallelJointDef(); return true;
+		case b3_distanceJoint: def->distance = b3DefaultDistanceJointDef(); return true;
+		case b3_filterJoint: def->filter = b3DefaultFilterJointDef(); return true;
+		case b3_motorJoint: def->motor = b3DefaultMotorJointDef(); return true;
+		case b3_prismaticJoint: def->prismatic = b3DefaultPrismaticJointDef(); return true;
+		case b3_revoluteJoint: def->revolute = b3DefaultRevoluteJointDef(); return true;
+		case b3_sphericalJoint: def->spherical = b3DefaultSphericalJointDef(); return true;
+		case b3_weldJoint: def->weld = b3DefaultWeldJointDef(); return true;
+		case b3_wheelJoint: def->wheel = b3DefaultWheelJointDef(); return true;
+		case b3_moverJoint: def->mover = b3DefaultMoverJointDef(); return true;
+		case b3_pogoJoint: def->pogo = b3DefaultPogoJointDef(); return true;
+		case b3_motionLockJoint: def->motionLock = b3DefaultMotionLockJointDef(); return true;
+		case b3_constraintJoint: def->constraint = b3DefaultConstraintJointDef(); return true;
+		default: return false;
 	}
 }
 
@@ -566,54 +536,28 @@ MB3_JNI( jlong, createJoint )( JNIEnv* env, jclass type, jint world, jint jointT
 	}
 	else if ( jointType == b3_constraintJoint )
 	{
-		def.constraint.settings.angularOrientationTarget = mb3_normalized( def.constraint.settings.angularOrientationTarget );
+		def.constraint.settings.angularOrientationTarget =
+			mb3_normalized( def.constraint.settings.angularOrientationTarget );
 	}
 
 	b3WorldId worldId = mb3_world( world );
 	b3JointId id = b3_nullJointId;
 	switch ( jointType )
 	{
-		case b3_parallelJoint:
-			id = b3CreateParallelJoint( worldId, &def.parallel );
-			break;
-		case b3_distanceJoint:
-			id = b3CreateDistanceJoint( worldId, &def.distance );
-			break;
-		case b3_filterJoint:
-			id = b3CreateFilterJoint( worldId, &def.filter );
-			break;
-		case b3_motorJoint:
-			id = b3CreateMotorJoint( worldId, &def.motor );
-			break;
-		case b3_prismaticJoint:
-			id = b3CreatePrismaticJoint( worldId, &def.prismatic );
-			break;
-		case b3_revoluteJoint:
-			id = b3CreateRevoluteJoint( worldId, &def.revolute );
-			break;
-		case b3_sphericalJoint:
-			id = b3CreateSphericalJoint( worldId, &def.spherical );
-			break;
-		case b3_weldJoint:
-			id = b3CreateWeldJoint( worldId, &def.weld );
-			break;
-		case b3_wheelJoint:
-			id = b3CreateWheelJoint( worldId, &def.wheel );
-			break;
-		case b3_moverJoint:
-			id = b3CreateMoverJoint( worldId, &def.mover );
-			break;
-		case b3_pogoJoint:
-			id = b3CreatePogoJoint( worldId, &def.pogo );
-			break;
-		case b3_motionLockJoint:
-			id = b3CreateMotionLockJoint( worldId, &def.motionLock );
-			break;
-		case b3_constraintJoint:
-			id = b3CreateConstraintJoint( worldId, &def.constraint );
-			break;
-		default:
-			break;
+		case b3_parallelJoint: id = b3CreateParallelJoint( worldId, &def.parallel ); break;
+		case b3_distanceJoint: id = b3CreateDistanceJoint( worldId, &def.distance ); break;
+		case b3_filterJoint: id = b3CreateFilterJoint( worldId, &def.filter ); break;
+		case b3_motorJoint: id = b3CreateMotorJoint( worldId, &def.motor ); break;
+		case b3_prismaticJoint: id = b3CreatePrismaticJoint( worldId, &def.prismatic ); break;
+		case b3_revoluteJoint: id = b3CreateRevoluteJoint( worldId, &def.revolute ); break;
+		case b3_sphericalJoint: id = b3CreateSphericalJoint( worldId, &def.spherical ); break;
+		case b3_weldJoint: id = b3CreateWeldJoint( worldId, &def.weld ); break;
+		case b3_wheelJoint: id = b3CreateWheelJoint( worldId, &def.wheel ); break;
+		case b3_moverJoint: id = b3CreateMoverJoint( worldId, &def.mover ); break;
+		case b3_pogoJoint: id = b3CreatePogoJoint( worldId, &def.pogo ); break;
+		case b3_motionLockJoint: id = b3CreateMotionLockJoint( worldId, &def.motionLock ); break;
+		case b3_constraintJoint: id = b3CreateConstraintJoint( worldId, &def.constraint ); break;
+		default: break;
 	}
 	// A failed check does not stop Box3D making the joint: Java never gets its id, so it would be an orphan
 	if ( mb3_assert_pending() && B3_IS_NON_NULL( id ) )
@@ -655,8 +599,8 @@ MB3_JNI( jint, jointGetType )( JNIEnv* env, jclass type, jlong joint )
 }
 
 // Frame A or B in that body's space, from its origin.
-MB3_JNI( void, jointSetLocalFrame )( JNIEnv* env, jclass type, jlong joint, jboolean frameB, jfloat px, jfloat py, jfloat pz,
-									 jfloat qx, jfloat qy, jfloat qz, jfloat qw )
+MB3_JNI( void, jointSetLocalFrame )( JNIEnv* env, jclass type, jlong joint, jboolean frameB, jfloat px, jfloat py,
+									 jfloat pz, jfloat qx, jfloat qy, jfloat qz, jfloat qw )
 {
 	(void)type;
 	b3Transform frame = { mb3_vec3( px, py, pz ), mb3_quat( qx, qy, qz, qw ) };
@@ -674,7 +618,8 @@ MB3_JNI( void, jointSetLocalFrame )( JNIEnv* env, jclass type, jlong joint, jboo
 MB3_JNI( void, jointGetLocalFrame )( JNIEnv* env, jclass type, jlong joint, jboolean frameB, jfloatArray out )
 {
 	(void)type;
-	b3Transform frame = frameB ? b3Joint_GetLocalFrameB( mb3_joint( joint ) ) : b3Joint_GetLocalFrameA( mb3_joint( joint ) );
+	b3Transform frame =
+		frameB ? b3Joint_GetLocalFrameB( mb3_joint( joint ) ) : b3Joint_GetLocalFrameA( mb3_joint( joint ) );
 	if ( mb3_check( env ) == false )
 	{
 		float values[7] = { frame.p.x, frame.p.y, frame.p.z, frame.q.v.x, frame.q.v.y, frame.q.v.z, frame.q.s };
@@ -971,9 +916,7 @@ MB3_JNI( void, jointSet )( JNIEnv* env, jclass type, jlong joint, jint param, jf
 		case MB3_JP_MOTION_LOCK_LINEAR_Z: b3MotionLockJoint_EnableLinearLock( id, 2, on ); break;
 		case MB3_JP_MOTION_LOCK_ANGULAR: b3MotionLockJoint_EnableAngularLock( id, on ); break;
 
-		default:
-			mb3_throw_illegal_argument( env, "not a joint property that can be set" );
-			return;
+		default: mb3_throw_illegal_argument( env, "not a joint property that can be set" ); return;
 	}
 	mb3_check( env );
 }
@@ -994,7 +937,10 @@ MB3_JNI( jint, jointGet )( JNIEnv* env, jclass type, jlong joint, jint param, jf
 	{
 		case MB3_JP_FORCE_THRESHOLD: v[0] = b3Joint_GetForceThreshold( id ); break;
 		case MB3_JP_TORQUE_THRESHOLD: v[0] = b3Joint_GetTorqueThreshold( id ); break;
-		case MB3_JP_CONSTRAINT_TUNING: b3Joint_GetConstraintTuning( id, v, v + 1 ); n = 2; break;
+		case MB3_JP_CONSTRAINT_TUNING:
+			b3Joint_GetConstraintTuning( id, v, v + 1 );
+			n = 2;
+			break;
 		case MB3_JP_COLLIDE_CONNECTED: v[0] = b3Joint_GetCollideConnected( id ); break;
 		case MB3_JP_LINEAR_SEPARATION: v[0] = b3Joint_GetLinearSeparation( id ); break;
 		case MB3_JP_ANGULAR_SEPARATION: v[0] = b3Joint_GetAngularSeparation( id ); break;
@@ -1004,7 +950,10 @@ MB3_JNI( jint, jointGet )( JNIEnv* env, jclass type, jlong joint, jint param, jf
 
 		case MB3_JP_DISTANCE_LENGTH: v[0] = b3DistanceJoint_GetLength( id ); break;
 		case MB3_JP_DISTANCE_SPRING: v[0] = b3DistanceJoint_IsSpringEnabled( id ); break;
-		case MB3_JP_DISTANCE_SPRING_FORCE_RANGE: b3DistanceJoint_GetSpringForceRange( id, v, v + 1 ); n = 2; break;
+		case MB3_JP_DISTANCE_SPRING_FORCE_RANGE:
+			b3DistanceJoint_GetSpringForceRange( id, v, v + 1 );
+			n = 2;
+			break;
 		case MB3_JP_DISTANCE_HERTZ: v[0] = b3DistanceJoint_GetSpringHertz( id ); break;
 		case MB3_JP_DISTANCE_DAMPING: v[0] = b3DistanceJoint_GetSpringDampingRatio( id ); break;
 		case MB3_JP_DISTANCE_LIMIT: v[0] = b3DistanceJoint_IsLimitEnabled( id ); break;
@@ -1144,9 +1093,7 @@ MB3_JNI( jint, jointGet )( JNIEnv* env, jclass type, jlong joint, jint param, jf
 		case MB3_JP_MOTION_LOCK_LINEAR_Z: v[0] = b3MotionLockJoint_IsLinearLockEnabled( id, 2 ); break;
 		case MB3_JP_MOTION_LOCK_ANGULAR: v[0] = b3MotionLockJoint_IsAngularLockEnabled( id ); break;
 
-		default:
-			mb3_throw_illegal_argument( env, "not a joint property that can be read" );
-			return 0;
+		default: mb3_throw_illegal_argument( env, "not a joint property that can be read" ); return 0;
 	}
 	goto put;
 
@@ -1292,9 +1239,10 @@ static jlong* mb3_constraint_batch( JNIEnv* env, jlongArray joints, jint count, 
 	return ids;
 }
 
-// Per joint: [linear position xyz, linear velocity xyz, orientation xyzw, angular velocity xyz], as the settings' targets
-MB3_JNI( void, constraintJointsSetTargets )( JNIEnv* env, jclass type, jlongArray joints, jint count, jfloatArray values,
-											 jboolean wake )
+// Per joint: [linear position xyz, linear velocity xyz, orientation xyzw, angular velocity xyz], as the settings'
+// targets
+MB3_JNI( void, constraintJointsSetTargets )( JNIEnv* env, jclass type, jlongArray joints, jint count,
+											 jfloatArray values, jboolean wake )
 {
 	(void)type;
 	jlong* ids = mb3_constraint_batch( env, joints, count, values, MB3_CONSTRAINT_TARGET );
@@ -1310,7 +1258,8 @@ MB3_JNI( void, constraintJointsSetTargets )( JNIEnv* env, jclass type, jlongArra
 			const jfloat* t = v + MB3_CONSTRAINT_TARGET * i;
 			b3JointId id = mb3_joint( ids[i] );
 			b3ConstraintJoint_SetLinearDriveTarget( id, mb3_vec3( t[0], t[1], t[2] ), mb3_vec3( t[3], t[4], t[5] ) );
-			b3ConstraintJoint_SetAngularDriveTarget( id, mb3_quat( t[6], t[7], t[8], t[9] ), mb3_vec3( t[10], t[11], t[12] ) );
+			b3ConstraintJoint_SetAngularDriveTarget( id, mb3_quat( t[6], t[7], t[8], t[9] ),
+													 mb3_vec3( t[10], t[11], t[12] ) );
 			if ( wake )
 			{
 				b3Joint_WakeBodies( id );
