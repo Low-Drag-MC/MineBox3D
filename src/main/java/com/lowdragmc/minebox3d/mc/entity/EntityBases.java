@@ -152,7 +152,6 @@ public final class EntityBases {
 
     private EntityBases() {}
 
-    /** Adds a mod's say on which entities it carries on their base itself. */
     public static void registerCarrier(Carrier carrier) {
         CARRIERS.add(carrier);
     }

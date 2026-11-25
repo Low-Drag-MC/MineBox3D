@@ -191,7 +191,6 @@ public final class TerrainStreamer implements AutoCloseable {
         }
     }
 
-    /** Runs {@code action} on each streamer of {@code level}. */
     public static void forLevel(Level level, Consumer<TerrainStreamer> action) {
         TerrainStreamer[] streamers;
         synchronized (STREAMERS) {

@@ -13,7 +13,6 @@ public final class ConstraintJointDef extends JointDef<ConstraintJoint, Constrai
         super(JointType.CONSTRAINT);
     }
 
-    /** Copies {@code settings} into {@link #settings}. */
     public ConstraintJointDef settings(ConstraintJointSettings settings) {
         this.settings.set(settings);
         return this;

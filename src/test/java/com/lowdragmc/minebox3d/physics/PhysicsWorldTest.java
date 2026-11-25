@@ -77,7 +77,6 @@ class PhysicsWorldTest {
         }
     }
 
-    /** A step that does not move the body still has its next frame start where the correction put it. */
     @Test
     void aCorrectedBodyNoStepMovesIsDrawnStillFromTheNextFrame() {
         try (PhysicsWorld world = world()) {

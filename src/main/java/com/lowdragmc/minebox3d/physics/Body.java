@@ -292,7 +292,6 @@ public final class Body {
         return out;
     }
 
-    /** The turn to draw, as {@link #renderPosition} the place. */
     public Quaternionf renderRotation(float partial, Quaternionf out) {
         out.set((float) previous[3], (float) previous[4], (float) previous[5], (float) previous[6]);
         out.slerp(

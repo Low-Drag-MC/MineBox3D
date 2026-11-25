@@ -264,7 +264,6 @@ public final class Shape {
         setFilter(filter.categoryBits, filter.maskBits, filter.groupIndex, invokeContacts);
     }
 
-    /** {@link #setFilter(Filter, boolean)} without a {@link Filter}. */
     public void setFilter(long categoryBits, long maskBits, int groupIndex, boolean invokeContacts) {
         PhysicsWorld world = body.world();
         world.enter();
