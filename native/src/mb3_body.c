@@ -137,6 +137,20 @@ MB3_JNI( void, bodyGetTransform )( JNIEnv* env, jclass type, jlong body, jdouble
 	}
 }
 
+// Box3D's failed check on a stale id goes on into a freed slot: a batch holding one is refused whole
+static bool mb3_bodies_valid( JNIEnv* env, const jlong* ids, int count )
+{
+	for ( int i = 0; i < count; ++i )
+	{
+		if ( b3Body_IsValid( mb3_body( ids[i] ) ) == false )
+		{
+			mb3_throw_illegal_argument( env, "a body of the batch is destroyed" );
+			return false;
+		}
+	}
+	return true;
+}
+
 MB3_JNI( void, bodiesGetTransforms )( JNIEnv* env, jclass type, jlongArray bodies, jint count, jdoubleArray out )
 {
 	(void)type;
@@ -150,9 +164,9 @@ MB3_JNI( void, bodiesGetTransforms )( JNIEnv* env, jclass type, jlongArray bodie
 		mb3_throw_illegal_argument( env, "output double[] is null or shorter than 7 * count" );
 		return;
 	}
-	// Not held critical: a stale id fails Box3D's check, whose handler must not run inside a critical region
 	jlong* ids = ( *env )->GetLongArrayElements( env, bodies, NULL );
-	jdouble* values = ids == NULL ? NULL : ( *env )->GetDoubleArrayElements( env, out, NULL );
+	bool valid = ids != NULL && mb3_bodies_valid( env, ids, count );
+	jdouble* values = valid ? ( *env )->GetDoubleArrayElements( env, out, NULL ) : NULL;
 	if ( values != NULL )
 	{
 		for ( int i = 0; i < count; ++i )
@@ -279,7 +293,8 @@ MB3_JNI( void, bodiesSetTargetTransforms )( JNIEnv* env, jclass type, jlongArray
 		return;
 	}
 	jlong* ids = ( *env )->GetLongArrayElements( env, bodies, NULL );
-	jdouble* values = ids == NULL ? NULL : ( *env )->GetDoubleArrayElements( env, transforms, NULL );
+	bool valid = ids != NULL && mb3_bodies_valid( env, ids, count );
+	jdouble* values = valid ? ( *env )->GetDoubleArrayElements( env, transforms, NULL ) : NULL;
 	if ( values != NULL )
 	{
 		for ( int i = 0; i < count; ++i )

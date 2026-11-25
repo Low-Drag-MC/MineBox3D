@@ -174,6 +174,12 @@ class B3SmokeTest {
                 assertEquals(-i, out[7 * i + 2], 1e-9);
                 assertEquals(1, out[7 * i + 6], 1e-6, "identity rotation");
             }
+
+            B3.destroyBody(ids[3]);
+            assertThrows(IllegalArgumentException.class, () -> B3.bodiesGetTransforms(ids, n, out));
+            double[] targets = out.clone();
+            assertThrows(
+                    IllegalArgumentException.class, () -> B3.bodiesSetTargetTransforms(ids, n, targets, 1 / 60f, true));
         } finally {
             B3.destroyWorld(world);
         }
