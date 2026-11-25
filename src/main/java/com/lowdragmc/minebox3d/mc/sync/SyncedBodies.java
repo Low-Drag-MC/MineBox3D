@@ -356,7 +356,10 @@ public final class SyncedBodies {
         if (payload.settled()) {
             SyncedRiders.settled(); // the mark comes alone, after the bodies it is about
         }
-        if (payload.spawns().isEmpty() && payload.states().isEmpty() && payload.removals().length == 0) {
+        if (payload.spawns().isEmpty()
+                && payload.states().isEmpty()
+                && payload.removals().length == 0
+                && payload.tunings().isEmpty()) {
             return;
         }
         LevelPhysics physics = LevelPhysics.of(level);
