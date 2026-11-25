@@ -22,10 +22,12 @@ public enum JointType {
     WELD,
     /** A wheel (body B) on a chassis (body A): spins about frame B's z, suspension along frame A's x, steering. */
     WHEEL,
-    /** Box3D's dynamic character mover drive: a velocity in frame B's xz plane, up to a force. Not made from Java yet. */
+    /** Box3D's dynamic character mover drive: a velocity in frame B's xz plane, up to a force. */
     MOVER,
-    /** Box3D's dynamic character mover spring, holding it off the ground along frame B's y. Not made from Java yet. */
+    /** Box3D's dynamic character mover spring, holding it off the ground along frame B's y. */
     POGO,
+    /** Locks body B's movement along frame A's axes, and its turning to frame A's z axis: a body kept upright. */
+    MOTION_LOCK,
     /** MineBox3D's: one UE physics asset constraint, each degree of freedom free, limited or locked, with drives. */
     CONSTRAINT
 }

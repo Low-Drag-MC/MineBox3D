@@ -22,7 +22,7 @@ public final class SphericalJointDef extends JointDef<SphericalJoint, SphericalJ
     public boolean enableMotor;
     /** N·m */
     public float maxMotorTorque;
-    /** The angular velocity of B relative to A the motor drives towards, rad/s, world space. */
+    /** The angular velocity of B relative to A the motor drives towards, rad/s, in joint frame A. */
     public float motorVelocityX, motorVelocityY, motorVelocityZ;
 
     public SphericalJointDef() {

@@ -852,7 +852,7 @@ public final class SyncedBodies {
             boolean dynamic = body.type() == BodyType.DYNAMIC;
             motion = !dynamic ? 0 : 31 * (31 * (31 * Float.floatToIntBits(body.linearDamping())
                     + Float.floatToIntBits(body.angularDamping())) + Float.floatToIntBits(body.gravityScale()))
-                    + body.motionLocks().bits();
+                    + (body.isFixedRotation() ? 1 : 0);
             Vector3d p = body.position(new Vector3d());
             Quaternionf q = body.rotation(new Quaternionf());
             Vector3f v = body.linearVelocity(new Vector3f());

@@ -68,7 +68,8 @@ class ConstraintJointTest {
             assertEquals(JointType.CONSTRAINT.ordinal(), com.lowdragmc.minebox3d.internal.B3.jointGetType(constraint.id()));
             MotorJoint motor = world.createJoint(new MotorJointDef().bodies(world.createBody(new BodyDef()), bar));
             assertEquals(JointType.MOTOR.ordinal(), com.lowdragmc.minebox3d.internal.B3.jointGetType(motor.id()));
-            assertEquals(JointType.WHEEL.ordinal() + 3, JointType.CONSTRAINT.ordinal(), "Box3D's mover and pogo joints sit between");
+            assertEquals(JointType.WHEEL.ordinal() + 4, JointType.CONSTRAINT.ordinal(),
+                    "Box3D's mover, pogo and motion lock joints sit between");
         }
     }
 

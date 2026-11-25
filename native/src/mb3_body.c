@@ -410,6 +410,7 @@ enum mb3_body_flag
 	MB3_BF_SLEEP_ENABLED = 1,
 	MB3_BF_FAST_ROTATION = 2,
 	MB3_BF_CONTACT_RECYCLING = 3,
+	MB3_BF_FIXED_ROTATION = 4,
 };
 
 MB3_JNI( void, bodySetFloat )( JNIEnv* env, jclass type, jlong body, jint param, jfloat value )
@@ -456,6 +457,7 @@ MB3_JNI( void, bodySetFlag )( JNIEnv* env, jclass type, jlong body, jint flag, j
 		case MB3_BF_SLEEP_ENABLED: b3Body_EnableSleep( id, value ); break;
 		case MB3_BF_FAST_ROTATION: b3Body_AllowFastRotation( id, value ); break;
 		case MB3_BF_CONTACT_RECYCLING: b3Body_EnableContactRecycling( id, value ); break;
+		case MB3_BF_FIXED_ROTATION: b3Body_SetFixedRotation( id, value ); break;
 		default: mb3_throw_illegal_argument( env, "not a body switch" ); return;
 	}
 	mb3_check( env );
@@ -472,6 +474,7 @@ MB3_JNI( jboolean, bodyGetFlag )( JNIEnv* env, jclass type, jlong body, jint fla
 		case MB3_BF_SLEEP_ENABLED: value = b3Body_IsSleepEnabled( id ); break;
 		case MB3_BF_FAST_ROTATION: value = b3Body_IsFastRotationAllowed( id ); break;
 		case MB3_BF_CONTACT_RECYCLING: value = b3Body_IsContactRecyclingEnabled( id ); break;
+		case MB3_BF_FIXED_ROTATION: value = b3Body_IsFixedRotation( id ); break;
 		default: mb3_throw_illegal_argument( env, "not a body switch" ); return JNI_FALSE;
 	}
 	mb3_check( env );
@@ -484,27 +487,6 @@ MB3_JNI( void, bodyEnableHitEvents )( JNIEnv* env, jclass type, jlong body, jboo
 	(void)type;
 	b3Body_EnableHitEvents( mb3_body( body ), enable );
 	mb3_check( env );
-}
-
-MB3_JNI( void, bodySetMotionLocks )( JNIEnv* env, jclass type, jlong body, jint bits )
-{
-	(void)type;
-	b3MotionLocks locks = { ( bits & 1 ) != 0, ( bits & 2 ) != 0, ( bits & 4 ) != 0,
-							( bits & 8 ) != 0, ( bits & 16 ) != 0, ( bits & 32 ) != 0 };
-	b3Body_SetMotionLocks( mb3_body( body ), locks );
-	mb3_check( env );
-}
-
-MB3_JNI( jint, bodyGetMotionLocks )( JNIEnv* env, jclass type, jlong body )
-{
-	(void)type;
-	b3MotionLocks locks = b3Body_GetMotionLocks( mb3_body( body ) );
-	if ( mb3_check( env ) )
-	{
-		return 0;
-	}
-	return ( locks.linearX ? 1 : 0 ) | ( locks.linearY ? 2 : 0 ) | ( locks.linearZ ? 4 : 0 ) | ( locks.angularX ? 8 : 0 ) |
-		   ( locks.angularY ? 16 : 0 ) | ( locks.angularZ ? 32 : 0 );
 }
 
 // ---- mass -----------------------------------------------------------------------------------------------------------

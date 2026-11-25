@@ -135,7 +135,7 @@ static bool mb3_sweep_contact( const mb3_obstacle* o, const mb3_sweep_box* box, 
 			b3Vec3 v2 = b3InvTransformPoint( xf, o->triangle[1] );
 			b3Vec3 v3 = b3InvTransformPoint( xf, o->triangle[2] );
 			b3SATCache cache = { 0 };
-			b3CollideTriangleAndHull( &manifold, MB3_SWEEP_POINTS, v1, v2, v3, 0, boxHull, &cache, false );
+			b3CollideTriangleAndHull( &manifold, MB3_SWEEP_POINTS, v1, v2, v3, boxHull, &cache, false );
 			frame = xf;
 			break;
 		}

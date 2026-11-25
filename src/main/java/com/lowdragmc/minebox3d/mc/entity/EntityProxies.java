@@ -11,6 +11,7 @@ import com.lowdragmc.minebox3d.physics.FilterJointDef;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.Joint;
 import com.lowdragmc.minebox3d.physics.MassData;
+import com.lowdragmc.minebox3d.physics.MotionLockJointDef;
 import com.lowdragmc.minebox3d.physics.MotorJointDef;
 import com.lowdragmc.minebox3d.physics.Overlaps;
 import com.lowdragmc.minebox3d.physics.PhysicsWorld;
@@ -95,6 +96,8 @@ public final class EntityProxies implements AutoCloseable {
     /** Metres an entity on the ground rose since the last update that is a step up (or a lift). */
     private static final double STEPPED = 1.0e-4;
     private static final Quaternionfc UPRIGHT = new Quaternionf();
+    /** A joint frame whose z axis is its body's y axis. */
+    private static final Quaternionfc Z_TO_Y = new Quaternionf().rotationX((float) (-Math.PI / 2));
 
     private final Level level;
     private final PhysicsWorld world;
@@ -763,11 +766,9 @@ public final class EntityProxies implements AutoCloseable {
         List<Geometry> shapes = answer.shapes();
         Proxy proxy = new Proxy(entity, provider, EntityShapes.massOf(entity, settings.entityDensity));
         Quaternionf rotation = rotationOf(entity, proxy, new Quaternionf());
-        // what it is when force-capped (cap): upright, turned only about y by its joint, and not falling — the entity's
-        // own movement does that
+        // not falling when force-capped (cap): the entity's own movement does that
         BodyDef def0 = new BodyDef().type(BodyType.KINEMATIC).position(entity.getX(), entity.getY(), entity.getZ())
                 .rotation(rotation).name("entity").gravityScale(0);
-        def0.lockAngularX = def0.lockAngularZ = true;
         proxy.body = world.createBody(def0);
         // said for when it is dynamic (cap): it meets no terrain, and the default would stream terrain in round it
         LevelBodies.setNeedsTerrain(proxy.body, false);
@@ -858,6 +859,9 @@ public final class EntityProxies implements AutoCloseable {
         pull.maxVelocityForce = force;
         pull.maxVelocityTorque = force;
         proxy.drive = world.createJoint(pull);
+        // upright, turned only about y by the drive: the target's y axis and its own kept parallel
+        proxy.upright = world.createJoint(new MotionLockJointDef().bodies(proxy.target, proxy.body)
+                .localFrameA(0, 0, 0, Z_TO_Y).localFrameB(0, 0, 0, Z_TO_Y).lockAngularXY(true));
         proxy.capped = true;
     }
 
@@ -954,7 +958,11 @@ public final class EntityProxies implements AutoCloseable {
         if (proxy.drive != null && proxy.drive.isValid()) {
             proxy.drive.destroy(false);
         }
+        if (proxy.upright != null && proxy.upright.isValid()) {
+            proxy.upright.destroy(false);
+        }
         proxy.drive = null;
+        proxy.upright = null;
         if (proxy.body.isValid()) {
             proxy.body.setType(BodyType.KINEMATIC);
         }
@@ -1022,10 +1030,15 @@ public final class EntityProxies implements AutoCloseable {
         /** kg; infinite for an entity no body moves */
         float mass;
         Body body;
-        /** force-capped ({@link #cap}): dynamic, pulled by this joint after this target; the last tick it came onto a body */
+        /**
+         * force-capped ({@link #cap}): dynamic, pulled by this joint after this target and kept upright by the other; the
+         * last tick it came onto a body
+         */
         boolean capped;
         @Nullable
         Joint drive;
+        @Nullable
+        Joint upright;
         @Nullable
         Body target;
         long pressedTick = Long.MIN_VALUE / 2;

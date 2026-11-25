@@ -84,10 +84,10 @@ class BodyApiTest {
             assertFalse(body.isContactRecyclingEnabled());
             body.enableHitEvents(true);
             assertTrue(body.shapes().getFirst().areHitEventsEnabled(), "onto every shape");
-            body.setMotionLocks(MotionLocks.UPRIGHT);
-            assertEquals(MotionLocks.UPRIGHT, body.motionLocks());
+            body.setFixedRotation(true);
+            assertTrue(body.isFixedRotation());
 
-            body.setMotionLocks(MotionLocks.NONE);
+            body.setFixedRotation(false);
             body.setLinearVelocity(5, 0, 0);
             steps(world, 30);
             assertTrue(body.linearVelocity(new Vector3f()).x < 2.5f, "damped");
@@ -134,17 +134,43 @@ class BodyApiTest {
     }
 
     @Test
-    void motionLocksStopTheAxesTheyName() {
+    void aFixedRotationBodyFallsWithoutTurning() {
         try (PhysicsWorld world = world(-10)) {
-            Body locked = cube(world, 0, 5, 0, 0.25f);
-            locked.setMotionLocks(new MotionLocks(false, true, false, true, false, true));
-            locked.applyAngularImpulse(5, 5, 5);
+            Body fixed = world.createBody(new BodyDef().type(BodyType.DYNAMIC).position(0, 5, 0).fixedRotation(true));
+            fixed.createShape(new ShapeDef(), Geometry.Box.of(0.25f, 0.25f, 0.25f));
+            assertTrue(fixed.isFixedRotation(), "from the definition");
+            fixed.applyAngularImpulse(5, 5, 5);
             steps(world, 30);
-            assertEquals(5, locked.position(new Vector3d()).y, 1e-4, "does not fall");
+            assertTrue(fixed.position(new Vector3d()).y < 4, "falls");
+            assertEquals(0, fixed.angularVelocity(new Vector3f()).length(), 1e-6, "never turns");
+        }
+    }
+
+    @Test
+    void aMotionLockJointStopsTheAxesItNames() {
+        try (PhysicsWorld world = world(-10)) {
+            Body anchor = world.createBody(new BodyDef());
+            Body locked = cube(world, 0, 5, 0, 0.25f);
+            // the frame where the cube is, its z axis up: kept on that height, turning about the vertical only
+            Quaternionf zUp = new Quaternionf().rotationX((float) (-Math.PI / 2));
+            MotionLockJoint joint = world.createJoint(new MotionLockJointDef().bodies(anchor, locked)
+                    .worldFrame(0, 5, 0, zUp).lockLinear(false, false, true).lockAngularXY(true));
+            assertTrue(joint.isLinearLocked(2) && !joint.isLinearLocked(0) && joint.isAngularLocked());
+            locked.applyAngularImpulse(5, 5, 5);
+            locked.setLinearVelocity(1, 0, 0);
+            steps(world, 30);
+            Vector3d at = locked.position(new Vector3d());
+            assertEquals(5, at.y, 1e-3, "does not fall");
+            assertTrue(at.x > 0.4, "slides along x: " + at);
             Vector3f w = locked.angularVelocity(new Vector3f());
-            assertEquals(0, w.x, 1e-4);
-            assertEquals(0, w.z, 1e-4);
+            assertEquals(0, w.x, 1e-3);
+            assertEquals(0, w.z, 1e-3);
             assertTrue(w.y > 0.1f, "turns about y only: " + w);
+
+            joint.lockLinear(2, false);
+            assertFalse(joint.isLinearLocked(2));
+            steps(world, 10);
+            assertTrue(locked.position(new Vector3d()).y < 4.9, "let go, it falls");
         }
     }
 
@@ -335,8 +361,8 @@ class BodyApiTest {
             assertNotEquals(before, body.linearVelocity(new Vector3f()));
 
             steps(world, 1);
-            body.setMotionLocks(new MotionLocks(true, true, true, false, false, false));
-            sameAsBox3D(body, "after locking its movement");
+            body.setFixedRotation(true);
+            sameAsBox3D(body, "after fixing its rotation");
         }
     }
 

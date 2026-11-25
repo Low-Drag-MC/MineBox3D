@@ -31,7 +31,11 @@ public final class BodyDef {
     @Nullable
     public String name;
     public long userData;
-    public boolean lockLinearX, lockLinearY, lockLinearZ, lockAngularX, lockAngularY, lockAngularZ;
+    /**
+     * No turning: the inverse inertia is zero and the angular velocity kept at zero. To keep a body upright yet free to
+     * turn about one axis, or to lock its movement along axes, give it a {@link MotionLockJointDef motion lock joint}.
+     */
+    public boolean fixedRotation;
     public boolean enableSleep;
     public boolean awake;
     public boolean bullet;
@@ -108,6 +112,11 @@ public final class BodyDef {
 
     public BodyDef userData(long userData) {
         this.userData = userData;
+        return this;
+    }
+
+    public BodyDef fixedRotation(boolean fixedRotation) {
+        this.fixedRotation = fixedRotation;
         return this;
     }
 

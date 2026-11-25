@@ -224,8 +224,8 @@ bool mb3_world_def_from_java( JNIEnv* env, jobject s, b3WorldDef* d )
 static jfieldID f_bType, f_bPositionX, f_bPositionY, f_bPositionZ, f_bRotationX, f_bRotationY, f_bRotationZ, f_bRotationW,
 	f_bLinearVelocityX, f_bLinearVelocityY, f_bLinearVelocityZ, f_bAngularVelocityX, f_bAngularVelocityY,
 	f_bAngularVelocityZ, f_bLinearDamping, f_bAngularDamping, f_bGravityScale, f_bSleepThreshold, f_bSafetyFactor,
-	f_bName, f_bUserData, f_bLockLinearX, f_bLockLinearY, f_bLockLinearZ, f_bLockAngularX, f_bLockAngularY,
-	f_bLockAngularZ, f_bEnableSleep, f_bAwake, f_bBullet, f_bEnabled, f_bAllowFastRotation, f_bEnableContactRecycling;
+	f_bName, f_bUserData, f_bFixedRotation, f_bEnableSleep, f_bAwake, f_bBullet, f_bEnabled, f_bAllowFastRotation,
+	f_bEnableContactRecycling;
 
 void mb3_body_def_to_java( JNIEnv* env, jobject t, const b3BodyDef* d )
 {
@@ -249,12 +249,7 @@ void mb3_body_def_to_java( JNIEnv* env, jobject t, const b3BodyDef* d )
 	( *env )->SetFloatField( env, t, f_bSleepThreshold, d->sleepThreshold );
 	( *env )->SetFloatField( env, t, f_bSafetyFactor, d->safetyFactor );
 	( *env )->SetLongField( env, t, f_bUserData, (jlong)(intptr_t)d->userData );
-	( *env )->SetBooleanField( env, t, f_bLockLinearX, d->motionLocks.linearX );
-	( *env )->SetBooleanField( env, t, f_bLockLinearY, d->motionLocks.linearY );
-	( *env )->SetBooleanField( env, t, f_bLockLinearZ, d->motionLocks.linearZ );
-	( *env )->SetBooleanField( env, t, f_bLockAngularX, d->motionLocks.angularX );
-	( *env )->SetBooleanField( env, t, f_bLockAngularY, d->motionLocks.angularY );
-	( *env )->SetBooleanField( env, t, f_bLockAngularZ, d->motionLocks.angularZ );
+	( *env )->SetBooleanField( env, t, f_bFixedRotation, d->fixedRotation );
 	( *env )->SetBooleanField( env, t, f_bEnableSleep, d->enableSleep );
 	( *env )->SetBooleanField( env, t, f_bAwake, d->isAwake );
 	( *env )->SetBooleanField( env, t, f_bBullet, d->isBullet );
@@ -295,12 +290,7 @@ bool mb3_body_def_from_java( JNIEnv* env, jobject s, b3BodyDef* d, char* nameBuf
 	d->safetyFactor = ( *env )->GetFloatField( env, s, f_bSafetyFactor );
 	d->name = mb3_copy_name( env, (jstring)( *env )->GetObjectField( env, s, f_bName ), nameBuffer, nameCapacity );
 	d->userData = (void*)(intptr_t)( *env )->GetLongField( env, s, f_bUserData );
-	d->motionLocks.linearX = ( *env )->GetBooleanField( env, s, f_bLockLinearX );
-	d->motionLocks.linearY = ( *env )->GetBooleanField( env, s, f_bLockLinearY );
-	d->motionLocks.linearZ = ( *env )->GetBooleanField( env, s, f_bLockLinearZ );
-	d->motionLocks.angularX = ( *env )->GetBooleanField( env, s, f_bLockAngularX );
-	d->motionLocks.angularY = ( *env )->GetBooleanField( env, s, f_bLockAngularY );
-	d->motionLocks.angularZ = ( *env )->GetBooleanField( env, s, f_bLockAngularZ );
+	d->fixedRotation = ( *env )->GetBooleanField( env, s, f_bFixedRotation );
 	d->enableSleep = ( *env )->GetBooleanField( env, s, f_bEnableSleep );
 	d->isAwake = ( *env )->GetBooleanField( env, s, f_bAwake );
 	d->isBullet = ( *env )->GetBooleanField( env, s, f_bBullet );
@@ -491,12 +481,7 @@ bool mb3_defs_init( JNIEnv* env, jobjectArray classes )
 		MB3_FIELD( f_bSafetyFactor, "safetyFactor", "F" ),
 		MB3_FIELD( f_bName, "name", "Ljava/lang/String;" ),
 		MB3_FIELD( f_bUserData, "userData", "J" ),
-		MB3_FIELD( f_bLockLinearX, "lockLinearX", "Z" ),
-		MB3_FIELD( f_bLockLinearY, "lockLinearY", "Z" ),
-		MB3_FIELD( f_bLockLinearZ, "lockLinearZ", "Z" ),
-		MB3_FIELD( f_bLockAngularX, "lockAngularX", "Z" ),
-		MB3_FIELD( f_bLockAngularY, "lockAngularY", "Z" ),
-		MB3_FIELD( f_bLockAngularZ, "lockAngularZ", "Z" ),
+		MB3_FIELD( f_bFixedRotation, "fixedRotation", "Z" ),
 		MB3_FIELD( f_bEnableSleep, "enableSleep", "Z" ),
 		MB3_FIELD( f_bAwake, "awake", "Z" ),
 		MB3_FIELD( f_bBullet, "bullet", "Z" ),

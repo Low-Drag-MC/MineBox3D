@@ -40,11 +40,6 @@ target_compile_definitions(box3d PUBLIC B3_MAX_WORLDS=1024)
 # Assertions stay on in the shipped library. A failed assertion is routed to the bridge, which
 # turns it into a Java exception instead of a debugger break that would take the game down.
 target_compile_definitions(box3d PUBLIC B3_ENABLE_ASSERT)
-# Candidate triangles one convex shape may collide with in one voxel section (or mesh), Box3D's 512 by default. Past it
-# the rest are dropped, and a 12 x 12 box sank into a floor of stairs (6 triangles a cell). 2048 takes a whole section
-# of stairs under one body; flat ground needs far fewer once coplanar faces are merged (01-voxel-terrain.md §12.6.3).
-# Costs nothing below the old cap: only the scratch the arena hands out grows.
-target_compile_definitions(box3d PUBLIC B3_MAX_MESH_CONTACT_TRIANGLES=2048)
 
 file(GLOB MB3_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 add_library(minebox3d SHARED ${MB3_SOURCES})

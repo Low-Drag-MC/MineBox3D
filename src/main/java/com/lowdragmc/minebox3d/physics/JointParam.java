@@ -122,4 +122,9 @@ final class JointParam {
     static final int POGO_CURRENT_LENGTH = 156;
     static final int POGO_CURRENT_SPEED = 157;
     static final int POGO_IMPULSE = 158;
+
+    static final int MOTION_LOCK_LINEAR_X = 160;
+    static final int MOTION_LOCK_LINEAR_Y = 161;
+    static final int MOTION_LOCK_LINEAR_Z = 162;
+    static final int MOTION_LOCK_ANGULAR = 163;
 }

@@ -24,7 +24,8 @@ import org.joml.Vector3f;
  */
 public abstract sealed class JointDef<J extends Joint, D extends JointDef<J, D>>
         permits DistanceJointDef, FilterJointDef, MotorJointDef, ParallelJointDef, PrismaticJointDef, RevoluteJointDef,
-        SphericalJointDef, WeldJointDef, WheelJointDef, MoverJointDef, PogoJointDef, ConstraintJointDef {
+        SphericalJointDef, WeldJointDef, WheelJointDef, MoverJointDef, PogoJointDef, MotionLockJointDef,
+        ConstraintJointDef {
 
     @Nullable
     public Body bodyA, bodyB;

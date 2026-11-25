@@ -4,7 +4,6 @@ import com.lowdragmc.minebox3d.mc.entity.StepUpOn;
 import com.lowdragmc.minebox3d.natives.NativeLibrary;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.MassData;
-import com.lowdragmc.minebox3d.physics.MotionLocks;
 import com.lowdragmc.minebox3d.physics.SurfaceMaterial;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.FriendlyByteBuf;
@@ -62,7 +61,7 @@ class BodySyncPayloadTest {
                 shape(box, 4, 6, 7, false),
                 shape(hull, Long.MIN_VALUE, Long.MAX_VALUE, Integer.MIN_VALUE, true));
         BodySyncPayload.Dynamics mass = new BodySyncPayload.Dynamics(31, 0.1f, -0.2f, 0.3f,
-                new float[]{1, 0.5f, 0, 0.5f, 2, 0, 0, 0, 3}, true, 0.25f, 1.5f, 0, MotionLocks.UPRIGHT.bits());
+                new float[]{1, 0.5f, 0, 0.5f, 2, 0, 0, 0, 3}, true, 0.25f, 1.5f, 0, true);
         BodySyncPayload read = roundTrip(new BodySyncPayload(
                 List.of(new BodySyncPayload.Spawn(7, "a crate", 42, 3, (1L << 62) | 0xFFFFFFFFL, shapes, state(7), mass,
                                 new org.joml.Vector3f(0.1f, -0.2f, 0.3f)),
@@ -108,14 +107,12 @@ class BodySyncPayloadTest {
         assertEquals(0.25f, readMass.linearDamping());
         assertEquals(1.5f, readMass.angularDamping());
         assertEquals(0, readMass.gravityScale(), "weightless");
-        assertEquals(MotionLocks.UPRIGHT, MotionLocks.of(readMass.locks()));
+        assertTrue(readMass.fixedRotation());
         assertTrue(readMass.isUsable());
-        assertFalse(new BodySyncPayload.Dynamics(1, 0, 0, 0, new float[9], true, -1, 0, 1, 0).isUsable(),
+        assertFalse(new BodySyncPayload.Dynamics(1, 0, 0, 0, new float[9], true, -1, 0, 1, false).isUsable(),
                 "a negative damping");
-        assertFalse(new BodySyncPayload.Dynamics(1, 0, 0, 0, new float[9], true, 0, 0, Float.NaN, 0).isUsable(),
+        assertFalse(new BodySyncPayload.Dynamics(1, 0, 0, 0, new float[9], true, 0, 0, Float.NaN, false).isUsable(),
                 "a NaN gravity scale");
-        assertFalse(new BodySyncPayload.Dynamics(1, 0, 0, 0, new float[9], true, 0, 0, 1, 64).isUsable(),
-                "a lock bit there is none of");
         // what a client needs to have to simulate it: all it touches, and the joints that hold it
         BodySyncPayload.State held = new BodySyncPayload.State(9, 1, 2, 3, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, false, 3);
         BodySyncPayload heldRead = roundTrip(new BodySyncPayload(List.of(), List.of(held), new int[0]));

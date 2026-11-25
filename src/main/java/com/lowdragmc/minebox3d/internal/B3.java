@@ -14,6 +14,7 @@ import com.lowdragmc.minebox3d.physics.JointDef;
 import com.lowdragmc.minebox3d.physics.MotorJointDef;
 import com.lowdragmc.minebox3d.physics.MoverJointDef;
 import com.lowdragmc.minebox3d.physics.ParallelJointDef;
+import com.lowdragmc.minebox3d.physics.MotionLockJointDef;
 import com.lowdragmc.minebox3d.physics.PogoJointDef;
 import com.lowdragmc.minebox3d.physics.PrismaticJointDef;
 import com.lowdragmc.minebox3d.physics.RevoluteJointDef;
@@ -67,6 +68,7 @@ public final class B3 {
                 WheelJointDef.class,
                 MoverJointDef.class,
                 PogoJointDef.class,
+                MotionLockJointDef.class,
                 ConstraintJointDef.class,
                 ConstraintJointSettings.class,
                 ConstraintDrive.class,
@@ -297,11 +299,6 @@ public final class B3 {
 
     /** Hit events on every shape of the body. */
     public static native void bodyEnableHitEvents(long body, boolean enable);
-
-    /** Bits 0–5: linear x, y, z, angular x, y, z. */
-    public static native void bodySetMotionLocks(long body, int bits);
-
-    public static native int bodyGetMotionLocks(long body);
 
     /** {@code [mass, cx, cy, cz, inertia about the centre of mass column by column (9)]}, body space. */
     public static native void bodyGetMassData(long body, float[] out);

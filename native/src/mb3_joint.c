@@ -1,6 +1,6 @@
 // MineBox3D JNI bridge: joints.
 //
-// The nine definition classes are read through one table per type: each Java field names the C struct member it is,
+// Each definition class is read through one table per type: each Java field names the C struct member it is,
 // by offset, so reading and writing a definition is one loop and a field renamed on one side fails the lookup at
 // startup. Runtime properties go through two calls, jointSet / jointGet, with a parameter number (enum below, the Java
 // twin is JointParam); the typed API is the Java classes.
@@ -115,6 +115,13 @@ static mb3_def_field s_pogoFields[] = {
 	MB3_F( b3PogoJointDef, maxCompressionForce, "maxCompressionForce" ),
 	MB3_F( b3PogoJointDef, impulse, "impulse" ),
 	MB3_F( b3PogoJointDef, velocity, "velocity" ),
+};
+
+static mb3_def_field s_motionLockFields[] = {
+	MB3_Z( b3MotionLockJointDef, lockLinearX, "lockLinearX" ),
+	MB3_Z( b3MotionLockJointDef, lockLinearY, "lockLinearY" ),
+	MB3_Z( b3MotionLockJointDef, lockLinearZ, "lockLinearZ" ),
+	MB3_Z( b3MotionLockJointDef, lockAngularXY, "lockAngularXY" ),
 };
 
 static mb3_def_field s_parallelFields[] = {
@@ -287,6 +294,7 @@ static mb3_joint_kind s_kinds[] = {
 	[b3_wheelJoint] = { MB3_TABLE( s_wheelFields ), MB3_CLASS_WHEEL_JOINT_DEF },
 	[b3_moverJoint] = { MB3_TABLE( s_moverFields ), MB3_CLASS_MOVER_JOINT_DEF },
 	[b3_pogoJoint] = { MB3_TABLE( s_pogoFields ), MB3_CLASS_POGO_JOINT_DEF },
+	[b3_motionLockJoint] = { MB3_TABLE( s_motionLockFields ), MB3_CLASS_MOTION_LOCK_JOINT_DEF },
 	[b3_constraintJoint] = { MB3_TABLE( s_constraintFields ), MB3_CLASS_CONSTRAINT_JOINT_DEF },
 };
 
@@ -467,6 +475,7 @@ typedef union mb3_any_joint_def
 	b3WheelJointDef wheel;
 	b3MoverJointDef mover;
 	b3PogoJointDef pogo;
+	b3MotionLockJointDef motionLock;
 	b3ConstraintJointDef constraint;
 } mb3_any_joint_def;
 
@@ -506,6 +515,9 @@ static bool mb3_default_joint_def( int jointType, mb3_any_joint_def* def )
 			return true;
 		case b3_pogoJoint:
 			def->pogo = b3DefaultPogoJointDef();
+			return true;
+		case b3_motionLockJoint:
+			def->motionLock = b3DefaultMotionLockJointDef();
 			return true;
 		case b3_constraintJoint:
 			def->constraint = b3DefaultConstraintJointDef();
@@ -593,6 +605,9 @@ MB3_JNI( jlong, createJoint )( JNIEnv* env, jclass type, jint world, jint jointT
 			break;
 		case b3_pogoJoint:
 			id = b3CreatePogoJoint( worldId, &def.pogo );
+			break;
+		case b3_motionLockJoint:
+			id = b3CreateMotionLockJoint( worldId, &def.motionLock );
 			break;
 		case b3_constraintJoint:
 			id = b3CreateConstraintJoint( worldId, &def.constraint );
@@ -788,6 +803,11 @@ enum mb3_joint_param
 	MB3_JP_POGO_CURRENT_LENGTH = 156,
 	MB3_JP_POGO_CURRENT_SPEED = 157,
 	MB3_JP_POGO_IMPULSE = 158,
+
+	MB3_JP_MOTION_LOCK_LINEAR_X = 160,
+	MB3_JP_MOTION_LOCK_LINEAR_Y = 161,
+	MB3_JP_MOTION_LOCK_LINEAR_Z = 162,
+	MB3_JP_MOTION_LOCK_ANGULAR = 163,
 };
 
 // The joint type a parameter belongs to, -1 for the base ones.
@@ -813,7 +833,9 @@ static int mb3_param_joint_type( int param )
 		return b3_wheelJoint;
 	if ( param < 150 )
 		return b3_moverJoint;
-	return b3_pogoJoint;
+	if ( param < 160 )
+		return b3_pogoJoint;
+	return b3_motionLockJoint;
 }
 
 // Box3D asserts on a property of another joint type; say which instead.
@@ -943,6 +965,11 @@ MB3_JNI( void, jointSet )( JNIEnv* env, jclass type, jlong joint, jint param, jf
 		case MB3_JP_POGO_MAX_TENSION_FORCE: b3PogoJoint_SetMaxTensionForce( id, a ); break;
 		case MB3_JP_POGO_MAX_COMPRESSION_FORCE: b3PogoJoint_SetMaxCompressionForce( id, a ); break;
 		case MB3_JP_POGO_NORMAL: b3PogoJoint_SetNormal( id, v ); break;
+
+		case MB3_JP_MOTION_LOCK_LINEAR_X: b3MotionLockJoint_EnableLinearLock( id, 0, on ); break;
+		case MB3_JP_MOTION_LOCK_LINEAR_Y: b3MotionLockJoint_EnableLinearLock( id, 1, on ); break;
+		case MB3_JP_MOTION_LOCK_LINEAR_Z: b3MotionLockJoint_EnableLinearLock( id, 2, on ); break;
+		case MB3_JP_MOTION_LOCK_ANGULAR: b3MotionLockJoint_EnableAngularLock( id, on ); break;
 
 		default:
 			mb3_throw_illegal_argument( env, "not a joint property that can be set" );
@@ -1111,6 +1138,11 @@ MB3_JNI( jint, jointGet )( JNIEnv* env, jclass type, jlong joint, jint param, jf
 		case MB3_JP_POGO_CURRENT_LENGTH: v[0] = b3PogoJoint_GetCurrentLength( id ); break;
 		case MB3_JP_POGO_CURRENT_SPEED: v[0] = b3PogoJoint_GetCurrentSpeed( id ); break;
 		case MB3_JP_POGO_IMPULSE: v[0] = b3PogoJoint_GetImpulse( id ); break;
+
+		case MB3_JP_MOTION_LOCK_LINEAR_X: v[0] = b3MotionLockJoint_IsLinearLockEnabled( id, 0 ); break;
+		case MB3_JP_MOTION_LOCK_LINEAR_Y: v[0] = b3MotionLockJoint_IsLinearLockEnabled( id, 1 ); break;
+		case MB3_JP_MOTION_LOCK_LINEAR_Z: v[0] = b3MotionLockJoint_IsLinearLockEnabled( id, 2 ); break;
+		case MB3_JP_MOTION_LOCK_ANGULAR: v[0] = b3MotionLockJoint_IsAngularLockEnabled( id ); break;
 
 		default:
 			mb3_throw_illegal_argument( env, "not a joint property that can be read" );

@@ -492,10 +492,10 @@ class VoxelDetailTest {
     // ---- the candidate cap ----------------------------------------------------------------------
 
     /**
-     * Box3D gives one convex shape at most {@code B3_MAX_MESH_CONTACT_TRIANGLES} triangles of one section; cells are
-     * taken y, z, x, so past the cap the far rows in z are dropped. A stair is six triangles under a body. At Box3D's
-     * 512, 10 × 10 blocks (726) lost its far half and 12 × 12 sank in (doc 01 §12.6.3); MineBox3D builds with 2048, a
-     * whole section of stairs.
+     * Box3D used to give one convex shape at most 512 triangles of one section, cells taken y, z, x, so the far rows
+     * in z were dropped: a 10 × 10 box on stairs (six triangles a cell) lost its far half and a 12 × 12 one sank in
+     * (doc 01 §12.6.3). The candidates grow as needed now; a box as wide as a section of stairs still lands flat and
+     * still, held near every corner.
      */
     @Test
     void aBoxOnStairsIsHeldUpUnderAllFourCornersUpToAWholeSection() {

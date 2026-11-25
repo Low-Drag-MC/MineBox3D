@@ -9,7 +9,6 @@ import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.Geometry;
-import com.lowdragmc.minebox3d.physics.MotionLocks;
 import com.lowdragmc.minebox3d.physics.RevoluteJointDef;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import net.minecraft.core.BlockPos;
@@ -197,7 +196,7 @@ public final class EntityStepUpGameTest {
         Body[] crates = {crate, unstepped, grounded};
         // kept upright: a tall light crate pushed at its middle tips over, and its slanting back is no step only past 45°
         for (Body body : crates) {
-            body.setMotionLocks(new MotionLocks(false, false, false, true, true, true));
+            body.setFixedRotation(true);
         }
         helper.startSequence()
                 .thenWaitUntil(() -> helper.assertTrue(TestArea.ticks(helper, pusher, stepless, onTheGround)

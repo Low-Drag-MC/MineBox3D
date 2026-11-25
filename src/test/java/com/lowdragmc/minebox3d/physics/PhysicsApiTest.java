@@ -143,8 +143,10 @@ class PhysicsApiTest {
             Joint joint = world.createJoint(new ConstraintJointDef().bodies(balls[0], balls[1]).worldFrame(0, 2, 0));
             steps(world, 2);
 
-            // past the Java checks, as the solver flinging a body to NaN would: the step fails Box3D's own check
-            assertThrows(Box3DException.class, () -> B3.bodySetLinearVelocity(balls[0].id(), Float.NaN, 0, 0));
+            // as the solver flinging a body would: two of the largest forces add up to an infinite one, which the step's
+            // speed clamp makes NaN, and the step fails Box3D's own check
+            B3.bodyApplyForceToCenter(balls[0].id(), Float.MAX_VALUE, 0, 0, true);
+            B3.bodyApplyForceToCenter(balls[0].id(), Float.MAX_VALUE, 0, 0, true);
             assertThrows(Box3DException.class, () -> steps(world, 1));
             assertTrue(world.isFaulted());
             int[] before = new int[6];
@@ -176,7 +178,8 @@ class PhysicsApiTest {
             steps(world, 2);
             // the owner is done with it: the ground's shape holds the last reference
             data.close();
-            assertThrows(Box3DException.class, () -> B3.bodySetLinearVelocity(ball.id(), Float.NaN, 0, 0));
+            B3.bodyApplyForceToCenter(ball.id(), Float.MAX_VALUE, 0, 0, true);
+            B3.bodyApplyForceToCenter(ball.id(), Float.MAX_VALUE, 0, 0, true);
             assertThrows(Box3DException.class, () -> steps(world, 1));
             ground.destroy();
 

@@ -10,7 +10,6 @@ import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.Geometry;
-import com.lowdragmc.minebox3d.physics.MotionLocks;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import com.lowdragmc.minebox3d.physics.WorldDef;
 import net.minecraft.gametest.framework.GameTest;
@@ -262,7 +261,7 @@ public final class PredictedReplicaGameTest {
             Vec3 c = stage.centre;
             float[] inertia = {4, 0, 0, 0, 4, 0, 0, 0, 4};
             stage.spawn(1, Stage.state(1, c.x, c.y + 3, c.z), 0, new BodySyncPayload.Dynamics(40, 0, 0, 0, inertia, true,
-                    0.5f, 0.25f, 0, MotionLocks.UPRIGHT.bits()));
+                    0.5f, 0.25f, 0, true));
             stage.spawn(2, new BodySyncPayload.State(2, c.x + 2, c.y + 3, c.z, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, false, 0), 0,
                     new BodySyncPayload.Dynamics(40, 0, 0, 0, inertia, true));
             stage.spawn(3, new BodySyncPayload.State(3, c.x - 2, c.y + 3, c.z, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, true, 1), 0,
@@ -273,8 +272,8 @@ public final class PredictedReplicaGameTest {
             stage.ticks(helper, 10);
             helper.assertTrue(SyncedBodies.isSimulated(weightless), "simulated here");
             helper.assertTrue(weightless.gravityScale() == 0 && weightless.linearDamping() == 0.5f
-                    && weightless.angularDamping() == 0.25f && weightless.motionLocks().equals(MotionLocks.UPRIGHT),
-                    "moving as the server's body: " + weightless.gravityScale() + " " + weightless.motionLocks());
+                    && weightless.angularDamping() == 0.25f && weightless.isFixedRotation(),
+                    "moving as the server's body: " + weightless.gravityScale() + " " + weightless.isFixedRotation());
             helper.assertTrue(weightless.position(new Vector3d()).y > c.y + 2.9, "weightless, it floats as there");
             helper.assertTrue(!SyncedBodies.isSimulated(lacking) && lacking.type() == BodyType.KINEMATIC,
                     "touching what is not here: followed");
@@ -301,7 +300,7 @@ public final class PredictedReplicaGameTest {
             helper.assertTrue(SyncedBodies.isSimulated(crate) && crate.gravityScale() == 1, "simulated, falling");
             stage.physics.sync().apply(new BodySyncPayload(List.of(), List.of(), new int[0], false, stage.physics.ticks(),
                     BodySyncPayload.NO_FRAME, List.of(new BodySyncPayload.Tuning(1, new BodySyncPayload.Dynamics(40, 0,
-                    0, 0, inertia, true, 0.5f, 0, 0, 0)))));
+                    0, 0, inertia, true, 0.5f, 0, 0, false)))));
             helper.assertTrue(stage.physics.sync().replica(1) == crate, "the same replica");
             helper.assertTrue(crate.gravityScale() == 0 && crate.linearDamping() == 0.5f, "moving as the server's now");
 

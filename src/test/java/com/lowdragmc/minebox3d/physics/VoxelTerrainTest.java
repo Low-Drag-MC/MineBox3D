@@ -399,7 +399,9 @@ class VoxelTerrainTest {
     @Test
     void aBlockPlacedIntoABodyPushesItOut() {
         try (Terrain t = new Terrain()) {
-            t.floor(0, 8, 0, 8, 0, (x, z) -> t.full);
+            // wide: the push out leaves the box sliding at up to Box3D's contact push speed, and nothing slows it on
+            // this frictionless floor
+            t.floor(-16, 8, 0, 8, 0, (x, z) -> t.full);
             Body body = t.body(Geometry.Box.of(0.25f, 0.25f, 0.25f), 3.5, 3, 3.5);
             t.step(180);
             assertFalse(body.isAwake());

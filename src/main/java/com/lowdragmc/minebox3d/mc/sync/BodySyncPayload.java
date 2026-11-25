@@ -5,7 +5,6 @@ import com.lowdragmc.minebox3d.mc.entity.StepUpOn;
 import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.MassData;
-import com.lowdragmc.minebox3d.physics.MotionLocks;
 import com.lowdragmc.minebox3d.physics.SurfaceMaterial;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -21,7 +20,8 @@ import java.util.List;
  * <b>One tick of synced bodies for one player</b> (design doc {@code 04-entities-and-bodies.md} §10): the bodies it
  * starts seeing, where the ones it sees moved to, and the ones it stops seeing; the server's physics tick they are as of,
  * and the player's own frame that tick ran ({@link SyncedBodies.Prediction}) — what its client holds them against, or
- * {@link #NO_FRAME}; and the bodies it sees whose damping, gravity or locks changed ({@link Tuning}). Server to client.
+ * {@link #NO_FRAME}; and the bodies it sees whose damping, gravity or fixed rotation changed ({@link Tuning}). Server to
+ * client.
  *
  * <p>Shapes travel as their numbers and become {@link Geometry} only when a replica is built ({@link SyncedShape#geometry()},
  * on the client thread): a hull is Box3D's to build, and decoding must not need Box3D — the payload is read on the
@@ -48,8 +48,8 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
     }
 
     /**
-     * A body's {@link Dynamics} anew, its damping, gravity scale or locks changed: put on its replica where it is, rather
-     * than the replica made again — a physics character turns its gravity off and on at every jump.
+     * A body's {@link Dynamics} anew, its damping, gravity scale or fixed rotation changed: put on its replica where it
+     * is, rather than the replica made again — a physics character turns its gravity off and on at every jump.
      */
     public record Tuning(int id, Dynamics dynamics) {
     }
@@ -163,22 +163,22 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
     /**
      * A dynamic body's mass, centre of mass and inertia (body space, column by column) — what an entity walking into its
      * replica pushes against ({@link SyncedBodies#serverMass}) — and whether entities push it (doc 04 §11.2 #1): one they
-     * do not is as heavy as a wall to them; and its damping, gravity scale and motion locks ({@link MotionLocks#bits}),
-     * which a client simulating it moves it by. Sent only for a dynamic body.
+     * do not is as heavy as a wall to them; and its damping, gravity scale and fixed rotation, which a client simulating
+     * it moves it by. Sent only for a dynamic body.
      */
     public record Dynamics(float mass, float cx, float cy, float cz, float[] inertia, boolean pushedByEntities,
-                           float linearDamping, float angularDamping, float gravityScale, int locks) {
+                           float linearDamping, float angularDamping, float gravityScale, boolean fixedRotation) {
 
-        /** Undamped, falling as the world does, locked in nothing. */
+        /** Undamped, falling as the world does, free to turn. */
         public Dynamics(float mass, float cx, float cy, float cz, float[] inertia, boolean pushedByEntities) {
-            this(mass, cx, cy, cz, inertia, pushedByEntities, 0, 0, 1, 0);
+            this(mass, cx, cy, cz, inertia, pushedByEntities, 0, 0, 1, false);
         }
 
         static Dynamics of(MassData data, Body body, boolean pushedByEntities) {
             float[] inertia = new float[9];
             data.inertia.get(inertia);
             return new Dynamics(data.mass, data.centerX, data.centerY, data.centerZ, inertia, pushedByEntities,
-                    body.linearDamping(), body.angularDamping(), body.gravityScale(), body.motionLocks().bits());
+                    body.linearDamping(), body.angularDamping(), body.gravityScale(), body.isFixedRotation());
         }
 
         MassData into(MassData out) {
@@ -192,13 +192,12 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
             body.setLinearDamping(linearDamping);
             body.setAngularDamping(angularDamping);
             body.setGravityScale(gravityScale);
-            body.setMotionLocks(MotionLocks.of(locks));
+            body.setFixedRotation(fixedRotation);
         }
 
         boolean isUsable() {
             if (!(mass > 0) || !Float.isFinite(mass + cx + cy + cz + gravityScale) || !(linearDamping >= 0)
-                    || !(angularDamping >= 0) || !Float.isFinite(linearDamping + angularDamping)
-                    || (locks & ~MotionLocks.ALL_BITS) != 0) {
+                    || !(angularDamping >= 0) || !Float.isFinite(linearDamping + angularDamping)) {
                 return false;
             }
             for (float value : inertia) {
@@ -300,7 +299,7 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
         buffer.writeFloat(d.linearDamping);
         buffer.writeFloat(d.angularDamping);
         buffer.writeFloat(d.gravityScale);
-        buffer.writeByte(d.locks);
+        buffer.writeBoolean(d.fixedRotation);
     }
 
     private static Dynamics readDynamics(FriendlyByteBuf buffer) {
@@ -310,7 +309,7 @@ public record BodySyncPayload(List<Spawn> spawns, List<State> states, int[] remo
             inertia[v] = buffer.readFloat();
         }
         return new Dynamics(m, cx, cy, cz, inertia, buffer.readBoolean(), buffer.readFloat(), buffer.readFloat(),
-                buffer.readFloat(), buffer.readUnsignedByte());
+                buffer.readFloat(), buffer.readBoolean());
     }
 
     static BodySyncPayload read(FriendlyByteBuf buffer) {

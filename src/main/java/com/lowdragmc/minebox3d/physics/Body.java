@@ -708,7 +708,8 @@ public final class Body {
     // the bridge's numbers (mb3_body.c)
     private static final int LINEAR_DAMPING = 0, ANGULAR_DAMPING = 1, GRAVITY_SCALE = 2, SLEEP_THRESHOLD = 3,
             SAFETY_FACTOR = 4;
-    private static final int BULLET = 0, SLEEP_ENABLED = 1, FAST_ROTATION = 2, CONTACT_RECYCLING = 3;
+    private static final int BULLET = 0, SLEEP_ENABLED = 1, FAST_ROTATION = 2, CONTACT_RECYCLING = 3,
+            FIXED_ROTATION = 4;
 
     private void setFloat(int param, float value) {
         world.enter();
@@ -845,21 +846,16 @@ public final class Body {
         }
     }
 
-    public MotionLocks motionLocks() {
-        world.enter();
-        try {
-            checkValid();
-            return MotionLocks.of(B3.bodyGetMotionLocks(id));
-        } finally {
-            world.exit();
-        }
+    public boolean isFixedRotation() {
+        return getFlag(FIXED_ROTATION);
     }
 
-    public void setMotionLocks(MotionLocks locks) {
+    /** See {@link BodyDef#fixedRotation}. */
+    public void setFixedRotation(boolean fixed) {
         world.enter();
         try {
             checkValid();
-            B3.bodySetMotionLocks(id, locks.bits());
+            B3.bodySetFlag(id, FIXED_ROTATION, fixed);
             forgetMotion();
         } finally {
             world.exit();

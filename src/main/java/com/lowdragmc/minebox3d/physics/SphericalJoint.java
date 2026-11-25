@@ -117,7 +117,7 @@ public final class SphericalJoint extends Joint {
         setFlag(JointParam.SPHERICAL_MOTOR, enable);
     }
 
-    /** The angular velocity of B relative to A the motor drives towards, rad/s, world space. */
+    /** The angular velocity of B relative to A the motor drives towards, rad/s, in joint frame A. */
     public Vector3f motorVelocity(Vector3f out) {
         return getVector(JointParam.SPHERICAL_MOTOR_VELOCITY, out);
     }

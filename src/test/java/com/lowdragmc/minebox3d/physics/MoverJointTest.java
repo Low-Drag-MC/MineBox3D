@@ -31,8 +31,7 @@ class MoverJointTest {
 
     /** A capsule standing upright with its rotation locked, no friction: what Box3D's sample walks. */
     private static Body character(PhysicsWorld world, double x, double y, double z) {
-        BodyDef def = new BodyDef().type(BodyType.DYNAMIC).position(x, y, z).enableSleep(false);
-        def.lockAngularX = def.lockAngularY = def.lockAngularZ = true;
+        BodyDef def = new BodyDef().type(BodyType.DYNAMIC).position(x, y, z).enableSleep(false).fixedRotation(true);
         Body body = world.createBody(def);
         ShapeDef shape = new ShapeDef().density(500);
         shape.baseMaterial.friction = 0;
