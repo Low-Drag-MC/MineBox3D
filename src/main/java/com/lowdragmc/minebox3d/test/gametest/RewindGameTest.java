@@ -17,6 +17,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
+import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
@@ -170,7 +171,7 @@ public final class RewindGameTest {
                     if (tick == last) {
                         // where the server says it is: four blocks off
                         Vector3d at = slider.position(new Vector3d());
-                        slider.setTransform(at.x - 4, at.y, at.z, slider.rotation(new org.joml.Quaternionf()));
+                        slider.setTransform(at.x - 4, at.y, at.z, slider.rotation(new Quaternionf()));
                     }
                 }
             });

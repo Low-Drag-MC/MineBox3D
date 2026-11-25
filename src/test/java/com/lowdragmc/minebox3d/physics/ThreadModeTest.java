@@ -3,6 +3,7 @@ package com.lowdragmc.minebox3d.physics;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -224,7 +225,7 @@ class ThreadModeTest {
         }
         assertNull(failure.get(), "no racer failed");
         assertEquals(1, maxInside[0], "one thread at a time");
-        assertTrue(java.util.Arrays.stream(refused).sum() > 0, "they did meet");
+        assertTrue(Arrays.stream(refused).sum() > 0, "they did meet");
         try (PhysicsWorld.Use use = world.use()) {
             world.close();
         }

@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.IntBinaryOperator;
 import org.joml.Quaternionf;
@@ -108,13 +111,13 @@ class VoxelTerrainTest {
         }
     }
 
-    static java.util.List<Face> faces(Terrain t, int sx, int sy, int sz) {
+    static List<Face> faces(Terrain t, int sx, int sy, int sz) {
         float[] bounds = {0, 0, 0, 16, 16, 16};
         float[] v = new float[9 * 4096];
         byte[] flags = new byte[4096];
         int count = t.grid.exposedTriangles(sx, sy, sz, bounds, v, flags);
         assertTrue(count <= 4096, "test buffer too small for " + count);
-        java.util.List<Face> faces = new java.util.ArrayList<>();
+        List<Face> faces = new ArrayList<>();
         int[] bits = {VoxelGrid.FLAT_EDGE_1, VoxelGrid.FLAT_EDGE_2, VoxelGrid.FLAT_EDGE_3};
         for (int i = 0; i < count; i++) {
             Vector3f[] p = new Vector3f[3];
@@ -134,7 +137,7 @@ class VoxelTerrainTest {
         return faces;
     }
 
-    static float area(java.util.List<Face> faces, float nx, float ny, float nz) {
+    static float area(List<Face> faces, float nx, float ny, float nz) {
         float area = 0;
         for (Face face : faces) {
             if (face.normal.distance(nx, ny, nz) < 1e-4f) {
@@ -150,11 +153,10 @@ class VoxelTerrainTest {
             for (int y = 1; y < 4; y++) {
                 t.floor(1, 4, 1, 4, y, (x, z) -> t.full);
             }
-            java.util.List<Face> faces = faces(t, 0, 0, 0);
+            List<Face> faces = faces(t, 0, 0, 0);
             assertEquals(6 * 9 * 2, faces.size(), "two triangles per outer block face, nothing between blocks");
             for (float[] n : new float[][] {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}) {
-                assertEquals(
-                        9, area(faces, n[0], n[1], n[2]), 1e-4, "a 3 x 3 side facing " + java.util.Arrays.toString(n));
+                assertEquals(9, area(faces, n[0], n[1], n[2]), 1e-4, "a 3 x 3 side facing " + Arrays.toString(n));
             }
             // an edge on the cube's rim is a real edge; every other one has the same plane carrying on past it
             for (Face face : faces) {
@@ -177,7 +179,7 @@ class VoxelTerrainTest {
         try (Terrain t = new Terrain()) {
             t.set(5, 5, 5, t.full);
             t.set(6, 5, 5, t.bottomSlab);
-            java.util.List<Face> faces = faces(t, 0, 0, 0);
+            List<Face> faces = faces(t, 0, 0, 0);
             // the stone's east side: only y 5.5 to 6 is open
             float east = 0;
             for (Face face : faces) {

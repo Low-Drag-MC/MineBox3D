@@ -1,5 +1,7 @@
 package com.lowdragmc.minebox3d.physics;
 
+import org.joml.Matrix3fc;
+
 /**
  * Argument checks before a value reaches Box3D. Box3D's own checks are assertions: in MineBox3D they turn into an
  * exception when the call returns, but the bad value has already been stored by then — a NaN velocity is in the
@@ -63,7 +65,7 @@ final class Checks {
     }
 
     /** An inertia tensor: finite, symmetric, positive semi-definite (non-negative diagonal and principal minors). */
-    static void inertia(org.joml.Matrix3fc m) {
+    static void inertia(Matrix3fc m) {
         float[] values = {m.m00(), m.m01(), m.m02(), m.m10(), m.m11(), m.m12(), m.m20(), m.m21(), m.m22()};
         for (float value : values) {
             finite(value, "inertia");

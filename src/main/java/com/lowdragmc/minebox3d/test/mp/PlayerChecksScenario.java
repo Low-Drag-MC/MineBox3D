@@ -17,6 +17,7 @@ import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.vehicle.Boat;
@@ -239,7 +240,7 @@ public class PlayerChecksScenario implements MPScenario {
                     make(sc, RAFT, BodyType.KINEMATIC, 2.5, GROUND + 2.25, 20.5, 3, 0.25f, 2, 1); // its top at 2.5 up
                     Boat boat = EntityType.BOAT.create(sc.server().overworld());
                     boat.moveTo(2.5, GROUND + 2.6, 20.5);
-                    boat.setCustomName(net.minecraft.network.chat.Component.literal(BOAT));
+                    boat.setCustomName(Component.literal(BOAT));
                     sc.server().overworld().addFreshEntity(boat);
                     sc.player("A").teleportTo(sc.server().overworld(), 2.5, GROUND + 3, 20.5, 0, 0);
                     sc.player("A").startRiding(boat, true);

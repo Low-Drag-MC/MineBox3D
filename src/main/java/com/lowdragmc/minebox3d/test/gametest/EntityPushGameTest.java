@@ -14,11 +14,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ArmorStand;
+import net.minecraft.world.entity.decoration.ItemFrame;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.gametest.GameTestHolder;
@@ -346,9 +349,8 @@ public final class EntityPushGameTest {
     @PrefixGameTestTemplate(false)
     public static void aHangingEntityIsNeverPushedOffItsWall(GameTestHelper helper) {
         area(helper, 8, 4);
-        helper.setBlock(new BlockPos(6, 0, 1), net.minecraft.world.level.block.Blocks.STONE);
-        net.minecraft.world.entity.decoration.ItemFrame frame = new net.minecraft.world.entity.decoration.ItemFrame(
-                helper.getLevel(), helper.absolutePos(new BlockPos(5, 0, 1)), net.minecraft.core.Direction.WEST);
+        helper.setBlock(new BlockPos(6, 0, 1), Blocks.STONE);
+        ItemFrame frame = new ItemFrame(helper.getLevel(), helper.absolutePos(new BlockPos(5, 0, 1)), Direction.WEST);
         helper.getLevel().addFreshEntity(frame);
         Body iron = slider(helper, 1.5, 1.5, 4000, 6);
         helper.runAfterDelay(30, () -> {

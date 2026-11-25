@@ -4,12 +4,14 @@ import com.lowdragmc.minebox3d.MineBox3D;
 import com.lowdragmc.minebox3d.mc.LevelBodies;
 import com.lowdragmc.minebox3d.mc.LevelPhysics;
 import com.lowdragmc.minebox3d.mc.LevelRewind;
+import com.lowdragmc.minebox3d.mc.entity.StepUpOn;
 import com.lowdragmc.minebox3d.mc.sync.BodySyncPayload;
 import com.lowdragmc.minebox3d.mc.sync.SyncedBodies;
 import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.Geometry;
+import com.lowdragmc.minebox3d.physics.RevoluteJointDef;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import com.lowdragmc.minebox3d.physics.WorldDef;
 import java.util.List;
@@ -20,6 +22,7 @@ import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
+import org.joml.Vector3f;
 
 /**
  * <b>A client predicting round its own body</b> (EntityStudio doc 61 §3.9), the client's half played on a private
@@ -133,11 +136,11 @@ public final class PredictedReplicaGameTest {
                     0.6f,
                     0,
                     0,
-                    com.lowdragmc.minebox3d.mc.entity.StepUpOn.YES);
+                    StepUpOn.YES);
             physics.sync()
                     .apply(new BodySyncPayload(
                             List.of(new BodySyncPayload.Spawn(
-                                    id, "crate", 0, tag, 0, List.of(shape), state, dynamics, new org.joml.Vector3f())),
+                                    id, "crate", 0, tag, 0, List.of(shape), state, dynamics, new Vector3f())),
                             List.of(),
                             new int[0],
                             false,
@@ -374,7 +377,7 @@ public final class PredictedReplicaGameTest {
             own.createShape(new ShapeDef().density(100), Geometry.Box.of(0.3f, 0.3f, 0.3f));
             LevelBodies.setNeedsTerrain(own, false);
             stage.predictor.own = own;
-            stage.physics.world().createJoint(new com.lowdragmc.minebox3d.physics.RevoluteJointDef().bodies(held, own));
+            stage.physics.world().createJoint(new RevoluteJointDef().bodies(held, own));
             stage.physics.sync().beforeSteps(1 / 20f);
             helper.assertTrue(
                     !SyncedBodies.isSimulated(held), "its own body's joint is not the one the server holds it by");

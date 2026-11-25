@@ -19,6 +19,8 @@ import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.Shape;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import java.util.List;
+import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -26,6 +28,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
+import org.joml.Vector3f;
 
 /**
  * <b>Players and the bodies</b> (design doc {@code 04-entities-and-bodies.md} §11, batch 4c-3), over a real dedicated
@@ -206,7 +209,7 @@ public class PlayerOnBodyScenario implements MPScenario {
                             ArmorStand stand =
                                     EntityType.ARMOR_STAND.create(sc.server().overworld());
                             stand.moveTo(4.5, GROUND + 3, 1.5);
-                            stand.setCustomName(net.minecraft.network.chat.Component.literal(RIDER));
+                            stand.setCustomName(Component.literal(RIDER));
                             sc.server().overworld().addFreshEntity(stand);
                         })
                 .client("A", "A lands on the deck's replica", b -> b.waitUntil("standing on it", ctx -> standsOn(DECK)))
@@ -241,7 +244,7 @@ public class PlayerOnBodyScenario implements MPScenario {
                                         && MpClient.isPlaced(MpClient.named(RIDER)))
                         .waitUntil(
                                 "a little way along",
-                                ctx -> MpClient.replica(DECK).linearVelocity(new org.joml.Vector3f()).x > 3.9)
+                                ctx -> MpClient.replica(DECK).linearVelocity(new Vector3f()).x > 3.9)
                         .step("where they are on it", ctx -> {
                             Vec3 a = offset(MpClient.player("A"), MpClient.replica(DECK));
                             double off = Math.hypot(a.x - (double) ctx.get("a.x"), a.z - (double) ctx.get("a.z"));
@@ -305,8 +308,7 @@ public class PlayerOnBodyScenario implements MPScenario {
                     double sx = sc.get("start.x"), sz = sc.get("start.z");
                     double off = Math.hypot(now.x - sz, now.z + sx);
                     sc.check("A carried round a quarter on the server's deck", off < 0.2, "< 0.2", off);
-                    float turned =
-                            net.minecraft.util.Mth.wrapDegrees(sc.player("A").getYRot() - (float) sc.get("yaw"));
+                    float turned = Mth.wrapDegrees(sc.player("A").getYRot() - (float) sc.get("yaw"));
                     sc.check("A turned with it (yaw clockwise from above)", Math.abs(turned + 90) < 10, -90, turned);
                 })
                 .fetch("a.yaw", "A's yaw on the server", Double.class, sc ->
@@ -317,7 +319,7 @@ public class PlayerOnBodyScenario implements MPScenario {
                         b -> b.waitUntil(
                                 "A's yaw as the server has it",
                                 ctx -> MpClient.player("A") != null
-                                        && Math.abs(net.minecraft.util.Mth.wrapDegrees(
+                                        && Math.abs(Mth.wrapDegrees(
                                                         MpClient.player("A").getYRot()
                                                                 - (float) (double) ctx.get("a.yaw")))
                                                 < 10))

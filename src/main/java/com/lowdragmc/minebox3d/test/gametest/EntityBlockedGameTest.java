@@ -298,8 +298,7 @@ public final class EntityBlockedGameTest {
             for (int i = 0; i < crates.length; i++) {
                 if (crates[i] != null && crates[i].isValid()) {
                     fastest[i] = Math.max(
-                            fastest[i],
-                            crates[i].linearVelocity(new org.joml.Vector3f()).length());
+                            fastest[i], crates[i].linearVelocity(new Vector3f()).length());
                 }
             }
         });

@@ -5,10 +5,13 @@ import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.PhysicsWorld;
 import com.lowdragmc.minebox3d.physics.RewindHistory;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.function.Supplier;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Quaternionf;
@@ -43,7 +46,7 @@ public final class LevelRewind {
     private final RewindHistory history = new RewindHistory(HISTORY_TICKS);
     private final Map<Object, Supplier<Vec3>> watched = new LinkedHashMap<>();
     /** By tick: the bodies whose state then is known ({@link #know}), not recorded — put there when run again. */
-    private final java.util.TreeMap<Long, java.util.Set<Body>> known = new java.util.TreeMap<>();
+    private final TreeMap<Long, Set<Body>> known = new TreeMap<>();
 
     private long recordedTick = Long.MIN_VALUE;
     private long asked = Long.MAX_VALUE;
@@ -166,7 +169,7 @@ public final class LevelRewind {
             return false;
         }
         history.put(tick, body, x, y, z, qx, qy, qz, qw, vx, vy, vz, wx, wy, wz, true);
-        known.computeIfAbsent(tick, t -> java.util.Collections.newSetFromMap(new IdentityHashMap<>()))
+        known.computeIfAbsent(tick, t -> Collections.newSetFromMap(new IdentityHashMap<>()))
                 .add(body);
         requestResimulation(tick + 1);
         return true;
@@ -263,7 +266,7 @@ public final class LevelRewind {
                 }
                 physics.stepWorld();
                 physics.tellResim(false, tick);
-                java.util.Set<Body> knownThen = known.get(tick);
+                Set<Body> knownThen = known.get(tick);
                 for (Body body : inside) {
                     if (!body.isValid()) {
                         continue;

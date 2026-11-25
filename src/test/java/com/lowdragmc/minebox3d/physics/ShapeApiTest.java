@@ -3,7 +3,11 @@ package com.lowdragmc.minebox3d.physics;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.lowdragmc.minebox3d.internal.B3;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -78,7 +82,7 @@ class ShapeApiTest {
         try (PhysicsWorld world = world()) {
             int n = 5;
             float[] heights = new float[n * n];
-            java.util.Arrays.fill(heights, 1);
+            Arrays.fill(heights, 1);
             byte[] materials = new byte[(n - 1) * (n - 1)];
             materials[2 * (n - 1) + 2] = HeightFieldData.HOLE; // the cell from (2, 2) to (3, 3)
             try (HeightFieldData data = HeightFieldData.create(heights, n, n, materials, 1, 2, 1, 0, 4)) {
@@ -416,7 +420,7 @@ class ShapeApiTest {
     void castsFarOutThroughANodeReachingBackToTheOrigin() {
         Geometry.Sphere grain = new Geometry.Sphere(0, 0, 0, 0.05f);
         CastHits hits = new CastHits(1);
-        List<String> missed = new java.util.ArrayList<>();
+        List<String> missed = new ArrayList<>();
         for (double further : new double[] {0, 15_000_000}) {
             for (int p = 0; p < 200; p++) {
                 double x = x(p) + further, z = z(p) - further;
@@ -466,7 +470,7 @@ class ShapeApiTest {
             }
             CastHits hits = new CastHits(1);
             Geometry.Sphere grain = new Geometry.Sphere(0, 0, 0, 0.05f);
-            List<String> missed = new java.util.ArrayList<>();
+            List<String> missed = new ArrayList<>();
             for (int p = 0; p < places; p++) {
                 int count = world.castRay(x(p), -55, z(p), 0, -2.8f, 0, QueryFilter.ALL, hits);
                 if (count != 2 || hits.shape(0) != balls[p][0] || hits.shape(1) != balls[p][1]) {
@@ -518,7 +522,7 @@ class ShapeApiTest {
     void morePastWhatTheNativesHoldOnTheStackAllComeBack() {
         try (PhysicsWorld world = world()) {
             int balls = 50;
-            java.util.Set<Shape> made = new java.util.HashSet<>();
+            Set<Shape> made = new HashSet<>();
             for (int i = 0; i < balls; i++) {
                 Body body =
                         world.createBody(new BodyDef().type(BodyType.KINEMATIC).position(i, 0, 0));
@@ -591,8 +595,8 @@ class ShapeApiTest {
         }
     }
 
-    private static java.util.Set<Shape> shapesOf(Overlaps found) {
-        java.util.Set<Shape> shapes = new java.util.HashSet<>();
+    private static Set<Shape> shapesOf(Overlaps found) {
+        Set<Shape> shapes = new HashSet<>();
         for (int i = 0; i < found.count(); i++) {
             shapes.add(found.shape(i));
         }

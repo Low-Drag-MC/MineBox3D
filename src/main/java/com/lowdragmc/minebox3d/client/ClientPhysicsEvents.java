@@ -8,6 +8,7 @@ import com.lowdragmc.minebox3d.mc.sync.StandingPayload;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import java.util.Locale;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.commands.CommandSourceStack;
@@ -79,7 +80,7 @@ public final class ClientPhysicsEvents {
             return 1;
         }));
         for (Playground.Kind kind : Playground.Kind.values()) {
-            String name = kind.name().toLowerCase(java.util.Locale.ROOT);
+            String name = kind.name().toLowerCase(Locale.ROOT);
             root.then(Commands.literal("spawn")
                     .then(Commands.literal(name)
                             .executes(context -> spawned(context, Playground.spawn(kind, 1)))

@@ -2,6 +2,7 @@ package com.lowdragmc.minebox3d.physics;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.lowdragmc.minebox3d.internal.B3;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -83,10 +84,9 @@ class ConstraintJointTest {
         try (PhysicsWorld world = world(0)) {
             Body bar = bar(world);
             ConstraintJoint constraint = hang(world, bar, new ConstraintJointSettings());
-            assertEquals(
-                    JointType.CONSTRAINT.ordinal(), com.lowdragmc.minebox3d.internal.B3.jointGetType(constraint.id()));
+            assertEquals(JointType.CONSTRAINT.ordinal(), B3.jointGetType(constraint.id()));
             MotorJoint motor = world.createJoint(new MotorJointDef().bodies(world.createBody(new BodyDef()), bar));
-            assertEquals(JointType.MOTOR.ordinal(), com.lowdragmc.minebox3d.internal.B3.jointGetType(motor.id()));
+            assertEquals(JointType.MOTOR.ordinal(), B3.jointGetType(motor.id()));
             assertEquals(
                     JointType.WHEEL.ordinal() + 4,
                     JointType.CONSTRAINT.ordinal(),

@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.network.FriendlyByteBuf;
+import org.joml.Vector3f;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -80,7 +81,7 @@ class BodySyncPayloadTest {
                                 shapes,
                                 state(7),
                                 mass,
-                                new org.joml.Vector3f(0.1f, -0.2f, 0.3f)),
+                                new Vector3f(0.1f, -0.2f, 0.3f)),
                         new BodySyncPayload.Spawn(8, null, -1, 0, 0, List.of(), state(8), null, null)),
                 List.of(state(3), state(300_000)),
                 new int[] {1, 2, 1_000_000}));
@@ -147,7 +148,7 @@ class BodySyncPayloadTest {
         assertEquals(0.5f, data.inertia.m10());
         assertNull(read.spawns().get(1).dynamics());
         // the centre of mass of a dynamic one; none for the other
-        assertEquals(new org.joml.Vector3f(0.1f, -0.2f, 0.3f), crate.centre());
+        assertEquals(new Vector3f(0.1f, -0.2f, 0.3f), crate.centre());
         assertNull(read.spawns().get(1).centre());
         float[] inertia = new float[9];
         assertFalse(new BodySyncPayload.Dynamics(0, 0, 0, 0, inertia, true).isUsable(), "no mass");

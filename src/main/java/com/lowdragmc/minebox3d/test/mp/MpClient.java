@@ -7,6 +7,7 @@ import com.lowdragmc.minebox3d.physics.Body;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.Input;
@@ -17,6 +18,7 @@ import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 
 /**
  * What a multi-process scenario reads on a client. ⚠️ The only class of the scenarios that names client types: a
@@ -119,7 +121,7 @@ final class MpClient {
     }
 
     /** Per tick since {@link #track}: this client's own player's x and the replica's, at the tick's end. */
-    private static final List<double[]> TRACK = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private static final List<double[]> TRACK = new CopyOnWriteArrayList<>();
 
     @Nullable
     private static volatile String tracked;
@@ -135,7 +137,7 @@ final class MpClient {
                 Entity me = self();
                 Body replica = body == null ? null : replica(body);
                 if (me != null && replica != null) {
-                    TRACK.add(new double[] {me.getX(), replica.position(new org.joml.Vector3d()).x});
+                    TRACK.add(new double[] {me.getX(), replica.position(new Vector3d()).x});
                 }
             });
         }

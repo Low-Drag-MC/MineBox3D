@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -324,7 +325,7 @@ class PhysicsApiTest {
     @Test
     void definitionsAndDataBox3DCannotTakeAreRefused() {
         int worlds = B3.getWorldCount();
-        List<java.util.function.Consumer<WorldDef>> bad = List.of(
+        List<Consumer<WorldDef>> bad = List.of(
                 def -> def.gravityY = Float.NaN,
                 def -> def.contactHertz = 0,
                 def -> def.contactSpeed = -1,

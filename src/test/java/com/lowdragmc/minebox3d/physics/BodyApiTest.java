@@ -2,6 +2,7 @@ package com.lowdragmc.minebox3d.physics;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.lowdragmc.minebox3d.internal.B3;
 import java.util.List;
 import org.joml.Quaternionf;
 import org.joml.Vector3d;
@@ -322,9 +323,9 @@ class BodyApiTest {
 
     private static void sameAsBox3D(Body body, String when) {
         float[] v = new float[3];
-        com.lowdragmc.minebox3d.internal.B3.bodyGetLinearVelocity(body.id(), v);
+        B3.bodyGetLinearVelocity(body.id(), v);
         assertEquals(new Vector3f(v[0], v[1], v[2]), body.linearVelocity(new Vector3f()), "linear velocity " + when);
-        com.lowdragmc.minebox3d.internal.B3.bodyGetAngularVelocity(body.id(), v);
+        B3.bodyGetAngularVelocity(body.id(), v);
         assertEquals(new Vector3f(v[0], v[1], v[2]), body.angularVelocity(new Vector3f()), "angular velocity " + when);
     }
 
@@ -418,7 +419,7 @@ class BodyApiTest {
             ground.createShape(new ShapeDef(), new Geometry.HeightField(data));
             assertThrows(IllegalStateException.class, () -> ground.setType(BodyType.DYNAMIC));
             assertEquals(BodyType.STATIC, ground.type());
-            assertEquals(BodyType.STATIC.ordinal(), com.lowdragmc.minebox3d.internal.B3.bodyGetType(ground.id()));
+            assertEquals(BodyType.STATIC.ordinal(), B3.bodyGetType(ground.id()));
         }
     }
 
@@ -481,11 +482,11 @@ class BodyApiTest {
             for (int i = 0; i < 20; i++) {
                 switchOffAndOnAsleep(volume);
             }
-            long before = com.lowdragmc.minebox3d.internal.B3.getByteCount();
+            long before = B3.getByteCount();
             for (int i = 0; i < 1000; i++) {
                 switchOffAndOnAsleep(volume);
             }
-            assertEquals(before, com.lowdragmc.minebox3d.internal.B3.getByteCount(), "bytes Box3D holds");
+            assertEquals(before, B3.getByteCount(), "bytes Box3D holds");
             assertFalse(volume.isAwake());
             assertTrue(volume.isEnabled());
         }
