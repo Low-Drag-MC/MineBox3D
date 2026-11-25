@@ -21,6 +21,7 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
@@ -330,6 +331,42 @@ public final class PredictedReplicaGameTest {
             helper.assertTrue(
                     !SyncedBodies.isSimulated(held) && held.type() == BodyType.KINEMATIC,
                     "held by a joint it is not held by here: followed");
+        }
+        helper.succeed();
+    }
+
+    /** A replica simulated with a fixed rotation turns as the server's body again once it is only followed. */
+    @GameTest(template = "empty", batch = "minebox3d_predicted", timeoutTicks = 100)
+    @PrefixGameTestTemplate(false)
+    public static void aFixedRotationReplicaFollowedAgainTurnsAsTheServers(GameTestHelper helper) {
+        try (Stage stage = new Stage(helper)) {
+            Vec3 c = stage.centre;
+            float[] inertia = {4, 0, 0, 0, 4, 0, 0, 0, 4};
+            stage.spawn(
+                    1,
+                    Stage.state(1, c.x, c.y + 3, c.z),
+                    0,
+                    new BodySyncPayload.Dynamics(40, 0, 0, 0, inertia, true, 0, 0, 0, true));
+            Body replica = stage.physics.sync().replica(1);
+            stage.physics.sync().beforeSteps(1 / 20f);
+            helper.assertTrue(SyncedBodies.isSimulated(replica) && replica.isFixedRotation(), "simulated, not turning");
+
+            // touching what this client has not got: followed from the next state on, turned a quarter about y
+            Quaternionf quarter = new Quaternionf().rotationY((float) (Math.PI / 2));
+            BodySyncPayload.State turned = new BodySyncPayload.State(
+                    1, c.x, c.y + 3, c.z, quarter.x, quarter.y, quarter.z, quarter.w, 0, 0, 0, 0, 0, 0, false, 0);
+            for (int i = 0; i < 5; i++) {
+                stage.physics
+                        .sync()
+                        .apply(new BodySyncPayload(
+                                List.of(), List.of(turned), new int[0], false, stage.physics.ticks(), (int)
+                                        stage.physics.ticks()));
+                stage.physics.sync().beforeSteps(1 / 20f);
+                stage.ticks(helper, 1);
+            }
+            helper.assertTrue(!SyncedBodies.isSimulated(replica), "followed");
+            float angle = replica.rotation(new Quaternionf()).angle();
+            helper.assertTrue(Math.abs(angle - Math.PI / 2) < 0.05, "turned as the server's: " + angle);
         }
         helper.succeed();
     }

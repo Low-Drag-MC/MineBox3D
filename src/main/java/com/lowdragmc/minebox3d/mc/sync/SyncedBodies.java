@@ -596,6 +596,8 @@ public final class SyncedBodies {
             body.setAngularVelocity(r.wx, r.wy, r.wz);
         } else {
             body.setType(BodyType.KINEMATIC);
+            // Box3D keeps a fixed rotation body's target turn from turning it, and a followed replica turns as the server's
+            body.setFixedRotation(false);
             r.coasting = 0;
         }
     }
