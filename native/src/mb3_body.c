@@ -150,34 +150,29 @@ MB3_JNI( void, bodiesGetTransforms )( JNIEnv* env, jclass type, jlongArray bodie
 		mb3_throw_illegal_argument( env, "output double[] is null or shorter than 7 * count" );
 		return;
 	}
-	jlong* ids = ( *env )->GetPrimitiveArrayCritical( env, bodies, NULL );
-	jdouble* values = ( *env )->GetPrimitiveArrayCritical( env, out, NULL );
-	if ( ids == NULL || values == NULL )
+	// Not held critical: a stale id fails Box3D's check, whose handler must not run inside a critical region
+	jlong* ids = ( *env )->GetLongArrayElements( env, bodies, NULL );
+	jdouble* values = ids == NULL ? NULL : ( *env )->GetDoubleArrayElements( env, out, NULL );
+	if ( values != NULL )
 	{
-		if ( values != NULL )
+		for ( int i = 0; i < count; ++i )
 		{
-			( *env )->ReleasePrimitiveArrayCritical( env, out, values, JNI_ABORT );
+			b3WorldTransform t = b3Body_GetTransform( mb3_body( ids[i] ) );
+			jdouble* v = values + 7 * i;
+			v[0] = t.p.x;
+			v[1] = t.p.y;
+			v[2] = t.p.z;
+			v[3] = t.q.v.x;
+			v[4] = t.q.v.y;
+			v[5] = t.q.v.z;
+			v[6] = t.q.s;
 		}
-		if ( ids != NULL )
-		{
-			( *env )->ReleasePrimitiveArrayCritical( env, bodies, ids, JNI_ABORT );
-		}
-		return;
+		( *env )->ReleaseDoubleArrayElements( env, out, values, 0 );
 	}
-	for ( int i = 0; i < count; ++i )
+	if ( ids != NULL )
 	{
-		b3WorldTransform t = b3Body_GetTransform( mb3_body( ids[i] ) );
-		jdouble* v = values + 7 * i;
-		v[0] = t.p.x;
-		v[1] = t.p.y;
-		v[2] = t.p.z;
-		v[3] = t.q.v.x;
-		v[4] = t.q.v.y;
-		v[5] = t.q.v.z;
-		v[6] = t.q.s;
+		( *env )->ReleaseLongArrayElements( env, bodies, ids, JNI_ABORT );
 	}
-	( *env )->ReleasePrimitiveArrayCritical( env, out, values, 0 );
-	( *env )->ReleasePrimitiveArrayCritical( env, bodies, ids, JNI_ABORT );
 	mb3_check( env );
 }
 
