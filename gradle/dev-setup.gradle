@@ -1,0 +1,21 @@
+// Developer setup: ./gradlew mb3Setup, once per clone and once per new worktree.
+//
+// Installs the hooks in .githooks (the pre-commit format check) and points `git blame` at .git-blame-ignore-revs, which
+// lists the commits that only reformatted. Both are git config, shared by every worktree of the clone.
+
+tasks.register('mb3Setup') {
+    group = 'minebox3d'
+    description = 'Installs the git hooks and the blame settings.'
+    doLast {
+        def git = { String... args ->
+            def proc = (['git'] + args.toList()).execute(null, rootDir)
+            proc.waitForProcessOutput(System.out, System.err)
+            if (proc.exitValue() != 0) {
+                throw new GradleException("git ${args.join(' ')} failed")
+            }
+        }
+        git('config', 'core.hooksPath', '.githooks')
+        git('config', 'blame.ignoreRevsFile', '.git-blame-ignore-revs')
+        logger.lifecycle('[mb3Setup] git hooks and blame settings installed')
+    }
+}

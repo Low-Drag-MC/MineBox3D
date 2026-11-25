@@ -1,0 +1,42 @@
+# The JNI bridge (native/src) in Box3D's own style (native/box3d/.clang-format), so the two read alike.
+# Applied by ./gradlew spotlessApply; Box3D itself is upstream's and is not reformatted here.
+---
+Language: Cpp
+BasedOnStyle: Microsoft
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterCaseLabel: true
+  AfterUnion: true
+  BeforeWhile: true
+
+ColumnLimit: 120
+PointerAlignment: Left
+UseTab: Always
+BreakConstructorInitializers: BeforeComma
+
+InsertNewlineAtEOF: true
+# Not Box3D's: the bridge's parameter dispatches are tables, a case a line
+AllowShortCaseLabelsOnASingleLine: true
+IncludeBlocks: Regroup
+
+IncludeCategories:
+  - Regex:           '^"(box3d\/)'
+    Priority:        2
+  - Regex:           '^<.*'
+    Priority:        3
+  - Regex:           '^".*'
+    Priority:        1
+
+IndentExternBlock: NoIndent
+IndentCaseLabels: true
+IndentAccessModifiers: false
+AccessModifierOffset: -4
+
+SpacesInParens: Custom
+SpacesInParensOptions:
+  ExceptDoubleParentheses: false
+  InConditionalStatements: true
+  InCStyleCasts: false
+  InEmptyParentheses: false
+  Other: true

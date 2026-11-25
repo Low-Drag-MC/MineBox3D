@@ -3,6 +3,7 @@ plugins {
     id 'idea'
     id 'maven-publish'
     id 'net.neoforged.gradle.userdev' version '7.0.181'
+    id 'com.diffplug.spotless' version '7.2.1'
 }
 
 version = mod_version
@@ -210,6 +211,9 @@ runs {
     }
 }
 
+// ./gradlew mb3Setup: the git hooks and blame settings for a fresh clone or worktree.
+apply from: rootProject.file('gradle/dev-setup.gradle')
+
 // LDLib2's test harnesses (tests only, see ldlib2Test). The multi-process one adds runMpServer / runMpClientA /
 // runMpClientB and must come after the `runs { }` block:
 //
@@ -278,6 +282,64 @@ tasks.withType(ProcessResources).configureEach {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
+}
+
+// =================================================================================================
+// Formatting
+//
+// `spotlessApply` rewrites, `spotlessCheck` (part of `check`) fails on unformatted code. Java with
+// palantir-java-format; the bridge's C (native/src) with clang-format in Box3D's own style
+// (native/.clang-format), where one is found. Box3D is upstream's code and stays as upstream has it.
+// The pre-commit hook (.githooks, installed by ./gradlew mb3Setup) passes -PspotlessFiles=<regexes>
+// to check only the staged files.
+// =================================================================================================
+
+// clang-format: -Pminebox3d.clangFormat=<path>, else PATH, else the copy Visual Studio's C++ tools ship
+def findClangFormat = {
+    if (project.hasProperty('minebox3d.clangFormat')) return project.property('minebox3d.clangFormat').toString()
+    String exe = nativeOs() == 'windows' ? 'clang-format.exe' : 'clang-format'
+    for (String dir : (System.getenv('PATH') ?: '').split(File.pathSeparator)) {
+        File candidate = new File(dir, exe)
+        if (candidate.isFile()) return candidate.absolutePath
+    }
+    if (nativeOs() == 'windows') {
+        File vswhere = new File(System.getenv('ProgramFiles(x86)') ?: 'C:/Program Files (x86)',
+                'Microsoft Visual Studio/Installer/vswhere.exe')
+        if (vswhere.isFile()) {
+            def process = [vswhere.absolutePath, '-latest', '-products', '*', '-property', 'installationPath'].execute()
+            String installation = process.text.trim()
+            File bundled = new File(installation, 'VC/Tools/Llvm/x64/bin/clang-format.exe')
+            if (bundled.isFile()) return bundled.absolutePath
+        }
+    }
+    return null
+}
+def clangFormatExecutable = findClangFormat()
+
+spotless {
+    java {
+        target 'src/*/java/**/*.java'
+        palantirJavaFormat()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+    if (clangFormatExecutable != null) {
+        // Spotless pins the version it was told; the one found is the one to use
+        def version = ([clangFormatExecutable, '--version'].execute().text =~ /version (\d+\.\d+\.\d+)/)
+        if (version.find()) {
+            cpp {
+                target 'native/src/**/*.c', 'native/src/**/*.h'
+                // the code goes in on stdin, where clang-format would not find the file beside it
+                clangFormat(version.group(1)).pathToExe(clangFormatExecutable)
+                        .style("file:${file('native/.clang-format').absolutePath}")
+            }
+        }
+    }
+}
+// ⚠️ Spotless keys the C step on the style's path, not what the file says: without this an edit to it was answered from
+// the build cache with the last formatting
+tasks.matching { it.name.startsWith('spotlessCpp') }.configureEach {
+    inputs.file('native/.clang-format').withPathSensitivity(PathSensitivity.NONE).withPropertyName('clangFormatStyle')
 }
 
 publishing {
