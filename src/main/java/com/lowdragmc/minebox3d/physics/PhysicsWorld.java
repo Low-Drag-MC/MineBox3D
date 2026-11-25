@@ -673,9 +673,9 @@ public final class PhysicsWorld implements AutoCloseable {
         return needed > array.length ? new long[Math.max(needed, 2 * array.length)] : array;
     }
 
-    /** The bodies that moved since {@link #beginInterpolationFrame()}. */
+    /** The bodies that moved since {@link #beginInterpolationFrame()}, as of now. */
     public List<Body> movedBodies() {
-        return Collections.unmodifiableList(movedThisFrame);
+        return List.copyOf(movedThisFrame);
     }
 
     /** The bodies that fell asleep in any step since {@link #beginInterpolationFrame()} and are still asleep. */
