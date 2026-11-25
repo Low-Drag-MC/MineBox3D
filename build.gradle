@@ -86,10 +86,10 @@ def nativeOutDir = layout.buildDirectory.dir("native/out/${nativePlatform}")
 def nativeResourcesDir = layout.buildDirectory.dir('native/resources')
 def nativeLibraryFile = nativeOutDir.map { it.file(nativeFileName(nativeOs())) }
 
-// CMake: -Pminebox3d.cmake=<path>, else PATH, else the copy Visual Studio ships (found with vswhere).
-def findCmake = {
-    if (project.hasProperty('minebox3d.cmake')) return project.property('minebox3d.cmake').toString()
-    String exe = nativeOs() == 'windows' ? 'cmake.exe' : 'cmake'
+// A tool: -P<property>=<path>, else PATH, else the copy Visual Studio ships (found with vswhere), else null.
+def findTool = { String property, String name, String visualStudioPath ->
+    if (project.hasProperty(property)) return project.property(property).toString()
+    String exe = nativeOs() == 'windows' ? "${name}.exe" : name
     for (String dir : (System.getenv('PATH') ?: '').split(File.pathSeparator)) {
         File candidate = new File(dir, exe)
         if (candidate.isFile()) return candidate.absolutePath
@@ -99,14 +99,14 @@ def findCmake = {
                 'Microsoft Visual Studio/Installer/vswhere.exe')
         if (vswhere.isFile()) {
             def process = [vswhere.absolutePath, '-latest', '-products', '*', '-property', 'installationPath'].execute()
-            String installation = process.text.trim()
-            File bundled = new File(installation, 'Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe')
+            File bundled = new File(process.text.trim(), visualStudioPath)
             if (bundled.isFile()) return bundled.absolutePath
         }
     }
     return null
 }
-def cmakeExecutable = findCmake()
+def cmakeExecutable = findTool('minebox3d.cmake', 'cmake',
+        'Common7/IDE/CommonExtensions/Microsoft/CMake/CMake/bin/cmake.exe')
 
 // Box3D is our fork's `minebox3d` branch (Low-Drag-MC/box3d), built straight from the submodule;
 // what the fork changes and why is docs/design/02-box3d-fork.md.
@@ -253,8 +253,7 @@ test {
     useJUnitPlatform()
     dependsOn 'buildNative'
     systemProperty 'minebox3d.native.path', nativeLibraryPath.get()
-    // ⚠️ the library the tests load is an input: without it a change to the C side alone left the tests up to date, or
-    // restored their last results from the build cache, without running them
+    // the library the tests load: a change to the C side alone runs them again
     inputs.file(nativeLibraryFile).withPathSensitivity(PathSensitivity.NONE).withPropertyName('nativeLibrary')
 }
 
@@ -290,45 +289,28 @@ tasks.withType(JavaCompile).configureEach {
 // `spotlessApply` rewrites, `spotlessCheck` (part of `check`) fails on unformatted code. Java with
 // palantir-java-format; the bridge's C (native/src) with clang-format in Box3D's own style
 // (native/.clang-format), where one is found. Box3D is upstream's code and stays as upstream has it.
-// The pre-commit hook (.githooks, installed by ./gradlew mb3Setup) passes -PspotlessFiles=<regexes>
-// to check only the staged files.
+// The pre-commit hook (.githooks, installed by ./gradlew mb3Setup) passes -PformatFiles=<path,...>,
+// relative to the project, to check only the staged files.
 // =================================================================================================
 
-// clang-format: -Pminebox3d.clangFormat=<path>, else PATH, else the copy Visual Studio's C++ tools ship
-def findClangFormat = {
-    if (project.hasProperty('minebox3d.clangFormat')) return project.property('minebox3d.clangFormat').toString()
-    String exe = nativeOs() == 'windows' ? 'clang-format.exe' : 'clang-format'
-    for (String dir : (System.getenv('PATH') ?: '').split(File.pathSeparator)) {
-        File candidate = new File(dir, exe)
-        if (candidate.isFile()) return candidate.absolutePath
-    }
-    if (nativeOs() == 'windows') {
-        File vswhere = new File(System.getenv('ProgramFiles(x86)') ?: 'C:/Program Files (x86)',
-                'Microsoft Visual Studio/Installer/vswhere.exe')
-        if (vswhere.isFile()) {
-            def process = [vswhere.absolutePath, '-latest', '-products', '*', '-property', 'installationPath'].execute()
-            String installation = process.text.trim()
-            File bundled = new File(installation, 'VC/Tools/Llvm/x64/bin/clang-format.exe')
-            if (bundled.isFile()) return bundled.absolutePath
-        }
-    }
-    return null
-}
-def clangFormatExecutable = findClangFormat()
+def clangFormatExecutable = findTool('minebox3d.clangFormat', 'clang-format', 'VC/Tools/Llvm/x64/bin/clang-format.exe')
+
+def formatFiles = (findProperty('formatFiles') ?: '').toString().tokenize(',')
 
 spotless {
     java {
-        target 'src/*/java/**/*.java'
+        target(formatFiles ? formatFiles.findAll { it.endsWith('.java') } : 'src/*/java/**/*.java')
         palantirJavaFormat()
         trimTrailingWhitespace()
         endWithNewline()
     }
     if (clangFormatExecutable != null) {
-        // Spotless pins the version it was told; the one found is the one to use
-        def version = ([clangFormatExecutable, '--version'].execute().text =~ /version (\d+\.\d+\.\d+)/)
-        if (version.find()) {
+        // native/src is formatted by clang-format 19; other versions differ, and the style file needs 19
+        def version = ([clangFormatExecutable, '--version'].execute().text =~ /version (\S+)/)
+        if (version.find() && version.group(1).startsWith('19.')) {
             cpp {
-                target 'native/src/**/*.c', 'native/src/**/*.h'
+                target(formatFiles ? formatFiles.findAll { it ==~ /native\/src\/[^\/]+\.[ch]/ }
+                        : ['native/src/**/*.c', 'native/src/**/*.h'])
                 // the code goes in on stdin, where clang-format would not find the file beside it
                 clangFormat(version.group(1)).pathToExe(clangFormatExecutable)
                         .style("file:${file('native/.clang-format').absolutePath}")
@@ -336,8 +318,7 @@ spotless {
         }
     }
 }
-// ⚠️ Spotless keys the C step on the style's path, not what the file says: without this an edit to it was answered from
-// the build cache with the last formatting
+// Spotless keys the C step on the style file's path, not its content
 tasks.matching { it.name.startsWith('spotlessCpp') }.configureEach {
     inputs.file('native/.clang-format').withPathSensitivity(PathSensitivity.NONE).withPropertyName('clangFormatStyle')
 }

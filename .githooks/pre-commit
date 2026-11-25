@@ -2,19 +2,10 @@
 # Fails the commit when a staged Java or bridge C file is not formatted. Fix with: ./gradlew spotlessApply
 # Installed by ./gradlew mb3Setup (core.hooksPath). Checks the working-tree copy of each staged file.
 
-files=$(git diff --cached --name-only --diff-filter=ACMR -- '*.java' 'native/src/*.c' 'native/src/*.h')
+files=$(git diff --cached --name-only --diff-filter=ACMR -- '*.java' 'native/src/*.c' 'native/src/*.h' | paste -sd, -)
 [ -z "$files" ] && exit 0
 
-if [ "$(printf '%s\n' "$files" | wc -l)" -gt 200 ]; then
-    ./gradlew spotlessCheck -q
-else
-    # Spotless matches each pattern against the absolute path, whose separators differ per OS
-    patterns=$(printf '%s\n' "$files" | sed -e 's/[.]/\./g' -e 's#/#[\\/]#g' -e 's/^/.*/' | paste -sd, -)
-    ./gradlew spotlessCheck -q "-PspotlessFiles=$patterns"
-fi
-
-status=$?
-if [ $status -ne 0 ]; then
+if ! ./gradlew spotlessCheck -q "-PformatFiles=$files"; then
     echo "pre-commit: staged files are not formatted. Run ./gradlew spotlessApply, stage, and commit again." >&2
+    exit 1
 fi
-exit $status
