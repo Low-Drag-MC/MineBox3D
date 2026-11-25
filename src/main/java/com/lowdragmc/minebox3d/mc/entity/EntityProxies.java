@@ -368,8 +368,8 @@ public final class EntityProxies implements AutoCloseable {
             if (capping && tick - proxy.pressedTick > CAPPED_TICKS && comesOntoABody(proxy, entity, tx, ty, tz)) {
                 proxy.pressedTick = tick;
             }
-            if (proxy.capped && !(proxy.target.isValid() && proxy.drive.isValid())) {
-                // another mod destroyed its target or pull: driving it would throw and stop the level's physics
+            if (proxy.capped && !(proxy.target.isValid() && proxy.drive.isValid() && proxy.upright.isValid())) {
+                // another mod destroyed its target or a joint: driving it would throw and stop the level's physics
                 uncap(proxy);
                 cap(proxy);
             }
@@ -891,13 +891,23 @@ public final class EntityProxies implements AutoCloseable {
                 .angularSpring(PULL_HERTZ, 1, force);
         pull.maxVelocityForce = force;
         pull.maxVelocityTorque = force;
-        proxy.drive = world.createJoint(pull);
-        // upright: both frames' z along the bodies' y, angular x and y locked, so it turns only about y, by the drive
-        proxy.upright = world.createJoint(new MotionLockJointDef()
-                .bodies(proxy.target, proxy.body)
-                .localFrameA(0, 0, 0, Z_TO_Y)
-                .localFrameB(0, 0, 0, Z_TO_Y)
-                .lockAngularXY(true));
+        Joint drive = null;
+        try {
+            drive = world.createJoint(pull);
+            // upright: both frames' z along the bodies' y, so it turns only about y, by the drive
+            proxy.upright = world.createJoint(new MotionLockJointDef()
+                    .bodies(proxy.target, proxy.body)
+                    .localFrameA(0, 0, 0, Z_TO_Y)
+                    .localFrameB(0, 0, 0, Z_TO_Y)
+                    .lockAngularXY(true));
+        } catch (RuntimeException e) {
+            if (drive != null) {
+                drive.destroy(false);
+            }
+            proxy.body.setType(BodyType.KINEMATIC);
+            throw e;
+        }
+        proxy.drive = drive;
         proxy.capped = true;
     }
 

@@ -8,6 +8,8 @@ import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;
 import com.lowdragmc.minebox3d.physics.Geometry;
+import com.lowdragmc.minebox3d.physics.Joint;
+import com.lowdragmc.minebox3d.physics.JointType;
 import com.lowdragmc.minebox3d.physics.MassData;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import java.util.HashSet;
@@ -16,6 +18,7 @@ import java.util.Set;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.AfterBatch;
 import net.minecraft.gametest.framework.GameTest;
+import net.minecraft.gametest.framework.GameTestAssertException;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.nbt.CompoundTag;
@@ -190,6 +193,13 @@ public final class EntitySqueezeGameTest {
         return proxy != null && proxy.type() == BodyType.DYNAMIC;
     }
 
+    private static Joint upright(GameTestHelper helper, Entity entity) {
+        return physics(helper).entities().proxyOf(entity).joints().stream()
+                .filter(joint -> joint.type() == JointType.MOTION_LOCK)
+                .findFirst()
+                .orElseThrow(() -> new GameTestAssertException("no upright joint"));
+    }
+
     /**
      * The bodies proxies are pulled after while force-capped, but those of {@code before}: a test that failed before
      * its clean-up leaves its own behind.
@@ -342,7 +352,10 @@ public final class EntitySqueezeGameTest {
         sequence.thenSucceed();
     }
 
-    /** Its target destroyed by another mod, then the proxy itself: the physics carries on, and nothing is left. */
+    /**
+     * Its target destroyed by another mod, then its upright joint, then the proxy itself: the physics carries on, each
+     * is made again, and nothing is left.
+     */
     @GameTest(template = "empty", batch = "minebox3d_squeeze_destroyed", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
     public static void aForceCappedProxyAnotherModDestroysLeavesNoTarget(GameTestHelper helper) {
@@ -365,6 +378,13 @@ public final class EntitySqueezeGameTest {
             helper.assertTrue(
                     capped(helper, stand[0]) && targets(helper, before).size() == 1,
                     "capped still, after a new target");
+            upright(helper, stand[0]).destroy(false);
+        });
+        step(sequence, stand, 0.1, 0, 2);
+        sequence.thenExecute(() -> {
+            helper.assertFalse(physics(helper).isStopped(), "the level's physics carried on");
+            helper.assertTrue(capped(helper, stand[0]), "capped still");
+            helper.assertTrue(upright(helper, stand[0]).isValid(), "kept upright again");
             physics(helper).entities().proxyOf(stand[0]).destroy();
         });
         sequence.thenExecuteAfter(3, () -> {
