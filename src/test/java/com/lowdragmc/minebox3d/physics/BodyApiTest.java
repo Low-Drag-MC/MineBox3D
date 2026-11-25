@@ -178,6 +178,13 @@ class BodyApiTest {
             assertFalse(joint.isLinearLocked(2));
             steps(world, 10);
             assertTrue(locked.position(new Vector3d()).y < 4.9, "let go, it falls");
+
+            joint.lockLinear(0, true);
+            joint.lockAngular(false);
+            assertTrue(joint.isLinearLocked(0));
+            assertFalse(joint.isAngularLocked());
+            assertThrows(IllegalArgumentException.class, () -> joint.lockLinear(3, true));
+            assertThrows(IllegalArgumentException.class, () -> joint.isLinearLocked(-1));
         }
     }
 

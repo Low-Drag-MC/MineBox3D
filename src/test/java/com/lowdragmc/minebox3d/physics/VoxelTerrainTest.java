@@ -408,6 +408,41 @@ class VoxelTerrainTest {
         }
     }
 
+    /**
+     * Each section's triangles are in their own contact, so a capsule lying across the seam meets one section's edge and
+     * nothing clusters it with the other's face: held at one point, it tipped up. Placed where the seam GameTest found it,
+     * where a step lands the capsule exactly on the seam.
+     */
+    @Test
+    void aCapsuleAcrossCrossingASectionSeamIsNotTippedUp() {
+        int x0 = 1987013, y0 = -59, z0 = 8707226; // a section seam at x0 + 11
+        try (Terrain t = new Terrain()) {
+            // upside down stairs: the top a full square at y = 1 made of two boxes
+            int upsideDown = t.collider(new float[] {0, 0.5f, 0, 0.5f, 1, 1, 0.5f, 0, 0, 1, 1, 1});
+            t.floor(x0, x0 + 26, z0, z0 + 5, y0, (x, z) -> (x - x0) % 3 == 0 ? upsideDown : t.full);
+            Body slider = t.world.createBody(new BodyDef()
+                    .type(BodyType.DYNAMIC)
+                    .position(x0 + 1.5, y0 + 1.11, z0 + 2.5)
+                    .enableSleep(false));
+            slider.createShape(
+                    new ShapeDef().friction(0).density(500), new Geometry.Capsule(0, 0, -0.1f, 0, 0, 0.1f, 0.1f));
+            t.step(30);
+            slider.setLinearVelocity(2, 0, 0);
+            Vector3f v = new Vector3f(), w = new Vector3f();
+            Vector3d p = new Vector3d();
+            float maxVy = 0, maxW = 0;
+            for (int i = 0; i < 600 && p.x < x0 + 20; i++) {
+                t.step(1);
+                slider.position(p);
+                maxVy = Math.max(maxVy, Math.abs(slider.linearVelocity(v).y));
+                maxW = Math.max(maxW, slider.angularVelocity(w).length());
+            }
+            assertTrue(p.x >= x0 + 20, "across the seam, at " + p);
+            assertTrue(maxVy < 0.05f, "kicked up at " + maxVy);
+            assertTrue(maxW < 0.1f, "turned at " + maxW);
+        }
+    }
+
     // ---- changing cells ------------------------------------------------------------------------
 
     @Test
