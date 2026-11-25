@@ -77,6 +77,21 @@ class PhysicsWorldTest {
         }
     }
 
+    /** A step that does not move the body still has its next frame start where the correction put it. */
+    @Test
+    void aCorrectedBodyNoStepMovesIsDrawnStillFromTheNextFrame() {
+        try (PhysicsWorld world = world()) {
+            Body post = world.createBody(new BodyDef().position(0, 3, 0));
+            post.createShape(new ShapeDef(), Geometry.Box.of(0.5f, 0.5f, 0.5f));
+            world.beginInterpolationFrame();
+            world.step(1 / 60f, 4);
+            post.correctTransform(1, 3, 0, new Quaternionf(), false);
+            world.beginInterpolationFrame();
+            world.step(1 / 60f, 4);
+            assertEquals(1, post.renderPosition(0, new Vector3d()).x, 1e-9, "not drawn moving there again");
+        }
+    }
+
     private static Throwable onAnotherThread(Runnable action) throws InterruptedException {
         AtomicReference<Throwable> thrown = new AtomicReference<>();
         Thread thread = new Thread(() -> {

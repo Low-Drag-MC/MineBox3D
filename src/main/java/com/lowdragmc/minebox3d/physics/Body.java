@@ -473,6 +473,9 @@ public final class Body {
             current[6] = qw;
             if (teleport) {
                 System.arraycopy(current, 0, previous, 0, 7);
+            } else {
+                // part of the frame's motion: the next frame starts from here, even if no step moves it
+                world.noteMoved(this);
             }
             boundsKnown = false;
             forgetMotion();
