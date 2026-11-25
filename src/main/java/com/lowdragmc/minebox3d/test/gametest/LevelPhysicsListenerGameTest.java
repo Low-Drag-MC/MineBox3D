@@ -18,9 +18,9 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.joml.Vector3d;
 
 /**
- * <b>A mod's own part of each physics tick</b>: a tick listener is told before the steps and after them, once a tick — a
- * falling body has not moved in the first and has in the second — and one that throws is taken off while the physics, and
- * the other listeners, go on.
+ * <b>A mod's own part of each physics tick</b>: a tick listener is told before the steps and after them, once a tick
+ * (a falling body has not moved in the first and has in the second), and one that throws is taken off while the
+ * physics, and the other listeners, go on.
  */
 @GameTestHolder(MineBox3D.MOD_ID)
 public final class LevelPhysicsListenerGameTest {

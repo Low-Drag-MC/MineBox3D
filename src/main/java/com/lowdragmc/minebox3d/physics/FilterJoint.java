@@ -1,6 +1,6 @@
 package com.lowdragmc.minebox3d.physics;
 
-/** A {@link JointType#FILTER} joint: the two bodies do not collide with each other, and nothing else. */
+/** A {@link JointType#FILTER} joint — see {@link FilterJointDef}: the two bodies do not collide with each other. */
 public final class FilterJoint extends Joint {
 
     FilterJoint(PhysicsWorld world, long id, Body bodyA, Body bodyB) {

@@ -93,7 +93,10 @@ class BodyApiTest {
         }
     }
 
-    /** Parking (the terrain streamer's) and its maker's switch are two: it is in the simulation only when neither says no. */
+    /**
+     * Parking (the terrain streamer's) and its maker's switch are two: it is in the simulation only when neither says
+     * no.
+     */
     @Test
     void aParkedBodyStaysOutTillLetBackAndIsThenAsItsMakerSaid() {
         try (PhysicsWorld world = world(-10)) {
@@ -419,7 +422,9 @@ class BodyApiTest {
         }
     }
 
-    /** Box3D asserts unit length to 20 float epsilons; the bridge takes what Java lets through the last bit of the way. */
+    /**
+     * Box3D asserts unit length to 20 float epsilons; the bridge takes what Java lets through the last bit of the way.
+     */
     @Test
     void aNearlyUnitRotationIsTakenAsTheUnitOne() {
         try (PhysicsWorld world = world(0)) {
@@ -465,7 +470,7 @@ class BodyApiTest {
 
     /**
      * Switching a sleeping body off left its sleeping set behind, empty, never woken and never freed before the world
-     * went (fork, doc 02): a query volume switched off and on every swing grew Box3D's memory for good.
+     * went (fork, doc 02 §3.1): a query volume switched off and on every swing grew Box3D's memory for good.
      */
     @Test
     void aSleepingBodySwitchedOffAndOnKeepsNothingBehind() {

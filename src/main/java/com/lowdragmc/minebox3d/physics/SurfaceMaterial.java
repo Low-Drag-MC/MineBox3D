@@ -8,8 +8,8 @@ import org.jetbrains.annotations.Nullable;
 public final class SurfaceMaterial {
 
     /**
-     * How two surfaces' friction or restitution make one — UE's {@code EFrictionCombineMode}. Of two surfaces' modes the later
-     * in this order wins (UE).
+     * How two surfaces' friction or restitution make one — UE's {@code EFrictionCombineMode}. Of two surfaces' modes
+     * the later in this order wins (UE).
      */
     public enum Combine {
         AVERAGE,
@@ -29,13 +29,16 @@ public final class SurfaceMaterial {
     public float rollingResistance;
     /** Conveyor-belt velocity, local to the shape, projected onto the contact surface. */
     public float tangentVelocityX, tangentVelocityY, tangentVelocityZ;
-    /** Passed through to query results; Box3D does not read it. Its top byte is MineBox3D's ({@link #USER_MATERIAL_BITS}). */
+    /**
+     * Passed through to query results and events; Box3D does not read it. Its top byte is MineBox3D's
+     * ({@link #USER_MATERIAL_BITS}).
+     */
     public long userMaterialId;
     /** Debug draw colour, 0 = none. The low 24 bits are RGB. */
     public int customColor;
     /**
-     * How this surface's friction meets another's; null for Box3D's own, √(a·b) — which is what two surfaces without a mode
-     * get. With one, UE's: the later mode of the two, a surface without one counting as {@link Combine#AVERAGE}.
+     * How this surface's friction meets another's; null for Box3D's own, √(a·b) — which is what two surfaces without a
+     * mode get. With one, UE's: the later mode of the two, a surface without one counting as {@link Combine#AVERAGE}.
      */
     @Nullable
     public Combine frictionCombine;

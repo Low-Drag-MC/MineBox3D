@@ -9,12 +9,13 @@ import org.junit.jupiter.api.Test;
 
 /**
  * <b>The constraint joint</b> (design doc {@code 05-constraint-joint.md}): the settings round trip, every motion
- * combination holds its limit — the overshoot measured, not assumed — the drives reach their targets and let go when turned
- * off, soft limits give and hard ones bounce by their restitution, parent dominates and mass conditioning act, and the
- * batches and the body pair table do what they say.
+ * combination holds its limit — the overshoot measured, not assumed — the drives reach their targets and let go when
+ * turned off, soft limits give and hard ones bounce by their restitution, parent dominates and mass conditioning act,
+ * and the batches and the body pair table do what they say.
  *
  * <p>The test rig: a static anchor at the origin and an 8 kg bar hanging 0.8 m below it, the joint at the anchor with
- * frame x pointing down along the bar — so the twist turns about world -y, swing 1 about world z, swing 2 about world x.
+ * frame x pointing down along the bar — so the twist turns about world -y, swing 1 about world z, swing 2 about world
+ * x.
  */
 class ConstraintJointTest {
 
@@ -48,7 +49,10 @@ class ConstraintJointTest {
         world.step(1 / 60f, 4);
     }
 
-    /** Pushes the bar with a constant torque (world) for the frames; returns the largest |twist|, |swing 1|, |swing 2| seen. */
+    /**
+     * Pushes the bar with a constant torque (world) for the frames; returns the largest |twist|, |swing 1|, |swing 2|
+     * seen.
+     */
     private static Vector3f push(
             PhysicsWorld world,
             Body bar,
@@ -73,7 +77,7 @@ class ConstraintJointTest {
 
     // ---- settings ------------------------------------------------------------------------------
 
-    /** The bridge passes {@link JointType}'s ordinal for Box3D's enum: an upstream sync that adds a type shifts ours. */
+    /** The bridge passes {@link JointType}'s ordinal as Box3D's enum: an upstream sync that adds a type shifts ours. */
     @Test
     void javasJointTypesAreBox3DsNumbers() {
         try (PhysicsWorld world = world(0)) {
@@ -236,8 +240,7 @@ class ConstraintJointTest {
             float reach = (float) Math.hypot(last.y / 0.6f, last.z / 0.3f);
             assertEquals(1, reach, 0.01f, "on the ellipse: swing 1 " + last.y + ", swing 2 " + last.z);
             // pushed back along the ellipse's normal, it rests where the normal lies along the push, which with the
-            // twist
-            // locked is 25 : 24.3 there — swing 1 about 4.1 times swing 2 (a radial push would rest at 1 : 1)
+            // twist locked is 25 : 24.3 there — swing 1 about 4.1 times swing 2 (a radial push would rest at 1 : 1)
             assertEquals(4.1f, Math.abs(last.y / last.z), 0.2f, "where the normal points along the push: " + last);
             assertEquals(0, joint.angularSeparation(), ANGLE_TOLERANCE);
         }
@@ -246,8 +249,7 @@ class ConstraintJointTest {
     @Test
     void anEllipsePressedAlongItsWideAxisStopsThereWithTheOtherSwingAtNoise() {
         // the rig turned about the vertical so the swing nobody pushes reads float noise rather than exactly nothing:
-        // the
-        // nearest point on the ellipse is then a root next to its pole, which must still come out at the wide limit
+        // the nearest point on the ellipse is then a root next to its pole, which must still come out at the wide limit
         Quaternionf turn = new Quaternionf().rotateY(0.7f);
         try (PhysicsWorld world = world(0)) {
             Body bar = world.createBody(new BodyDef()
@@ -526,9 +528,8 @@ class ConstraintJointTest {
 
     @Test
     void anAccelerationModeCapIsPerUnitOfTheAxissMass() {
-        // UE's default solver: the cap times the row's mass, the bar's 0.43 kg·m² about its centre — 60 rad/s² is 26
-        // N·m and
-        // gives way under 40 N·m, where a physical cap of 60 N·m on the same spring holds
+        // UE's default solver: the cap times the row's mass, the bar's 0.43 kg·m² about its centre — 60 rad/s² is
+        // 26 N·m and gives way under 40 N·m, where a physical cap of 60 N·m on the same spring holds
         for (boolean acceleration : new boolean[] {true, false}) {
             try (PhysicsWorld world = world(0)) {
                 Body bar = bar(world);
@@ -553,10 +554,8 @@ class ConstraintJointTest {
     @Test
     void aSliderOnASpinningParentStaysOnItsRail() {
         // the child 1 m out along the parent's x, free to slide out to there and held off its y and z, the pair spun
-        // about z
-        // with no gravity: the locks hold the child's anchor on a rail turning with the parent, so they push the parent
-        // at
-        // the child's anchor too — off the rail by nothing, the pair's angular momentum kept
+        // about z with no gravity: the locks hold the child's anchor on a rail turning with the parent, so they push
+        // the parent at the child's anchor too — off the rail by nothing, the pair's angular momentum kept
         try (PhysicsWorld world = world(0)) {
             Body parent = world.createBody(new BodyDef().type(BodyType.DYNAMIC).enableSleep(false));
             parent.createShape(new ShapeDef().density(1250), Geometry.Box.of(0.1f, 0.1f, 0.1f));
@@ -646,8 +645,8 @@ class ConstraintJointTest {
             Body bar = bar(world);
             ConstraintJointSettings s =
                     new ConstraintJointSettings().angularOrientationTarget(new Quaternionf().rotateZ(PI / 2));
-            // acceleration mode scales by the row's mass, the bar's 0.43 kg·m² about its centre: 860 N·m/rad against 32
-            // N·m
+            // acceleration mode scales by the row's mass, the bar's 0.43 kg·m² about its centre: 860 N·m/rad against
+            // 32 N·m
             s.slerpDrive.drive(2000, 90, 0);
             ConstraintJoint joint = hang(world, bar, s);
             Vector3f torque = new Vector3f();
@@ -824,7 +823,7 @@ class ConstraintJointTest {
     @Test
     void aPairTableStopsJustItsDisabledPairsColliding() {
         try (PhysicsWorld world = world(0)) {
-            // two overlapping pairs far apart, and a body outside the table overlapping a third
+            // two overlapping pairs far apart, and a body outside the table overlapping a fifth one in it
             double[] xs = {0, 0.1, 10, 10.1, 20, 20.1};
             Body[] boxes = new Body[xs.length];
             for (int i = 0; i < xs.length; i++) {
@@ -850,8 +849,7 @@ class ConstraintJointTest {
             assertFalse(table.collides(1, 0));
 
             // changes reach pairs already overlapping, both ways: the pair let collide again pushes apart where it
-            // lies,
-            // and one disabled while touching stops colliding
+            // lies, and one disabled while touching stops colliding
             table.setCollides(0, 1, true);
             table.setCollides(2, 3, false);
             table.apply();

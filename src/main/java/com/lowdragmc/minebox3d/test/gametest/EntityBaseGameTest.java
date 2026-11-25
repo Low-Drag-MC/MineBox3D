@@ -24,12 +24,13 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 /**
- * <b>Standing on a body</b> (design doc {@code 04-entities-and-bodies.md} §11, batch 4c-2): a stand on a moving platform
- * goes along with it, turns with a turning one, rides a lift up, and is held back by a wall the deck carries it into;
- * a jump on a moving deck comes down where it went up; off the edge, or too long in the air, it goes on with the
- * platform's speed; dropped onto a moving deck it settles on it; it takes the next deck it slides onto, a mesh too;
+ * <b>Standing on a body</b> (design doc {@code 04-entities-and-bodies.md} §11, batch 4c-2): a stand on a moving
+ * platform goes along with it, turns with a turning one, rides a lift up, and is held back by a wall the deck carries
+ * it into; a jump on a moving deck comes down where it went up; off the edge, or too long in the air, it goes on with
+ * the platform's speed; dropped onto a moving deck it settles on it; it takes the next deck it slides onto, a mesh too;
  * put elsewhere on its deck it is not pulled back, and it is let go as it is when teleported off, seated, or when its
- * deck is destroyed or put far away; one a mod carries itself is left to it; and its weight tips a plank on a pivot.
+ * deck is destroyed or put far away; one a mod carries itself is left to it; and its weight tips a plank on a pivot,
+ * unless its moves push nothing.
  */
 @GameTestHolder(MineBox3D.MOD_ID)
 public final class EntityBaseGameTest {
@@ -228,8 +229,9 @@ public final class EntityBaseGameTest {
     }
 
     /**
-     * Dropped straight down onto a moving deck, a stand meets it a deck's speed behind, and slides back a little till the
-     * deck's friction has it — as a box dropped on a belt — then rides along; it is not flung on by the deck's speed twice.
+     * Dropped straight down onto a moving deck, a stand meets it a deck's speed behind, and slides back a little till
+     * the deck's friction has it — as a box dropped on a belt — then rides along; it is not flung on by the deck's
+     * speed twice.
      */
     @GameTest(template = "empty", batch = "minebox3d_base_landing", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
@@ -284,8 +286,8 @@ public final class EntityBaseGameTest {
     }
 
     /**
-     * One put elsewhere on its deck is not pulled back (let go, it stands on the deck again where it was put); and a deck
-     * destroyed under it lets it go.
+     * One put elsewhere on its deck is not pulled back (let go, it stands on the deck again where it was put); and a
+     * deck destroyed under it lets it go.
      */
     @GameTest(template = "empty", batch = "minebox3d_base_moved", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)

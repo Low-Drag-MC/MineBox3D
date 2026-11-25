@@ -28,32 +28,32 @@ import org.joml.Vector3f;
  * <ul>
  *   <li>{@link ThreadMode#OWNER_THREAD} (the default): the world belongs to the thread that created it until
  *       {@link #transferTo} hands it on.</li>
- *   <li>{@link ThreadMode#EXCLUSIVE}: any thread, one at a time, between {@link #use()} and closing what it returned.</li>
+ *   <li>{@link ThreadMode#EXCLUSIVE}: any thread, one at a time, between {@link #use()} and closing what it
+ *       returned.</li>
  * </ul>
  * <p>Either way every call from a thread that may not use the world now throws {@link WrongThreadException} — always,
  * not only when two threads happen to collide — so a mod using a world wrongly fails at once and in its own code.
  *
- * <p>Reads that only look at the Java side — {@link Body#position}, {@link Body#renderPosition}, {@link #movedBodies()},
- * {@link #bodies()} — are not checked, for speed, but follow the same rule.
+ * <p>Reads that only look at the Java side — {@link Body#position}, {@link Body#renderPosition},
+ * {@link #movedBodies()}, {@link #bodies()} — are not checked, for speed, but follow the same rule.
  *
  * <h2>Faults</h2>
  * <p>Arguments are checked before they reach Box3D. If Box3D still fails an internal check during a step (a
  * {@link Box3DException}), the world is {@linkplain #isFaulted() faulted} and refuses further steps rather than
- * carry on with whatever the failed check let through. What it let through can be a body flung to NaN whose bounds
- * Box3D's broadphase now holds, and taking anything out walks those: destroying a body, joint, shape or pair table of a
- * faulted world only lets go of it here, and {@link #close()} frees them all with the world — the meshes and height
- * fields of the shapes let go too, which Box3D reads until then. Close a faulted world soon: what is let go of is still
- * in it, and queries still reach it.
+ * carry on with whatever the failed check let through — such as a body flung to NaN, whose bounds the broadphase now
+ * holds. Taking anything out walks those, so in a faulted world destroying a body, joint, shape or pair table only lets
+ * go of it here; {@link #close()} frees them with the world, and the meshes and height fields their shapes still read.
+ * Close a faulted world soon: what was let go of is still in it, and queries still reach it.
  *
  * <h2>Frames</h2>
  * <p>Every body carries where it was at the start of the frame and where it is now. Call
- * {@link #beginInterpolationFrame()} once per frame you draw between — a Minecraft tick — and then step as many times as
- * the frame needs: {@link Body#renderPosition} blends the two, and {@link #movedBodies()},
+ * {@link #beginInterpolationFrame()} once per frame you draw between — a Minecraft tick — and then step as many times
+ * as the frame needs: {@link Body#renderPosition} blends the two, and {@link #movedBodies()},
  * {@link #bodiesThatFellAsleep()} and {@link #events()} gather what the frame's steps did.
  *
  * <h2>Lifetime</h2>
  * <p>{@link #close()} frees the native world. A world dropped without closing is freed once it is garbage collected,
- * with a warning: until then it holds one of Box3D's world slots.
+ * with a warning: until then it holds one of Box3D's 128 world slots.
  */
 public final class PhysicsWorld implements AutoCloseable {
 
@@ -84,7 +84,7 @@ public final class PhysicsWorld implements AutoCloseable {
     private final Long2ObjectOpenHashMap<Shape> goneSinceStep = new Long2ObjectOpenHashMap<>();
 
     private boolean framesUsed;
-    /** bumped by calls that change bodies other than their own (putting an island to sleep): cached velocities are old */
+    /** bumped by calls that change more bodies than their own (an island put to sleep): cached velocities are stale */
     int motionEpoch;
 
     private final List<VoxelGrid> grids = new ArrayList<>();
@@ -143,7 +143,10 @@ public final class PhysicsWorld implements AutoCloseable {
         this.cleanable = Cleaners.CLEANER.register(this, nativeState);
     }
 
-    /** A new world; with {@link ThreadMode#OWNER_THREAD}, owned by the calling thread. */
+    /**
+     * A new world; with {@link ThreadMode#OWNER_THREAD}, owned by the calling thread. {@link Box3DException} when all
+     * 128 of Box3D's world slots are taken.
+     */
     public static PhysicsWorld create(WorldDef def) {
         NativeLibrary.load();
         Checks.worldDef(def);
@@ -206,8 +209,9 @@ public final class PhysicsWorld implements AutoCloseable {
     }
 
     /**
-     * {@link #use()} if the calling thread may use the world now, else {@code null} instead of throwing: the owner of an
-     * {@link ThreadMode#OWNER_THREAD} world, any thread while an {@link ThreadMode#EXCLUSIVE} one is free or its own.
+     * {@link #use()} if the calling thread may use the world now, else {@code null} instead of throwing: the owner of
+     * an {@link ThreadMode#OWNER_THREAD} world; any thread while an {@link ThreadMode#EXCLUSIVE} one is free or held by
+     * it already.
      */
     @Nullable
     public Use tryUse() {
@@ -343,7 +347,9 @@ public final class PhysicsWorld implements AutoCloseable {
         return shapes.get(shapeId);
     }
 
-    /** The bodies, as a live view: do not create or destroy bodies while going through it (see {@link #forEachBody}). */
+    /**
+     * The bodies, as a live view: do not create or destroy bodies while going through it (see {@link #forEachBody}).
+     */
     public Collection<Body> bodies() {
         return Collections.unmodifiableCollection(bodies.values());
     }
@@ -448,8 +454,8 @@ public final class PhysicsWorld implements AutoCloseable {
     // ---- voxel terrain ------------------------------------------------------------------------
 
     /**
-     * Block terrain for this world. Every section's shape is made from {@code shapeTemplate}: its filter,
-     * events, user data and base material; per-block surface materials come from the grid's own table.
+     * Block terrain for this world. Every section's shape is made from {@code shapeTemplate} — its filter, events, user
+     * data and base material — which may not be a sensor; per-block surface materials come from the grid's own table.
      * Closed with the world if not before.
      */
     public VoxelGrid createVoxelGrid(ShapeDef shapeTemplate) {
@@ -498,8 +504,8 @@ public final class PhysicsWorld implements AutoCloseable {
     }
 
     /**
-     * The frame's events so far dropped — what a simulation run again set off, which Unreal's resimulation does not raise
-     * again either. What moved stays moved.
+     * Drops the frame's {@link #events()} and {@link #bodiesThatFellAsleep()} so far — what a simulation run again set
+     * off, which Unreal's resimulation does not raise again either. {@link #movedBodies()} is kept.
      */
     public void discardEvents() {
         enter();
@@ -515,7 +521,10 @@ public final class PhysicsWorld implements AutoCloseable {
         withRenderError.add(body);
     }
 
-    /** Advances the world by {@code timeStep} seconds in {@code subStepCount} sub-steps. */
+    /**
+     * Advances the world by {@code timeStep} seconds in {@code subStepCount} sub-steps. A {@link Box3DException} from
+     * it faults the world; a faulted world throws {@link IllegalStateException} here.
+     */
     public void step(float timeStep, int subStepCount) {
         enter();
         try {
@@ -576,7 +585,9 @@ public final class PhysicsWorld implements AutoCloseable {
         }
     }
 
-    /** A body put somewhere outside a step: its frame's start follows it at the next {@link #beginInterpolationFrame}. */
+    /**
+     * A body put somewhere outside a step: its frame's start follows it at the next {@link #beginInterpolationFrame}.
+     */
     void noteMoved(Body body) {
         if (!body.movedThisFrame) {
             body.movedThisFrame = true;
@@ -667,7 +678,7 @@ public final class PhysicsWorld implements AutoCloseable {
         return Collections.unmodifiableList(movedThisFrame);
     }
 
-    /** The bodies that fell asleep since {@link #beginInterpolationFrame()}, in any of its steps, and are still asleep. */
+    /** The bodies that fell asleep in any step since {@link #beginInterpolationFrame()} and are still asleep. */
     public Collection<Body> bodiesThatFellAsleep() {
         return Collections.unmodifiableCollection(fellAsleep);
     }
@@ -679,6 +690,7 @@ public final class PhysicsWorld implements AutoCloseable {
 
     // ---- settings -----------------------------------------------------------------------------
 
+    /** m/s²; Box3D has no up vector of its own. */
     public void setGravity(float x, float y, float z) {
         enter();
         try {
@@ -801,10 +813,10 @@ public final class PhysicsWorld implements AutoCloseable {
     }
 
     /**
-     * <b>An explosion</b> (Box3D's): an outward impulse on every sphere, capsule, box and hull within {@code radius +
-     * falloff} of the point, {@code impulsePerArea} (N·s/m²) times the area it shows the point, falling off to zero
-     * across {@code falloff}; negative pulls inwards. Each shape's {@link ShapeDef#explosionScale} scales its share.
-     * Wakes what it pushes.
+     * <b>An explosion</b> (Box3D's): an outward impulse on every sphere, capsule, box and hull of a dynamic body within
+     * {@code radius + falloff} of the point, {@code impulsePerArea} (N·s/m²) times the area it shows the point, falling
+     * off to zero across {@code falloff}; negative pulls inwards. Each shape's {@link ShapeDef#explosionScale} scales
+     * its share. Wakes what it pushes.
      *
      * @param maskBits the categories it reaches
      */
@@ -866,8 +878,8 @@ public final class PhysicsWorld implements AutoCloseable {
     // ---- queries ------------------------------------------------------------------------------
 
     /**
-     * The closest shape along {@code origin + translation} that {@code filter} lets through, into {@code out}; false for
-     * none. A shape the ray starts inside or on is ignored (Box3D's closest ray).
+     * The closest shape along {@code origin + translation} that {@code filter} lets through, into {@code out}; false
+     * for none. A shape the ray starts inside or on is ignored (Box3D's closest ray).
      */
     public boolean castRayClosest(
             double ox, double oy, double oz, float tx, float ty, float tz, QueryFilter filter, CastResult out) {
@@ -895,8 +907,8 @@ public final class PhysicsWorld implements AutoCloseable {
     }
 
     /**
-     * Every shape along {@code origin + translation} that {@code filter} lets through, closest first, into {@code out}: one
-     * hit per shape, its closest; a section of voxel terrain is one shape.
+     * Every shape along {@code origin + translation} that {@code filter} lets through, closest first, into {@code out}:
+     * one hit per shape, its closest; a section of voxel terrain is one shape.
      */
     public int castRay(
             double ox, double oy, double oz, float tx, float ty, float tz, QueryFilter filter, CastHits out) {
@@ -944,8 +956,9 @@ public final class PhysicsWorld implements AutoCloseable {
 
     /**
      * The closest hit of {@code geometry}, placed at {@code (x, y, z)} turned by {@code rotation}, moved by
-     * {@code translation}, into {@code out}; false for none. Unlike the ray, a shape already touching something hits it at
-     * fraction 0. Terrain is hit only on the open side of a block face. Not for meshes.
+     * {@code translation}, into {@code out}; false for none. Unlike the ray, a shape already touching something hits it
+     * at fraction 0. Terrain is hit only on the open side of a block face. Convex geometry only: not a mesh or height
+     * field.
      */
     public boolean castShapeClosest(
             Geometry geometry,
@@ -991,17 +1004,17 @@ public final class PhysicsWorld implements AutoCloseable {
 
     /**
      * <b>A turned box swept exactly</b> — {@code (hx, hy, hz)} half sizes, its middle at {@code (x, y, z)}, turned by
-     * {@code rotation}, moved by {@code translation} — into {@code out}: the first shape it touches, or the one it starts
-     * deepest in ({@link BoxSweep}). For a character mover that keeps its box touching what it stands on, which
-     * {@link #castShapeClosest} (a linear slop short, through what it starts in) cannot. Each shape is measured in its
-     * body's frame, so far from the origin it is as exact as near it.
+     * {@code rotation}, moved by {@code translation} — into {@code out}: the first shape it touches, or the one it
+     * starts deepest in ({@link BoxSweep}). For a character mover that keeps its box touching what it stands on, which
+     * {@link #castShapeClosest} cannot: it stops a linear slop short, and tells nothing of the way out of what it
+     * starts in. Each shape is measured in its body's frame, so far from the origin it is as exact as near it.
      *
      * <p>Hulls (boxes), spheres, capsules, meshes and height fields; not voxel terrain, compounds or sensors.
      *
-     * @param ignoreExits a shape the box starts inside and is moving out of is not met — Unreal's rule for a move out of
-     *                    an overlap
-     * @param ignore      a body not met at all, or {@code null} — the base a box is being carried with, which moved first
-     *                    (Unreal's {@code MOVECOMP_IgnoreBases})
+     * @param ignoreExits a shape the box starts inside and is moving out of is not met — Unreal's rule for a move out
+     *                    of an overlap
+     * @param ignore      a body not met at all, or {@code null} — the base a box is being carried with, which moved
+     *                    first (Unreal's {@code MOVECOMP_IgnoreBases})
      */
     public boolean sweepBox(
             double x,
@@ -1023,8 +1036,8 @@ public final class PhysicsWorld implements AutoCloseable {
 
     /**
      * {@link #sweepBox(double, double, double, Quaternionfc, float, float, float, float, float, float, QueryFilter, boolean, Body, BoxSweep)}
-     * for a box that is something ({@link Body#setTag}): the bodies that never meet it ({@link Body#setIgnoredTag}) are not
-     * met either — an entity's own ragdoll, to the entity's mover. 0 is nothing.
+     * for a box that is something ({@link Body#setTag}): the bodies that never meet it ({@link Body#setIgnoredTag}) are
+     * not met either — an entity's own ragdoll, to the entity's mover. 0 is nothing.
      */
     public boolean sweepBox(
             double x,
@@ -1079,8 +1092,8 @@ public final class PhysicsWorld implements AutoCloseable {
 
     /**
      * {@link #castShapeClosest(Geometry, double, double, double, Quaternionfc, float, float, float, QueryFilter, CastResult)}
-     * for something ({@link Body#setTag}): the bodies that never meet it ({@link Body#setIgnoredTag}) are passed through —
-     * an entity's own ragdoll, to the ground query its mover stands by. 0 is nothing.
+     * for something ({@link Body#setTag}): the bodies that never meet it ({@link Body#setIgnoredTag}) are passed
+     * through — an entity's own ragdoll, to the ground query its mover stands by. 0 is nothing.
      */
     public boolean castShapeClosest(
             Geometry geometry,
@@ -1118,7 +1131,10 @@ public final class PhysicsWorld implements AutoCloseable {
         }
     }
 
-    /** {@link #castShapeClosest(Geometry, double, double, double, Quaternionfc, float, float, float, QueryFilter, CastResult)}, unturned. */
+    /**
+     * {@link #castShapeClosest(Geometry, double, double, double, Quaternionfc, float, float, float, QueryFilter, CastResult)}
+     * unturned.
+     */
     public boolean castShapeClosest(
             Geometry geometry,
             double x,
@@ -1215,8 +1231,8 @@ public final class PhysicsWorld implements AutoCloseable {
     }
 
     /**
-     * Every shape overlapping {@code geometry} placed at {@code (x, y, z)} turned by {@code rotation} that {@code filter}
-     * lets through, into {@code out}. Voxel terrain counts as its sections. Not for meshes.
+     * Every shape overlapping {@code geometry} placed at {@code (x, y, z)} turned by {@code rotation} that
+     * {@code filter} lets through, into {@code out}. Voxel terrain counts as its sections. Convex geometry only.
      */
     public int overlapShape(
             Geometry geometry, double x, double y, double z, Quaternionfc rotation, QueryFilter filter, Overlaps out) {
@@ -1250,9 +1266,9 @@ public final class PhysicsWorld implements AutoCloseable {
     }
 
     /**
-     * Every shape whose bounds may overlap the box from {@code min} to {@code max} that {@code filter} lets through, into
-     * {@code out}: Box3D's broad phase, so candidates — a shape's bounds are fattened and kept in float, and a shape found
-     * may not touch the box at all — for a precise query to look at next. Cheap: no shape is tested.
+     * Every shape whose bounds may overlap the box from {@code min} to {@code max} that {@code filter} lets through,
+     * into {@code out}: Box3D's broad phase, so candidates — a shape's bounds are fattened and kept in float, and a
+     * shape found may not touch the box at all — for a precise query to look at next. Cheap: no shape is tested.
      */
     public int overlapAABB(
             double minX,
@@ -1400,7 +1416,7 @@ public final class PhysicsWorld implements AutoCloseable {
 
     // ---- lifetime -----------------------------------------------------------------------------
 
-    /** Destroys the world and with it every body, shape and voxel grid in it. */
+    /** Destroys the world and with it every body, joint, shape, pair table and voxel grid in it. */
     @Override
     public void close() {
         enter();

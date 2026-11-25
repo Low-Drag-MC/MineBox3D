@@ -10,12 +10,12 @@ import org.jetbrains.annotations.Nullable;
  * <b>Box3D height-field data</b>: a grid of heights, compressed and with its triangles' edge flags, built once.
  *
  * <p>The grid has {@code countX} points along x and {@code countZ} along z, {@code scaleX} and {@code scaleZ} apart;
- * the shape's origin is the first point. Heights are clamped to {@code [minHeight, maxHeight]} and quantised within
- * it: two height fields meant to line up should share the range.
+ * the shape's origin is the first point. Heights are clamped to {@code [minHeight, maxHeight]} (unscaled) and
+ * quantised within it: two height fields meant to line up should share the range.
  *
  * <p>⚠️ Box3D keeps only a pointer to this from every shape made of it, so it counts them like {@link MeshData}:
- * {@link #close()} with shapes alive only marks it, and the last shape to go frees it. Not tied to a world. Height-field
- * shapes go on static bodies only.
+ * {@link #close()} with shapes alive only marks it, and the last shape to go frees it. Not tied to a world.
+ * Height-field shapes go on static bodies only.
  */
 public final class HeightFieldData implements AutoCloseable {
 

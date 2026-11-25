@@ -141,8 +141,8 @@ MB3_JNI( jlong, createHeightField )( JNIEnv* env, jclass type, jfloatArray heigh
 		mb3_throw_illegal_argument( env, "one material index per cell" );
 		return 0;
 	}
-	// Box3D reads everything during the call and keeps none of it ("No pointers are held to this data")
-	// the second pinned only once the first was: a failed pin leaves an exception pending, and no JNI call may follow
+	// Pinned only for the call (b3HeightFieldDef: "No pointers are held to this data"), the second once the first was,
+	// as in createMesh
 	jfloat* h = ( *env )->GetFloatArrayElements( env, heights, NULL );
 	jbyte* m = h != NULL && materials != NULL ? ( *env )->GetByteArrayElements( env, materials, NULL ) : NULL;
 	if ( h == NULL || ( materials != NULL && m == NULL ) )

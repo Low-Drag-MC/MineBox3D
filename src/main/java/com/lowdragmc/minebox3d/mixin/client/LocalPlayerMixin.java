@@ -27,10 +27,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class LocalPlayerMixin {
 
     /**
-     * Its view's turn while a body it stands on turns it (EntityBases): drawn between the last tick's turn and this one's,
-     * as Minecraft draws a rider's — a boat turning it. Its own player's view is otherwise drawn at the turn it has, for
-     * the mouse turns that frame by frame; the mouse turns the last tick's turn as much ({@code Entity.turn}), so it is no
-     * later for it. Turned by its base a tick at a time and drawn so, the view stood still for a tick's frames and jumped.
+     * Its view's turn while a body it stands on turns it (EntityBases): drawn between the last tick's turn and this
+     * one's, as Minecraft draws a rider's in a turning boat — drawn at the turn it has, as Minecraft draws its own
+     * player's for the mouse, the view would stand still for a tick's frames, then jump. The mouse turns the last
+     * tick's turn as much ({@code Entity.turn}), so it is drawn no later for it.
      */
     @Inject(method = "getViewYRot", at = @At("HEAD"), cancellable = true)
     private void minebox3d$turnedByItsBase(float partialTick, CallbackInfoReturnable<Float> cir) {

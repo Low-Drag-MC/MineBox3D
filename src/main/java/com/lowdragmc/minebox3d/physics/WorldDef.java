@@ -9,7 +9,7 @@ import com.lowdragmc.minebox3d.natives.NativeLibrary;
  * <p>Units are Box3D's, which MineBox3D keeps: one block is one metre, seconds, kilograms.
  */
 public final class WorldDef {
-    /** Box3D has no up vector of its own. */
+    /** m/s²; Box3D has no up vector of its own. */
     public float gravityX, gravityY, gravityZ;
     /** Collisions faster than this (m/s) bounce. */
     public float restitutionThreshold;
@@ -32,10 +32,10 @@ public final class WorldDef {
     public boolean enableSleep;
     public boolean enableContinuous;
     /**
-     * Threads stepping this world, the stepping thread included; 0 and 1 mean the stepping thread alone. Above 1,
-     * Box3D starts {@code workerCount - 1} threads of its own <b>for this world</b>, which spin while they wait for
-     * work: only worth it for a large world, and never for many small ones. Box3D's internal checks failing on those
-     * threads are only logged (MineBox3D's log), not thrown.
+     * Threads stepping this world, the stepping thread included; 0 and 1 mean the stepping thread alone. Above 1 (at
+     * most 32), Box3D starts {@code workerCount - 1} threads of its own <b>for this world</b> at its first step: only
+     * worth it for a large world, and never for many small ones. Box3D's internal checks failing on those threads are
+     * only logged (MineBox3D's log), not thrown.
      */
     public int workerCount;
     /** Optional initial capacities, to avoid growing at run time. */

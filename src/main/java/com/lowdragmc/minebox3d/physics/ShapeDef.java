@@ -16,8 +16,8 @@ public final class ShapeDef {
     public long userData;
     /**
      * Per-triangle materials for mesh and height-field shapes, indexed by the triangle's material index (an index past
-     * the end reads the last). ⚠️ When set, {@link #baseMaterial} is ignored and {@code materials[0]} is the shape's own
-     * material.
+     * the end reads the last). ⚠️ When set, {@link #baseMaterial} is ignored and {@code materials[0]} is the shape's
+     * own material.
      */
     @Nullable
     public SurfaceMaterial[] materials;
@@ -25,10 +25,14 @@ public final class ShapeDef {
     public SurfaceMaterial baseMaterial = new SurfaceMaterial();
     /** kg/m³ */
     public float density;
-    /** How strongly {@code b3World_Explode} pushes this shape. */
+    /** How strongly {@link PhysicsWorld#explode} pushes this shape; 0 not at all. */
     public float explosionScale;
 
     public Filter filter = new Filter();
+    /**
+     * Lets the world's custom filter decide this shape's pairs — {@link BodyPairTable} and {@link Body#setIgnoredTag}
+     * work only through it. One shape of a pair is enough.
+     */
     public boolean enableCustomFiltering;
     /** Overlap events only, never a collision response. */
     public boolean sensor;
@@ -36,12 +40,17 @@ public final class ShapeDef {
     public boolean enableSensorEvents;
     public boolean enableContactEvents;
     public boolean enableHitEvents;
+    /** No effect: MineBox3D registers no pre-solve callback. */
     public boolean enablePreSolveEvents;
     /** Static shapes only: look for contacts on the next step. */
     public boolean invokeContactCreation;
     /** ⚠️ If false, set the body's mass yourself before stepping. */
     public boolean updateBodyMass;
 
+    /**
+     * Leave on unless fewer ghost collisions matter more than collision under rotation; off affects only hulls against
+     * triangles (Box3D's, experimental).
+     */
     public boolean enableSpeculativeContact;
 
     public ShapeDef() {

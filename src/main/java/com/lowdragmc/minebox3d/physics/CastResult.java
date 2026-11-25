@@ -6,8 +6,8 @@ import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 /**
- * <b>The closest hit of a ray or shape cast</b>, if any: a result object the caller keeps and passes in again (design doc
- * {@code 03-threading-and-api.md} §6.2). Valid until it is filled again. The accessors throw when there was no hit.
+ * <b>The closest hit of a ray or shape cast</b>, if any: a result object the caller keeps and passes in again (design
+ * doc {@code 03-threading-and-api.md} §6.2). Valid until it is filled again. The accessors throw when there was no hit.
  */
 public final class CastResult {
 

@@ -99,8 +99,9 @@ public final class Body {
     }
 
     /**
-     * A number that changes whenever one of the body's shapes is added, removed, given a new geometry or a new filter, or
-     * the body's tags change — so whoever copies the shapes elsewhere (the network sync) knows when to copy them again.
+     * A number that changes whenever one of the body's shapes is added, removed, given a new geometry or a new filter,
+     * or the body's tags change — so whoever copies the shapes elsewhere (the network sync) knows when to copy them
+     * again.
      */
     public int shapesRevision() {
         return shapesRevision;
@@ -148,6 +149,7 @@ public final class Body {
 
     // ---- shapes -------------------------------------------------------------------------------
 
+    /** A new shape of {@code geometry} on this body; a mesh's or height field's data is kept alive until it goes. */
     public Shape createShape(ShapeDef def, Geometry geometry) {
         world.enter();
         try {
@@ -232,6 +234,7 @@ public final class Body {
         }
     }
 
+    /** Destroys the body with its shapes and joints. */
     public void destroy() {
         world.destroyBody(this);
     }
@@ -289,6 +292,7 @@ public final class Body {
         return out;
     }
 
+    /** The turn to draw, as {@link #renderPosition} the place. */
     public Quaternionf renderRotation(float partial, Quaternionf out) {
         out.set((float) previous[3], (float) previous[4], (float) previous[5], (float) previous[6]);
         out.slerp(
@@ -302,19 +306,19 @@ public final class Body {
 
     // ---- drawn off where it is, while a correction fades ----
 
-    /** Frames a correction takes to fade: Unreal's {@code p.RenderInterp.ErrorCorrectionDuration}, 0.3 s at 20 a second. */
+    /** Frames a correction takes to fade: Unreal's {@code p.RenderInterp.ErrorCorrectionDuration}, 0.3 s at 20 Hz. */
     public static final int ERROR_FRAMES = 6;
-    /** Further apart than this the body is drawn where it is at once, as Unreal snaps past 250 cm. */
+    /** m: further apart than this the body is drawn where it is at once, as Unreal snaps past 250 cm. */
     public static final double ERROR_SNAP = 2.5;
 
     @Nullable
     private RenderError error;
 
     /**
-     * It was put somewhere else while it was being drawn going on — a simulation run again moved it: drawn from where it
-     * was for a moment, the gap fading over {@link #ERROR_FRAMES} frames (Unreal's error correction). {@code (dx, dy, dz)}
-     * is where it was less where it is now, {@code turn} its turn then times the inverse of its turn now. Added to a gap
-     * still fading; past {@link #ERROR_SNAP} it is drawn where it is instead.
+     * Draws the body off where it is, by a gap that fades over {@link #ERROR_FRAMES} frames — Unreal's error
+     * correction, for a body a simulation run again moved while it was being drawn. {@code (dx, dy, dz)} is where it
+     * was less where it is now, {@code turn} its turn then times the inverse of its turn now. Adds to a gap still
+     * fading; past {@link #ERROR_SNAP} the body is drawn where it is instead.
      */
     public void addRenderError(double dx, double dy, double dz, Quaternionfc turn) {
         world.enter();
@@ -393,9 +397,9 @@ public final class Body {
     }
 
     /**
-     * {@link #setTransform(double, double, double, Quaternionfc, boolean)} as part of the motion since the last step, not a
-     * teleport: the previous frame stays, so {@link #renderPosition} draws it moving there — a correction made after a
-     * step, such as a joint's projection.
+     * {@link #setTransform(double, double, double, Quaternionfc, boolean)} as part of the motion since the last step,
+     * not a teleport: the previous frame stays, so {@link #renderPosition} draws it moving there — a correction made
+     * after a step, such as a joint's projection.
      */
     public void correctTransform(double x, double y, double z, Quaternionfc rotation, boolean wake) {
         place(x, y, z, rotation, wake, false);
@@ -485,8 +489,10 @@ public final class Body {
     }
 
     /**
-     * Drives a kinematic body to the target over {@code timeStep} by velocity, so what it meets on the
-     * way is pushed. The transform this reports changes when the world steps, like a dynamic body's.
+     * Drives a kinematic body to the target over {@code timeStep} by velocity, so what it meets on the way is pushed,
+     * and wakes it. ⚠️ A sleeping body whose move would be slower than its {@linkplain #sleepThreshold() sleep
+     * threshold} is left asleep where it is. The transform this reports changes when the world steps, like a dynamic
+     * body's.
      */
     public void setTargetTransform(double x, double y, double z, Quaternionfc rotation, float timeStep) {
         world.enter();
@@ -566,7 +572,7 @@ public final class Body {
         }
     }
 
-    /** An impulse at a world point, waking the body. */
+    /** An impulse, N·s, at a world point, waking the body. */
     public void applyLinearImpulse(float ix, float iy, float iz, double px, double py, double pz) {
         world.enter();
         try {
@@ -580,6 +586,7 @@ public final class Body {
         }
     }
 
+    /** An impulse, N·s, at the centre of mass, waking the body. */
     public void applyLinearImpulseToCenter(float ix, float iy, float iz) {
         world.enter();
         try {
@@ -684,10 +691,10 @@ public final class Body {
     }
 
     /**
-     * Overrides what the shapes' densities give — until the next shape change that updates the mass, or
-     * {@link #applyMassFromShapes()}. The inertia must be a real one: symmetric, nothing negative on its diagonal or in
-     * its determinants (Box3D stores a determinant below zero before it complains, and with two negative diagonals a body
-     * gains energy as it spins).
+     * Overrides what the shapes' densities give — until a shape change that updates the mass, a change of
+     * {@linkplain #setType type} or {@link #applyMassFromShapes()}. The inertia must be a real one: symmetric, nothing
+     * negative on its diagonal or in its determinants (Box3D would store a bad one before complaining, and a body with
+     * one can gain energy as it spins).
      */
     public void setMassData(MassData data) {
         world.enter();
@@ -835,7 +842,7 @@ public final class Body {
         setFloat(SAFETY_FACTOR, factor);
     }
 
-    /** A bullet is swept against other moving bodies too, not only static ones: small and fast. */
+    /** A bullet is swept against moving bodies too, not only static ones (but not other bullets): small and fast. */
     public boolean isBullet() {
         return getFlag(BULLET);
     }
@@ -866,6 +873,7 @@ public final class Body {
         return getFlag(CONTACT_RECYCLING);
     }
 
+    /** On by default: faster, but reused contact points may cause ghost collisions — off for characters. */
     public void enableContactRecycling(boolean enable) {
         setFlag(CONTACT_RECYCLING, enable);
     }
@@ -920,8 +928,8 @@ public final class Body {
     }
 
     /**
-     * The closest hit of {@code geometry} at {@code (x, y, z)} turned by {@code rotation}, moved by {@code translation},
-     * on this body's shapes only; touching at the start hits at fraction 0.
+     * The closest hit of {@code geometry} at {@code (x, y, z)} turned by {@code rotation}, moved by
+     * {@code translation}, on this body's shapes only; touching at the start hits at fraction 0.
      */
     public boolean castShape(
             Geometry geometry,
@@ -981,8 +989,8 @@ public final class Body {
     }
 
     /**
-     * The closest point of the body's spheres, capsules, boxes and hulls to a world point, into {@code out}; returns the
-     * distance, 0 inside, {@link Float#POSITIVE_INFINITY} with none of those shapes. Exact far from the origin.
+     * The closest point of the body's spheres, capsules, boxes and hulls to a world point, into {@code out}; returns
+     * the distance, 0 inside, {@link Float#POSITIVE_INFINITY} with none of those shapes. Exact far from the origin.
      */
     public float closestPoint(double x, double y, double z, Vector3d out) {
         world.enter();
@@ -1051,6 +1059,7 @@ public final class Body {
         }
     }
 
+    /** Wakes the body or puts it to sleep — with its whole island either way. */
     public void setAwake(boolean awake) {
         world.enter();
         try {
@@ -1064,8 +1073,8 @@ public final class Body {
     }
 
     /**
-     * A disabled body is out of the simulation: it does not move, collide or show up in queries. A {@linkplain #setParked
-     * parked} body stays out till it is let back, then is as this says.
+     * A disabled body is out of the simulation: it does not move, collide or show up in queries. A
+     * {@linkplain #setParked parked} body stays out till it is let back, then is as this says.
      */
     public void setEnabled(boolean enabled) {
         world.enter();
@@ -1080,8 +1089,8 @@ public final class Body {
     }
 
     /**
-     * Out of the simulation for a while whatever {@link #setEnabled} says, and back as it says: the terrain streamer's, for
-     * a body whose chunks are not loaded.
+     * Out of the simulation for a while whatever {@link #setEnabled} says, and back as it says: the terrain streamer's,
+     * for a body whose chunks are not loaded.
      */
     @ApiStatus.Internal
     public void setParked(boolean parked) {
@@ -1118,7 +1127,10 @@ public final class Body {
         return tag;
     }
 
-    /** MineBox3D tags an entity's proxy so ({@code EntityShapes.tagOf}): a mod's own tags leave bit 62 clear. */
+    /**
+     * See {@link #tag()}. MineBox3D tags an entity's proxy with bit 62 set ({@code EntityShapes.tagOf}): a mod's own
+     * tags leave it clear.
+     */
     public void setTag(long tag) {
         setTags(tag, ignoredTag);
     }
@@ -1129,10 +1141,10 @@ public final class Body {
     }
 
     /**
-     * The bodies tagged {@code tag} ({@link #setTag}) and this one never meet: no contact, and a box swept as one of them
-     * ({@link PhysicsWorld#sweepBox}) passes through this one — a ragdoll and its own entity's proxy. Box3D's custom filter
-     * decides, so only for pairs one of whose shapes was made with {@link ShapeDef#enableCustomFiltering}; pairs already
-     * touching are let go. 0 for none.
+     * The bodies tagged {@code tag} ({@link #setTag}) and this one never meet: no contact, and a box swept as one of
+     * them ({@link PhysicsWorld#sweepBox}) passes through this one — a ragdoll and its own entity's proxy. Box3D's
+     * custom filter decides, so only for pairs one of whose shapes was made with
+     * {@link ShapeDef#enableCustomFiltering}; pairs already touching are let go. 0 for none.
      */
     public void setIgnoredTag(long tag) {
         setTags(this.tag, tag);
@@ -1174,7 +1186,8 @@ public final class Body {
 
     /**
      * World-space bounds of all its shapes, {@code [minX, minY, minZ, maxX, maxY, maxZ]}, as Box3D keeps them: grown by
-     * its speculative distance (0.02) on every side once the body has moved. Float: coarse far out.
+     * its speculative distance (0.02 m) on every side; the body's position for a body without shapes. Float: coarse far
+     * out.
      */
     public float[] bounds(float[] out) {
         world.enter();

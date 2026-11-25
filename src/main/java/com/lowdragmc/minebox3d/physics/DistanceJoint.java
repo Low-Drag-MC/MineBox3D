@@ -85,6 +85,7 @@ public final class DistanceJoint extends Joint {
         return get(JointParam.DISTANCE_LENGTH_RANGE, 1);
     }
 
+    /** Box3D keeps both above a small minimum. */
     public void setLengthRange(float min, float max) {
         Checks.notNegative(min, "min length");
         Checks.range(min, max, "length range");

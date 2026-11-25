@@ -74,12 +74,12 @@ public final class PogoJoint extends Joint {
         return get(JointParam.POGO_CURRENT_LENGTH);
     }
 
-    /** m/s: how fast it is getting longer. */
+    /** m/s: how fast the spring is lengthening, as its internal state has it — for {@link PogoJointDef#velocity}. */
     public float currentSpeed() {
         return get(JointParam.POGO_CURRENT_SPEED);
     }
 
-    /** N·s: the spring's impulse in the last step — what the ground took. */
+    /** N·s: the spring's impulse over the last substep — what the ground took; for {@link PogoJointDef#impulse}. */
     public float impulse() {
         return get(JointParam.POGO_IMPULSE);
     }

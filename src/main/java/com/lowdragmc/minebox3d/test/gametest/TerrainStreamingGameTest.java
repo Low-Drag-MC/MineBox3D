@@ -39,9 +39,9 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 /**
- * <b>The terrain streamer's own work</b> (design doc {@code 01-voxel-terrain.md} §8): what reaches the grid when a taller
- * block changes or a block changes on another thread, fast and falling bodies finding ground they were not near,
- * sections coming and going, bodies parked over a chunk that goes, private worlds stepped on a pool, the surfaces
+ * <b>The terrain streamer's own work</b> (design doc {@code 01-voxel-terrain.md} §8): what reaches the grid when a
+ * taller block changes or a block changes on another thread, fast and falling bodies finding ground they were not
+ * near, sections coming and going, bodies parked over a chunk that goes, private worlds stepped on a pool, the surfaces
  * Minecraft's blocks give, and a physics that stops when its tick throws. Each test runs a world of its own for
  * seconds in one tick ({@link PrivatePhysics}).
  */
@@ -165,8 +165,7 @@ public final class TerrainStreamingGameTest {
         }
         try (PrivatePhysics physics = new PrivatePhysics(helper)) {
             // about 60 m/s at the bottom: three blocks a tick, through four sections. Landing that hard with friction,
-            // Box3D skids it sideways by up to a block (on any ground, a box shape too: doc 01 §12.6), hence the 5 × 5
-            // slabs
+            // Box3D skids it sideways by up to a block (on any ground: doc 01 §12.6.4), hence the 5 × 5 slabs
             Body box = physics.box(2.5, 60, 2.5, 0.2f);
             physics.ticks(80);
             Vector3d at = physics.relative(box);
@@ -259,9 +258,9 @@ public final class TerrainStreamingGameTest {
     }
 
     /**
-     * A body over a chunk that is not there takes what is jointed to it out with it (half a cart left simulating would fall
-     * away from the other half); one that stops needing terrain is let back; and one its maker turned off is still off
-     * when let back.
+     * A body over a chunk that is not there takes what is jointed to it out with it (half a cart left simulating would
+     * fall away from the other half); one that stops needing terrain is let back; and one its maker turned off is still
+     * off when let back.
      */
     @GameTest(template = "empty", batch = "minebox3d_parking_group", timeoutTicks = 20)
     @PrefixGameTestTemplate(false)
@@ -389,8 +388,8 @@ public final class TerrainStreamingGameTest {
     }
 
     /**
-     * Closing a private physics whose world another thread holds fails — and leaves nothing of it listening to the level:
-     * its terrain hears no more chunks. Closed again once the world is free, it closes.
+     * Closing a private physics whose world another thread holds fails — and leaves nothing of it listening to the
+     * level: its terrain hears no more chunks. Closed again once the world is free, it closes.
      */
     @GameTest(template = "empty", batch = "minebox3d_close_held", timeoutTicks = 20)
     @PrefixGameTestTemplate(false)
@@ -449,8 +448,7 @@ public final class TerrainStreamingGameTest {
             onStone.setLinearVelocity(8, 0, 0);
             physics.ticks(60);
             Vector3d ice = physics.relative(onIce), stone = physics.relative(onStone);
-            // friction 0.6 against 0.6 on stone, against 0.03 on ice (Minecraft's slipperiness 0.98): about 1.7 m and 7
-            // m
+            // friction 0.6 against stone's 0.6 and ice's 0.03 (Minecraft's slipperiness 0.98): about 1.7 m and 7 m
             helper.assertTrue(
                     stone.x - 1.5 > 1 && stone.x - 1.5 < 2.5, "slid about 1.7 m on stone: " + (stone.x - 1.5));
             helper.assertTrue(ice.x - 1.5 > 5, "slid much further on ice: " + (ice.x - 1.5));
@@ -493,8 +491,7 @@ public final class TerrainStreamingGameTest {
             Body onSlime = physics.box(1.5, 4, 1.5, 0.25f);
             Body onStone = physics.box(1.5, 4, 3.5, 0.25f);
             // the first time it goes up, and how high it gets before it comes down again; a bounce is over within a
-            // tick,
-            // so it is told by the velocity, not by a height it was seen at
+            // tick, so it is told by the velocity, not by a height it was seen at
             double[] peak = {0, 0};
             int[] phase = {0, 0};
             Body[] bodies = {onSlime, onStone};

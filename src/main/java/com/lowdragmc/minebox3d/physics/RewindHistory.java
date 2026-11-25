@@ -12,10 +12,10 @@ import org.joml.Vector3f;
 
 /**
  * <b>Where bodies were over the last ticks</b>, to put them back and simulate again — Unreal's rewind data, the bodies'
- * part of it ({@code RewindData.h}): each body's place, turn, velocities and whether it was awake at the end of each tick
- * it was recorded, in a ring of {@link #capacity()} ticks. Contacts and joints keep nothing (Unreal's neither): a
- * simulation run again from here meets them afresh, so it is the same to the bit only where they play no part. A tick is
- * whatever its owner counts.
+ * part of it ({@code RewindData.h}): each body's place, turn, velocities and whether it was awake at the end of each
+ * tick it was recorded, in a ring of {@link #capacity()} ticks. Contacts and joints keep nothing (Unreal's neither): a
+ * simulation run again from here meets them afresh, so it is the same to the bit only where they play no part. A tick
+ * is whatever its owner counts.
  *
  * <p>On its world's thread, as the world.
  */
@@ -58,8 +58,8 @@ public final class RewindHistory {
     }
 
     /**
-     * {@code body}'s state at the end of {@code tick} as it is known to have been — a server's word — held in place of what
-     * was recorded, so a {@link #restore} puts it there. The rotation is taken as given: a unit one.
+     * {@code body}'s state at the end of {@code tick} as it is known to have been — a server's word — held in place of
+     * what was recorded, so a {@link #restore} puts it there. The rotation is taken as given: a unit one.
      */
     public void put(
             long tick,
@@ -105,8 +105,8 @@ public final class RewindHistory {
     }
 
     /**
-     * The body put back as it was at the end of {@code tick}, to the bit; false, and untouched, where that is not held —
-     * never recorded then, or longer ago than the ring.
+     * Puts the body back as it was at the end of {@code tick}, to the bit; false, and untouched, where that is not held
+     * — never recorded then, or longer ago than the ring — or the body is gone.
      */
     public boolean restore(long tick, Body body) {
         Track track = tracks.get(body);
@@ -166,7 +166,7 @@ public final class RewindHistory {
         tracks.remove(body);
     }
 
-    /** Every body destroyed since let go. */
+    /** Lets go of every body destroyed since. */
     public void prune() {
         tracks.keySet().removeIf(body -> !body.isValid());
     }

@@ -16,8 +16,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 /**
- * The network sync's payload reads back what was written, every kind of shape included; refuses to send what it cannot;
- * and refuses, while reading, a shape whose numbers do not fit its kind.
+ * The network sync's payload reads back what was written, every kind of shape included; refuses to send what it
+ * cannot; and refuses, while reading, a shape whose numbers do not fit its kind.
  */
 class BodySyncPayloadTest {
 
@@ -98,8 +98,7 @@ class BodySyncPayloadTest {
         assertEquals(sphere, got.get(0).geometry());
         assertEquals(capsule, got.get(1).geometry());
         assertEquals(box, got.get(2).geometry());
-        // the receiving end builds Box3D's hull of the points again: the same corners, not necessarily in the same
-        // order
+        // the receiving end builds Box3D's hull of the points again: the same corners, maybe in another order
         assertEquals(corners(hull), corners((Geometry.Hull) got.get(3).geometry()));
         for (int i = 0; i < 4; i++) {
             BodySyncPayload.SyncedShape s = shapes.get(i), r = got.get(i);

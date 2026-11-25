@@ -16,13 +16,13 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
 /**
- * <b>One tick of synced bodies for one player</b> (design doc {@code 04-entities-and-bodies.md} §10): the bodies it
- * starts seeing, where the ones it sees moved to, and the ones it stops seeing; the server's physics tick they are as of,
- * and the player's own frame that tick ran ({@link SyncedBodies.Prediction}) — what its client holds them against, or
- * {@link #NO_FRAME}; and the bodies it sees whose damping, gravity or fixed rotation changed ({@link Tuning}). Server to
- * client.
+ * <b>One tick of synced bodies for one player</b> (design doc {@code 04-entities-and-bodies.md} §10), server to
+ * client: the bodies it starts seeing, where the ones it sees moved to, and the ones it stops seeing; the server's
+ * physics tick they are as of, and the player's own frame that tick ran ({@link SyncedBodies.Prediction}) — what its
+ * client holds them against — or {@link #NO_FRAME}; and the bodies it sees whose damping, gravity scale or fixed
+ * rotation changed ({@link Tuning}).
  *
- * <p>Shapes travel as their numbers and become {@link Geometry} only when a replica is built ({@link SyncedShape#geometry()},
+ * <p>Shapes travel as numbers and become {@link Geometry} only when a replica is built ({@link SyncedShape#geometry()},
  * on the client thread): a hull is Box3D's to build, and decoding must not need Box3D — the payload is read on the
  * network thread, and a decoding error drops the connection.
  */
@@ -40,8 +40,9 @@ public record BodySyncPayload(
     public static final int NO_FRAME = Integer.MIN_VALUE;
 
     /**
-     * Nothing changed but this: the client now has the bodies around where its player was last put (a teleport, a respawn,
-     * joining), so its player, held there till then (SyncedRiders), may move — and not fall through one still on its way.
+     * Nothing changed but this: the client now has the bodies around where its player was last put (a teleport, a
+     * respawn, joining), so its player, held there till then (SyncedRiders), may move — and not fall through one still
+     * on its way.
      */
     public static final BodySyncPayload SETTLED =
             new BodySyncPayload(List.of(), List.of(), new int[0], true, 0, NO_FRAME);
@@ -256,10 +257,10 @@ public record BodySyncPayload(
     }
 
     /**
-     * A dynamic body's mass, centre of mass and inertia (body space, column by column) — what an entity walking into its
-     * replica pushes against ({@link SyncedBodies#serverMass}) — and whether entities push it (doc 04 §11.2 #1): one they
-     * do not is as heavy as a wall to them; and its damping, gravity scale and fixed rotation, which a client simulating
-     * it moves it by. Sent only for a dynamic body.
+     * A dynamic body's mass, centre of mass and inertia (body space, column by column) — what an entity walking into
+     * its replica pushes against ({@link SyncedBodies#serverMass}) — and whether entities push it (doc 04 §11.2 #1):
+     * one they do not is as heavy as a wall to them; and its damping, gravity scale and fixed rotation, which a client
+     * simulating it moves it by. Sent only for a dynamic body.
      */
     public record Dynamics(
             float mass,
@@ -300,7 +301,7 @@ public record BodySyncPayload(
             return out;
         }
 
-        /** How it moves besides its mass, onto {@code body}: what makes a replica simulated here move as the server's. */
+        /** How it moves besides its mass, onto {@code body}: so a replica simulated here moves as the server's. */
         void moveAs(Body body) {
             body.setLinearDamping(linearDamping);
             body.setAngularDamping(angularDamping);
@@ -326,9 +327,10 @@ public record BodySyncPayload(
     }
 
     /**
-     * A body a player starts seeing; {@code tag} and {@code ignoredTag} its {@link Body#tag} and {@link Body#ignoredTag}
-     * (an entity it never meets, doc 04 §17); {@code dynamics} for a dynamic one, else {@code null}; {@code centre}, its
-     * centre of mass in its own frame, for a dynamic one (a point's speed is its turn about there), else {@code null}.
+     * A body a player starts seeing; {@code tag} and {@code ignoredTag} its {@link Body#tag} and
+     * {@link Body#ignoredTag} (an entity it never meets, doc 04 §17); {@code dynamics} for a dynamic one, else
+     * {@code null}; {@code centre}, its centre of mass in its own frame, for a dynamic one (a point's speed is its turn
+     * about there), else {@code null}.
      */
     public record Spawn(
             int id,

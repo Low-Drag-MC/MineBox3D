@@ -460,9 +460,9 @@ MB3_JNI( jboolean, worldCastRayClosest )( JNIEnv* env, jclass type, jint world, 
 	return mb3_check( env ) ? JNI_FALSE : JNI_TRUE;
 }
 
-// The hits a cast reports, held until they go to Java: the first MB3_HIT_ROOM in the caller's stack, the heap only past
-// them and only as far as the hits go. ⚠️ Not sized by the Java arrays: they only grow, and room made for them on every
-// call had one cast through a crowd make every later cast in its world allocate and free room for the crowd.
+// The hits a cast reports, held until they go to Java: the first MB3_HIT_ROOM on the caller's stack, the heap only past
+// them and only as far as the hits go. ⚠️ Not sized by the Java arrays: those only grow, so after one cast through a
+// crowd every later cast would allocate and free room for the crowd.
 #define MB3_HIT_ROOM 16
 
 typedef struct mb3_hit_room

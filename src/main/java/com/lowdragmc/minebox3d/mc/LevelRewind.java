@@ -15,13 +15,13 @@ import org.joml.Quaternionf;
 import org.joml.Vector3d;
 
 /**
- * <b>A level's physics rolled back and simulated again</b> (EntityStudio doc 61 §3.3, §3.8) — Unreal's networked physics
- * resimulation in its bubble mode: the bodies around what something {@linkplain #watch watches} are recorded at the end
- * of every tick, a second's worth ({@link RewindHistory}); {@linkplain #resimulate simulated again} from a past tick, they
- * are put back as they were then and the ticks since are run again, their listeners giving each its inputs again and
- * putting known bodies where they were known to be; the rest of the world stands still meanwhile and is as it was after.
- * What was drawn fades into what is over 0.3 s ({@link Body#addRenderError}); what the ticks run again set off — contacts,
- * joint forces — is dropped, as Unreal's resimulation raises no game events.
+ * <b>A level's physics rolled back and simulated again</b> (EntityStudio doc 61 §3.3, §3.8) — Unreal's networked
+ * physics resimulation in its bubble mode: the bodies around what something {@linkplain #watch watches} are recorded at
+ * the end of every tick, a second's worth ({@link RewindHistory}); {@linkplain #resimulate simulated again} from a past
+ * tick, they are put back as they were then and the ticks since are run again, their listeners giving each its inputs
+ * again and known bodies put where they were known to be; the rest of the world stands still meanwhile and is as it
+ * was after. What was drawn fades into what is over 0.3 s ({@link Body#addRenderError}); what the ticks run again set
+ * off — contacts, joint forces — is dropped, as Unreal's resimulation raises no game events.
  *
  * <p>Nothing is recorded while nothing is watched. On the level's thread.
  */
@@ -34,7 +34,7 @@ public final class LevelRewind {
 
     private static final float TICK_SECONDS = 1 / 20f;
 
-    /** Past this far from where a body is known to have been, it is run again: Unreal's {@code ResimErrorThreshold}, 10 cm. */
+    /** Past this far from where a body is known to have been, it is run again: Unreal's ResimErrorThreshold, 10 cm. */
     public static final double POSITION_THRESHOLD = 0.1;
     /** ...or turned this far from it: Unreal's 4°. */
     public static final float ROTATION_THRESHOLD_DEGREES = 4;
@@ -113,8 +113,8 @@ public final class LevelRewind {
     }
 
     /**
-     * Whether a body's bounds reach into the bubble round any centre. ⚠️ Not where its origin is: a long deck stood on at
-     * its far end would be out of the run again, and what stands on it fall through it there.
+     * Whether a body's bounds reach into the bubble round any centre. ⚠️ Not where its origin is: a long deck stood on
+     * at its far end would be out of the run again, and what stands on it fall through it there.
      */
     private static boolean near(float[] bounds, List<Vec3> centres) {
         for (Vec3 centre : centres) {
@@ -130,9 +130,9 @@ public final class LevelRewind {
 
     /**
      * Where {@code body} is known to have been at the end of {@code tick} — the server's word — against where it was
-     * recorded then: further off than {@link #POSITION_THRESHOLD} or {@link #ROTATION_THRESHOLD_DEGREES}, it is held as
-     * known and the ticks after are run again from there (at the start of the next tick). Not recorded then — it came into
-     * the bubble since, or that is older than the history — it is put where it is known to be now, the gap drawn fading.
+     * recorded then: further off than {@link #POSITION_THRESHOLD} or {@link #ROTATION_THRESHOLD_DEGREES}, it is held
+     * as known and the ticks after are run again from there (at the start of the next tick). Not recorded then — it
+     * came into the bubble since, or that is older than the history — it is left as it is.
      *
      * @return whether it was off
      */
@@ -155,9 +155,8 @@ public final class LevelRewind {
         Vector3d was = history.position(tick, body, new Vector3d());
         Quaternionf turned = history.rotation(tick, body, new Quaternionf());
         if (was == null || turned == null) {
-            // not recorded then — it came into the bubble since, or that is older than the history (Unreal's: not
-            // rolled
-            // back). ⚠️ Not put there either: a second old, it would throw away all that was run since
+            // not recorded then: not rolled back, as Unreal's. ⚠️ Nor put there: a second old, it would throw away
+            // all that was run since
             return false;
         }
         double off = was.distance(x, y, z);
@@ -188,8 +187,8 @@ public final class LevelRewind {
     }
 
     /**
-     * What was asked run now, if anything was: the tick does it before its steps, and a predictor runs it sooner — before
-     * its own next frame, which the run would otherwise start from the old ending of (EntityStudio doc 61 §3.9).
+     * What was asked run now, if anything was: the tick does it before its steps, and a predictor runs it sooner —
+     * before its own next frame, which the run would otherwise start from the old ending of (EntityStudio doc 61 §3.9).
      *
      * @return whether a run happened
      */
@@ -204,9 +203,11 @@ public final class LevelRewind {
 
     /**
      * The bodies recorded at the end of tick {@code from} − 1 put back as they were, and ticks {@code from} to the last
-     * recorded run again: each tick its listeners told before its steps ({@link LevelPhysics.TickListener#beforeResimTick})
-     * and after ({@link LevelPhysics.TickListener#afterResimTick}), a kinematic body driven as it was, every body recorded
-     * anew. The rest of the world is out of the simulation meanwhile and put back after.
+     * recorded run again: each tick its listeners told before its steps
+     * ({@link LevelPhysics.TickListener#beforeResimTick}) and after
+     * ({@link LevelPhysics.TickListener#afterResimTick}), a kinematic body driven as it was, and every body then
+     * recorded anew — or, where its place for that tick is known ({@link #know}), put there. The rest of the world is
+     * out of the simulation meanwhile and put back after.
      *
      * @return false, nothing touched, where that tick is not held — older than the history, or nothing watched then
      */
@@ -251,8 +252,7 @@ public final class LevelRewind {
             for (long tick = from; tick <= last; tick++) {
                 physics.tellResim(true, tick);
                 for (Body body : inside) {
-                    // a kinematic body goes as it was driven: from where it ended the last tick to where it ended this
-                    // one
+                    // a kinematic body is driven as it was: from the last tick's end to this one's
                     if (body.isValid()
                             && body.type() == BodyType.KINEMATIC
                             && history.position(tick, body, target) != null) {

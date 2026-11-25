@@ -26,14 +26,15 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 /**
- * <b>Bodies stop entities as blocks do</b> (design doc {@code 04-entities-and-bodies.md} §11, batch 4c-1): an armor stand
- * lands on a body (a ball and a log too), is stopped by one, steps up onto a low one, slides over the seam between
- * two, pushes a light crate along but not two tonnes of iron, never walks through or sinks into one it can push,
- * turns a plank it pushes by its end, and is pushed out of a body moving into it, into no other — and a sensor, or a
- * shape that lets entities through, stops nothing. The queries other mods sweep entities with see the same bodies.
+ * <b>Bodies stop entities as blocks do</b> (design doc {@code 04-entities-and-bodies.md} §11, batch 4c-1): an armor
+ * stand lands on a body (a ball and a log too), is stopped by one, steps up onto a low one, slides over the seam
+ * between two, pushes a light crate along but not two tonnes of iron (and not even the crate when a mod says its moves
+ * push nothing), never walks through or sinks into one it can push, turns a plank it pushes by its end, and is pushed
+ * out of a body moving into it, into no other — and a sensor, or a shape that lets entities through, stops nothing.
+ * The queries other mods sweep entities with see the same bodies.
  *
- * <p>Armor stands for the same reasons as EntityPushGameTest: they move under their own motion and friction, and do not
- * walk off. Each test waits for its stands to tick (TestArea.forceChunks).
+ * <p>Armor stands for the same reasons as EntityPushGameTest: they move under their own motion and friction, and do
+ * not walk off. Each test waits for its stands to tick (TestArea.forceChunks).
  */
 @GameTestHolder(MineBox3D.MOD_ID)
 public final class EntityBlockedGameTest {
@@ -156,8 +157,8 @@ public final class EntityBlockedGameTest {
     }
 
     /**
-     * Two slabs side by side, their tops level: a stand sliding from one onto the other does not catch on the seam (Box3D
-     * counts the next slab's edge, millimetres below the stand's feet, as touching: EntityCollisions.sweeping).
+     * Two slabs side by side, their tops level: a stand sliding from one onto the other does not catch on the seam
+     * (Box3D counts the next slab's edge, millimetres below the stand's feet, as touching: EntityCollisions.sweeping).
      */
     @GameTest(template = "empty", batch = "minebox3d_blocked_seam", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
@@ -204,8 +205,8 @@ public final class EntityBlockedGameTest {
                             relative(helper, light).x > 3.7,
                             "going on past where the crate was: " + relative(helper, light).x);
                     helper.assertTrue(Math.abs(ironMoved) < 0.05, "the iron hardly moved: " + ironMoved);
-                    // a body stops the stand at its face; it keeps 54 / (54 + 1944) of its speed, so it goes on only as
-                    // far as the iron gives
+                    // a body stops the stand at its face; it keeps 54 / (54 + 1944) of its speed, so it goes on only
+                    // as far as the iron gives
                     double in = relative(helper, heavy).x + 0.25 - (relative(helper, iron).x - 0.3);
                     helper.assertTrue(in < 0.03, "and stopped the stand at its face: " + in + " in");
                     crate.destroy();
@@ -217,9 +218,9 @@ public final class EntityBlockedGameTest {
     }
 
     /**
-     * The same light crate in the way of a stand whose moves a mod says push no body ({@code EntityAuthority.pushesBodies},
-     * Unreal's Mover): stopped at its face as at a wall, and the crate stays — while the same stand without the say pushes
-     * its own along.
+     * The same light crate in the way of a stand whose moves a mod says push no body
+     * ({@code EntityAuthority.pushesBodies}, Unreal's Mover): stopped at its face as at a wall, and the crate stays —
+     * while the same stand without the say pushes its own along.
      */
     @GameTest(template = "empty", batch = "minebox3d_blocked_no_push", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
@@ -250,14 +251,15 @@ public final class EntityBlockedGameTest {
     }
 
     /**
-     * A stand whose moves push nothing stepping up onto a light crate: it goes up onto it and the crate stays. (Its proxy
-     * driven along the straight line from before the step to after it would cut the crate's top corner and fling it.)
+     * A stand whose moves push nothing stepping up onto a light crate: it goes up onto it and the crate stays. (Its
+     * proxy driven along the straight line from before the step to after it would cut the crate's top corner and fling
+     * it.)
      */
     @GameTest(template = "empty", batch = "minebox3d_blocked_no_push_step", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
     public static void aStandWhoseMovesPushNothingStepsOntoALightCrateAndLeavesItBe(GameTestHelper helper) {
         area(helper, 8, 4);
-        // 0.4 high, 5 kg; its face at x = 4
+        // 0.4 high, 10 kg; its face at x = 4
         Body crate = box(helper, BodyType.DYNAMIC, 4.5, 0.2, 1.5, 0.5f, 0.2f, 0.5f, new ShapeDef().density(25));
         ArmorStand stand = EntityAuthorityGameTest.pushingNothing(stand(helper, 3.2, 0, 1.5));
         stand.getAttribute(Attributes.STEP_HEIGHT).setBaseValue(0.6);
@@ -335,9 +337,9 @@ public final class EntityBlockedGameTest {
     }
 
     /**
-     * What the mass rule must not do: a stand on a crate it could push does not sink into it (its weight presses through
-     * its proxy, not by going in); one pushing a crate pinned against a wall does not walk through it. (Whether one with a
-     * step climbs a low crate or pushes it: EntityStepUpGameTest.)
+     * What the mass rule must not do: a stand on a crate it could push does not sink into it (its weight presses
+     * through its proxy, not by going in); one pushing a crate pinned against a wall does not walk through it. (Whether
+     * one with a step climbs a low crate or pushes it: EntityStepUpGameTest.)
      */
     @GameTest(template = "empty", batch = "minebox3d_blocked_pinned", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
@@ -375,7 +377,10 @@ public final class EntityBlockedGameTest {
                 });
     }
 
-    /** Pushed where the stand's face meets it nearest its centre: a crate it covers goes straight, a plank by its end turns. */
+    /**
+     * Pushed where the stand's face meets it nearest its centre: a crate it covers goes straight, a plank by its end
+     * turns.
+     */
     @GameTest(template = "empty", batch = "minebox3d_blocked_turn", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
     public static void aStandPushesACrateStraightAndAPlankByItsEndRound(GameTestHelper helper) {
@@ -407,8 +412,9 @@ public final class EntityBlockedGameTest {
     }
 
     /**
-     * A crate a hair into a stand's box (Box3D leaves a body resting against an entity's proxy up to its slop in) is still
-     * in its way: the stand shoved at it, pinned against a wall, is stopped by it rather than let through as from inside.
+     * A crate a hair into a stand's box (Box3D leaves a body resting against an entity's proxy up to its slop in) is
+     * still in its way: the stand shoved at it, pinned against a wall, is stopped by it rather than let through as from
+     * inside.
      */
     @GameTest(template = "empty", batch = "minebox3d_blocked_hair", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
@@ -467,7 +473,10 @@ public final class EntityBlockedGameTest {
                 });
     }
 
-    /** A stand on a ball, and one on a lying capsule, stays on top, a few millimetres above: Box3D's sweep would let it in. */
+    /**
+     * A stand on a ball, and one on a lying capsule, stays on top, a few millimetres above: Box3D's sweep would let it
+     * in.
+     */
     @GameTest(template = "empty", batch = "minebox3d_blocked_round", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
     public static void aStandOnABallOrALogStaysOnTop(GameTestHelper helper) {
@@ -530,9 +539,9 @@ public final class EntityBlockedGameTest {
     }
 
     /**
-     * What a mod that sweeps its own entities, and the server's flying check, ask: a body under an entity standing on it
-     * high up is "something around" (and none is, without it); a turned box swept at a wall meets its face, a sensor in the
-     * way stops nothing, and what the box starts on is no hit.
+     * What a mod that sweeps its own entities, and the server's flying check, ask: a body under an entity standing on
+     * it high up is "something around" (and none is, without it); a turned box swept at a wall meets its face, a sensor
+     * in the way stops nothing, what the box starts on is no hit, and a round shape is refused.
      */
     @GameTest(template = "empty", batch = "minebox3d_blocked_queries", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)

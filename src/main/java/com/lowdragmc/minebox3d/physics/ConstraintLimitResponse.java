@@ -10,6 +10,7 @@ public final class ConstraintLimitResponse {
     /** 1/s in {@link #accelerationMode}, otherwise N·s/m or N·m·s/rad. */
     public float damping;
 
+    /** The spring's numbers per unit of mass, as {@link ConstraintDrive#accelerationMode}. */
     public boolean accelerationMode = true;
     /** How much of its speed a hard limit gives back when hit: 0 stops it, 1 bounces it back as fast. */
     public float restitution;

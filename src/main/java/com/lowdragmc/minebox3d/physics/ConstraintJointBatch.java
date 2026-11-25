@@ -41,9 +41,8 @@ public final class ConstraintJointBatch {
     }
 
     /**
-     * Every joint's drive targets, {@link #TARGET} floats each (see {@link ConstraintJointSettings}), checked as
-     * {@link ConstraintJoint#setDriveTargets} checks them. {@code wake} wakes every joint's bodies, which a sleeping one needs
-     * to follow a new target.
+     * Every joint's drive targets, {@link #TARGET} floats each, as {@link ConstraintJoint#setDriveTargets} takes and
+     * checks them. {@code wake} wakes every joint's bodies, which a sleeping one needs to follow a new target.
      */
     public void setTargets(float[] values, boolean wake) {
         if (values.length < ids.length * TARGET) {
@@ -65,7 +64,10 @@ public final class ConstraintJointBatch {
         }
     }
 
-    /** Every joint now, {@link #STATE} floats each: its angles as the limits measure them, its offset and how far it is off. */
+    /**
+     * Every joint now, {@link #STATE} floats each, as {@link ConstraintJoint#angles},
+     * {@link ConstraintJoint#linearOffset}, {@link Joint#linearSeparation} and {@link Joint#angularSeparation} read it.
+     */
     public void readState(float[] out) {
         world.enter();
         try {

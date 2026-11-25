@@ -12,7 +12,7 @@
 #include <string.h>
 
 // Closer than this, metres, a box touches a shape, and inside it by no more than this it is touching it too: no hit
-// unless moving on takes it in deeper. The advancement stops half of it short, so the next sweep from there starts
+// unless moving on takes it in deeper. The advancement stops within half of it, so the next sweep from there starts
 // touching. Near a body's origin; further out it is what a float there can still tell apart (mb3_sweep_tolerance).
 #define MB3_SWEEP_TOUCH 1.0e-5f
 #define MB3_SWEEP_ITERATIONS 40
@@ -243,7 +243,7 @@ static bool mb3_sweep_goes_in( const mb3_obstacle* o, const mb3_sweep_pair* pair
 
 // The box swept against one convex obstacle. Starting inside it deeper than touching: how deep and which way out.
 // Apart: conservative advancement — each step as far as the gap over the speed it closes at, which never passes the
-// surface for a box that only translates — to half a touch short of it. Touching, there or from the start: a hit only
+// surface for a box that only translates — to within half a touch of it. Touching, there or from the start: a hit only
 // if moving on takes it in.
 static bool mb3_sweep_obstacle( const mb3_obstacle* o, const mb3_sweep_pair* pair, mb3_sweep_hit* hit )
 {
@@ -333,7 +333,7 @@ static bool mb3_sweep_triangle_fcn( b3Vec3 a, b3Vec3 b, b3Vec3 c, int triangleIn
 	return true;
 }
 
-// The bounds the box sweeps through, in the body's frame, a touch wider.
+// The bounds the box sweeps through, in the body's frame, 2·touch wider.
 static b3AABB mb3_sweep_bounds( const mb3_sweep_pair* pair )
 {
 	b3AABB bounds = { { FLT_MAX, FLT_MAX, FLT_MAX }, { -FLT_MAX, -FLT_MAX, -FLT_MAX } };

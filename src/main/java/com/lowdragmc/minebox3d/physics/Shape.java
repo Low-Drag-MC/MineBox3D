@@ -194,8 +194,8 @@ public final class Shape {
     }
 
     /**
-     * How many per-triangle materials a mesh or height-field shape has ({@link ShapeDef#materials}); any other shape has
-     * one, its own.
+     * How many materials the shape has: as many as the {@link ShapeDef#materials} it was made with (a mesh's or height
+     * field's per-triangle ones), else one, its own.
      */
     public int meshMaterialCount() {
         PhysicsWorld world = body.world();
@@ -255,10 +255,16 @@ public final class Shape {
         }
     }
 
+    /**
+     * Almost as costly as making the shape again.
+     *
+     * @param invokeContacts find all the shape's contacts again at the next step (costly)
+     */
     public void setFilter(Filter filter, boolean invokeContacts) {
         setFilter(filter.categoryBits, filter.maskBits, filter.groupIndex, invokeContacts);
     }
 
+    /** {@link #setFilter(Filter, boolean)} without a {@link Filter}. */
     public void setFilter(long categoryBits, long maskBits, int groupIndex, boolean invokeContacts) {
         PhysicsWorld world = body.world();
         world.enter();
@@ -347,7 +353,7 @@ public final class Shape {
 
     // ---- where it is --------------------------------------------------------------------------
 
-    /** World-space bounds, {@code [minX, minY, minZ, maxX, maxY, maxZ]}. */
+    /** World-space bounds, {@code [minX, minY, minZ, maxX, maxY, maxZ]}, grown as {@link Body#bounds} says. */
     public float[] bounds(float[] out) {
         PhysicsWorld world = body.world();
         world.enter();
@@ -361,8 +367,8 @@ public final class Shape {
     }
 
     /**
-     * The closest point of this sphere, capsule, box or hull to a world point, into {@code out}; returns the distance, 0
-     * inside, {@link Float#POSITIVE_INFINITY} for a mesh or height field. Exact far from the origin.
+     * The closest point of this sphere, capsule, box or hull to a world point, into {@code out}; returns the distance,
+     * 0 inside, {@link Float#POSITIVE_INFINITY} for a mesh or height field. Exact far from the origin.
      */
     public float closestPoint(double x, double y, double z, Vector3d out) {
         PhysicsWorld world = body.world();
@@ -384,14 +390,16 @@ public final class Shape {
     }
 
     /**
-     * {@code geometry} at {@code (x, y, z)} turned by {@code rotation}, moved by {@code translation}, against this shape
-     * only, into {@code out}; false for no hit. A sensor is hit like any other shape. Not for a mesh as the moving shape.
+     * {@code geometry} at {@code (x, y, z)} turned by {@code rotation}, moved by {@code translation}, against this
+     * shape only, into {@code out}; false for no hit. A sensor is hit like any other shape. The moving geometry must
+     * be convex.
      *
-     * <p>Without {@code canEncroach}, touching at the start hits at fraction 0. With it — the way Box3D moves a box among
-     * bodies — one touching this shape without overlapping it hits only if it moves in, stopping a few millimetres short
-     * (Box3D's linear slop, 5 mm, then half of it from there), and misses moving along or away; one overlapping it still
-     * hits at fraction 0, with no normal. ⚠️ Not a sphere or capsule against a mesh or height field: Box3D lets a rounded
-     * shape in a little further at every such cast (fixed for one convex shape, not for each of many triangles).
+     * <p>Without {@code canEncroach}, touching at the start hits at fraction 0. With it — the way Box3D moves a box
+     * among bodies — one touching this shape (within a linear slop or two, 5–10 mm) without overlapping it hits only if
+     * it moves in, stopping half a slop short, and misses moving along or away; from further off it stops about a slop
+     * short; one overlapping it still hits at fraction 0, with no normal. ⚠️ Refused for a sphere or capsule against a
+     * mesh or height field: there Box3D lets a rounded shape creep in a little at every cast (our fork stops that
+     * against a convex shape only).
      */
     public boolean castShape(
             Geometry geometry,
@@ -439,6 +447,7 @@ public final class Shape {
         }
     }
 
+    /** @param updateBodyMass recompute the body's mass from the shapes left */
     public void destroy(boolean updateBodyMass) {
         body.destroyShape(this, updateBodyMass);
     }

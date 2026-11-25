@@ -260,9 +260,9 @@ class JointTest {
     }
 
     /**
-     * The definition reaches C by field name, the runtime getters by parameter number: a joint made with a distinct value
-     * in every field and read back through the getters pins the numbers to the fields (two swapped numbers would read
-     * back as each other's value — which setting and reading through the same wrong number would not show).
+     * The definition reaches C by field name, the runtime getters by parameter number: a joint made with a distinct
+     * value in every field and read back through the getters pins the numbers to the fields (two swapped numbers would
+     * read back as each other's value — which setting and reading through the same wrong number would not show).
      */
     @Test
     void whatADefinitionSaysIsWhatTheGettersRead() {
@@ -477,7 +477,9 @@ class JointTest {
         }
     }
 
-    /** Box3D asserts unit length to 20 float epsilons; the bridge takes what Java lets through the last bit of the way. */
+    /**
+     * Box3D asserts unit length to 20 float epsilons; the bridge takes what Java lets through the last bit of the way.
+     */
     @Test
     void aNearlyUnitRotationIsTakenAsTheUnitOne() {
         try (PhysicsWorld world = world(0)) {
@@ -585,8 +587,8 @@ class JointTest {
             assertEquals(0, w.x, 1e-3);
             assertEquals(0, w.y, 1e-3);
 
-            // back to the start, then the limit: the motor drives it into the limit rather than the limit catching it
-            // a turn and a half in
+            // back to the start, then the limit: the motor drives it into the limit from inside, not from past it
+            // where the free spin left it
             plank.setTransform(0, 0, 0, new Quaternionf());
             plank.setAngularVelocity(0, 0, 0);
             hinge.setLimits(-0.5f, 0.5f);
@@ -759,7 +761,10 @@ class JointTest {
         }
     }
 
-    /** Our fork (02-box3d-fork.md): Box3D measured both against the bodies, and across the axis along one direction. */
+    /**
+     * Our fork (02-box3d-fork.md §3.1): Box3D measured both against the bodies, and across the axis along one
+     * direction.
+     */
     @Test
     void separationsAreMeasuredInTheJointsFrames() {
         try (PhysicsWorld world = world(0)) {
@@ -909,7 +914,7 @@ class JointTest {
         }
     }
 
-    // ---- Box3D's own bugs our fork fixes (02-box3d-fork.md §3.1) ----------------------------------
+    // ---- Box3D bugs our fork fixed, several fixed upstream since (02-box3d-fork.md §3.1) ----------
 
     /** Box3D kept warm starting a motor part its solve no longer ran: a puppet let go stayed held. */
     @Test
@@ -1025,7 +1030,9 @@ class JointTest {
         return bar.rotation(new Quaternionf()).transform(new Vector3f(1, 0, 0)).y;
     }
 
-    /** The distance joint's limit kept its last impulse when turned off, holding a taut spring rope at its old length. */
+    /**
+     * The distance joint's limit kept its last impulse when turned off, holding a taut spring rope at its old length.
+     */
     @Test
     void aDistanceLimitTurnedOffLetsGo() {
         try (PhysicsWorld world = world(-10)) {
@@ -1045,8 +1052,8 @@ class JointTest {
     }
 
     /**
-     * Box3D added the cone limit's impulse where its solver subtracts it, and put the twist limit's along frame B's z rather
-     * than its Jacobian: the torque a spherical joint reported, and broke at, was not the one it applied.
+     * Box3D added the cone limit's impulse where its solver subtracts it, and put the twist limit's along frame B's z
+     * rather than its Jacobian: the torque a spherical joint reported, and broke at, was not the one it applied.
      */
     @Test
     void aSphericalJointReportsTheTorqueItApplies() {

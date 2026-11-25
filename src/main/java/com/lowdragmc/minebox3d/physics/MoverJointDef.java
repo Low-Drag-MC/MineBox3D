@@ -2,8 +2,9 @@ package com.lowdragmc.minebox3d.physics;
 
 /**
  * Box3D's {@code b3MoverJointDef}: drives a dynamic character body (B) towards a velocity relative to A by a limited
- * force, in the xz plane of frame B only — gravity and a {@link PogoJointDef pogo joint} hold it up. Box3D's dynamic
- * mover, which Unreal's Chaos mover's ground constraint answers to. ⚠️ Box3D marks it experimental.
+ * force, in the xz plane of frame B only, without turning it — along frame B's y it is left to gravity and a
+ * {@link PogoJointDef pogo joint}. Box3D's dynamic mover, which Unreal's Chaos mover's ground constraint answers to.
+ * ⚠️ Box3D marks it experimental.
  */
 public final class MoverJointDef extends JointDef<MoverJoint, MoverJointDef> {
     /** m/s of B relative to A, world space. */

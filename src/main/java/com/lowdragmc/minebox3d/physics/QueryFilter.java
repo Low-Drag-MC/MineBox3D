@@ -1,8 +1,8 @@
 package com.lowdragmc.minebox3d.physics;
 
 /**
- * What a query sees: shapes whose category {@code maskBits} accepts and whose mask accepts {@code categoryBits} (Box3D's
- * {@code b3QueryFilter}). See {@link Filter} for the shapes' side.
+ * What a query sees: shapes whose category {@code maskBits} accepts and whose mask accepts {@code categoryBits}
+ * (Box3D's {@code b3QueryFilter}). See {@link Filter} for the shapes' side.
  */
 public record QueryFilter(long categoryBits, long maskBits) {
 

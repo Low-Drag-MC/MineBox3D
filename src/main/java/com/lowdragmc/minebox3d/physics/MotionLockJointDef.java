@@ -2,9 +2,8 @@ package com.lowdragmc.minebox3d.physics;
 
 /**
  * Box3D's {@code b3MotionLockJointDef}: locks body B's movement along any of frame A's axes, and its turning to frame
- * A's z axis only. Box3D's replacement for the per-body motion locks it dropped, which were unstable. Against a static
- * body it locks a body to a line, a plane or a point, or keeps it upright: frame A's z axis up, {@link #lockAngularXY}
- * on.
+ * A's z axis only. Against a static body it locks a body to a line, a plane or a point, or keeps it upright: frame A's
+ * z axis up, {@link #lockAngularXY} on. No turning at all is {@link BodyDef#fixedRotation}.
  */
 public final class MotionLockJointDef extends JointDef<MotionLockJoint, MotionLockJointDef> {
     public boolean lockLinearX, lockLinearY, lockLinearZ;

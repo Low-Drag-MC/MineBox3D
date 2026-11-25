@@ -61,9 +61,10 @@ public final class SyncedRiders {
     private static final double SLACK = 2;
     /** The most the client's replica may lag, for the body's travel above: seconds. */
     private static final double LAG = 0.5;
-    /** Pushes a client may tell a tick, and the fastest a push may move a player's mass: m/s. */
+    /** Pushes a client may tell a tick. */
     private static final int MAX_PUSHES = 8;
 
+    /** The speed along a push it may bring the body up to, at most: m/s. */
     private static final float MAX_PUSH_SPEED = 20;
     /** How far from the player a push may be: blocks. */
     private static final double PUSH_REACH = 3;
@@ -78,9 +79,10 @@ public final class SyncedRiders {
     /** what each client was last told of each rider */
     private final Map<ServerGamePacketListenerImpl, Int2ObjectOpenHashMap<RiderPayload.Rider>> told =
             new IdentityHashMap<>();
-    /** per connection: what it said it stands on before its next move packet ([player, vehicle]); its pushes this tick */
+    /** per connection: what it said it stands on before its next move packet, [player, vehicle] */
     private static final Map<ServerGamePacketListenerImpl, StandingPayload[]> STANDING = new IdentityHashMap<>();
 
+    /** per connection: [server tick, pushes told in it] */
     private static final Map<ServerGamePacketListenerImpl, int[]> PUSHES = new IdentityHashMap<>();
     /** the players put somewhere whose clients wait to hear that the bodies around are sent, and since when */
     private static final Map<ServerGamePacketListenerImpl, Integer> SETTLING = new IdentityHashMap<>();
@@ -112,9 +114,9 @@ public final class SyncedRiders {
 
     /**
      * Where the move packet's position goes in the server's frame: on the server's body, where the client said right
-     * before it that the player (or its vehicle) stands; {@code null} to take the packet as it is — no word, on no body,
-     * a body it does not have, or a point too far from where the client's own move has it ({@code x, y, z}). Called by
-     * the move handlers before they check the move.
+     * before it that the player (or its vehicle) stands; {@code null} to take the packet as it is — no word, on no
+     * body, a body it does not have, or a point too far from where the client's own move has it ({@code x, y, z}).
+     * Called by the move handlers before they check the move.
      */
     @ApiStatus.Internal
     @Nullable
@@ -205,9 +207,9 @@ public final class SyncedRiders {
                 || EntityCollisions.isPinned(body, ix / impulse, iy / impulse, iz / impulse)) {
             return; // out of reach, or held from beyond: the client's replica cannot tell, the server can
         }
-        // no harder than a player's pace can: the body's own speed that way up to MAX_PUSH_SPEED at most, and no more
-        // than the player's mass at that speed
-        // the faster of the point and the whole: a tumbling body's point may lag its centre
+        // no harder than a player's pace can: the body's speed that way up to MAX_PUSH_SPEED at most, and no more than
+        // the player's mass at that speed; that speed the faster of the point's and the whole's, as a tumbling body's
+        // point may lag its centre
         Vector3f there = body.pointVelocity(at.x, at.y, at.z, new Vector3f()),
                 whole = body.linearVelocity(new Vector3f());
         float along = Math.max(there.x * ix + there.y * iy + there.z * iz, whole.x * ix + whole.y * iy + whole.z * iz)
@@ -370,8 +372,9 @@ public final class SyncedRiders {
     private record Rider(Entity entity, RiderPayload.Rider told) {}
 
     /**
-     * Whether the player's client tracks the entity, as near as the server's tracking goes ({@code ChunkMap.TrackedEntity}):
-     * its type's range, its chunk sent. A client told of one it has not been sent yet keeps the word a while.
+     * Whether the player's client tracks the entity, as near as the server's tracking goes
+     * ({@code ChunkMap.TrackedEntity}): its type's range, its chunk sent. A client told of one it has not been sent yet
+     * keeps the word a while.
      */
     private static boolean tracks(ServerPlayer player, Entity entity) {
         double range = player.server.getScaledTrackingDistance(entity.getType().clientTrackingRange() * 16);
@@ -419,7 +422,10 @@ public final class SyncedRiders {
         held = false;
     }
 
-    /** The server put this client's player somewhere: held till the bodies around are sent ({@code canTell}: it will say). */
+    /**
+     * The server put this client's player somewhere: held till the bodies around are sent, if the server will say so
+     * ({@code canTell}).
+     */
     @ApiStatus.Internal
     public static void putHere(boolean canTell) {
         held = canTell;
@@ -436,17 +442,17 @@ public final class SyncedRiders {
     }
 
     /**
-     * Whether this client's player is being held — {@link #isHeld} as its tick last left it, without counting a tick: for
-     * a mod that moves the player itself, which must not move it either while the bodies around it have not arrived
-     * (Minecraft's tick of the player is what is held, not a mod's).
+     * Whether this client's player is being held — {@link #isHeld} as its tick last left it, without counting a tick:
+     * for a mod that moves the player itself, which must not move it either while the bodies around it have not
+     * arrived (Minecraft's tick of the player is what is held, not a mod's).
      */
     public static boolean isHolding() {
         return held;
     }
 
     /**
-     * Right before this client's move packet for {@code mover} — its player, or the vehicle it steers: where on its body
-     * it stands, told to the server ({@code canTell}: the server has MineBox3D); on none, once.
+     * Right before this client's move packet for {@code mover} — its player, or the vehicle it steers: where on its
+     * body it stands, told to the server ({@code canTell}: the server has MineBox3D); on none, once.
      */
     @ApiStatus.Internal
     public void beforeMovePacket(Entity mover, boolean vehicle, boolean canTell) {
@@ -535,7 +541,7 @@ public final class SyncedRiders {
         }
     }
 
-    /** Whether the server says the entity stands on a body here (client): kept there, Minecraft's movement packets let go. */
+    /** Whether the server says the entity stands on a body here (client): kept there, its movement packets let go. */
     public boolean isPlaced(Entity entity) {
         Placed place = placed.get(entity.getId());
         return place != null && physics.sync().replica(place.rider.body()) != null;
@@ -564,8 +570,8 @@ public final class SyncedRiders {
     }
 
     /**
-     * Minecraft's movement packet for an entity, if it is placed (client): let go, the last kept for when it is no longer
-     * placed — Minecraft sends none while it stands still, and it would stay where its body left it.
+     * Minecraft's movement packet for an entity, if it is placed (client): let go, the last kept for when it is no
+     * longer placed — Minecraft sends none while it stands still, and it would stay where its body left it.
      */
     @ApiStatus.Internal
     public static boolean keepsPlaced(Entity entity, double x, double y, double z, float yaw, float pitch) {

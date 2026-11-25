@@ -9,15 +9,18 @@ import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 
 /**
- * <b>A chain of constraint joints as a physics asset makes one</b>: EntityStudio's yunling belt chain (a 26 g link at the
- * top, a 383 g bead four links down, a pendant below), its bodies, masses and joint frames as the asset made them, hanging
- * from a still anchor. It once spun its top link up to thousands of turns a second and the step gave out within half a
- * second: the fully locked point pushed the parent at the child's anchor and kept its impulse along the parent's turning
- * axes (doc 05 §11).
+ * <b>A chain of constraint joints as a physics asset makes one</b>: EntityStudio's yunling belt chain (a 26 g link at
+ * the top, a 383 g bead four links down, a pendant below), its bodies, masses and joint frames as the asset made them,
+ * hanging from a still anchor. It once spun its top link up until the step gave out within half a second: the fully
+ * locked point pushed the parent at the child's anchor and kept its impulse along the parent's turning axes (doc 05
+ * §11).
  */
 class ConstraintJointChainTest {
 
-    /** Each link: position (3), rotation (4), mass, centre (3), inertia (9, column by column), capsule ends (6) and radius. */
+    /**
+     * Each link: position (3), rotation (4), mass, centre (3), inertia (9, column by column), capsule ends (6) and
+     * radius.
+     */
     private static final double[][] LINKS = {
         {
             0.051783859729766846,
@@ -252,7 +255,10 @@ class ConstraintJointChainTest {
             0.019629156
         },
     };
-    /** Each joint: frame A's position (3) and rotation (4) on the link above, frame B's rotation (4) at its own link's origin. */
+    /**
+     * Each joint: frame A's position (3) and rotation (4) on the link above, frame B's rotation (4) at its own link's
+     * origin.
+     */
     private static final float[][] JOINTS = {
         {
             0.07621674f,

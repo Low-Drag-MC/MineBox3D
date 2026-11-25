@@ -150,7 +150,7 @@ public final class TerrainStreamer implements AutoCloseable {
             return this;
         }
 
-        /** Every this many updates, loaded sections whose chunk has gone without an unload event are dropped; 0 never. */
+        /** Every this many updates, loaded sections whose chunk went without an unload event are dropped; 0 never. */
         public int chunkCheckTicks() {
             return chunkCheckTicks;
         }
@@ -180,8 +180,7 @@ public final class TerrainStreamer implements AutoCloseable {
         ShapeDef template = new ShapeDef();
         template.filter.categoryBits = CollisionCategories.TERRAIN;
         // Box3D's default, said out loud: it reports a touch when either shape asks, and terrain asking would report
-        // every
-        // body landing anywhere
+        // every body landing anywhere
         template.enableContactEvents = false;
         template.enableHitEvents = false;
         this.grid = world.createVoxelGrid(template);
@@ -192,6 +191,7 @@ public final class TerrainStreamer implements AutoCloseable {
         }
     }
 
+    /** Runs {@code action} on each streamer of {@code level}. */
     public static void forLevel(Level level, Consumer<TerrainStreamer> action) {
         TerrainStreamer[] streamers;
         synchronized (STREAMERS) {
@@ -210,7 +210,10 @@ public final class TerrainStreamer implements AutoCloseable {
         return settings;
     }
 
-    /** Keeps the sections overlapping {@code box} in the world for the next {@code ticks} ticks. */
+    /**
+     * Keeps the sections overlapping {@code box} in the world for the next {@code ticks} updates; ones not in yet are
+     * queued under {@link Settings#loadBudget()}.
+     */
     public void request(AABB box, int ticks) {
         requests.add(new Request(box, tick + ticks));
     }
@@ -327,7 +330,7 @@ public final class TerrainStreamer implements AutoCloseable {
         int x0 = SectionPos.blockToSectionCoord(Mth.floor(minX)), x1 = SectionPos.blockToSectionCoord(Mth.floor(maxX));
         int z0 = SectionPos.blockToSectionCoord(Mth.floor(minZ)), z1 = SectionPos.blockToSectionCoord(Mth.floor(maxZ));
         if ((long) (x1 - x0 + 1) * (z1 - z0 + 1) > 256) {
-            return true; // too large to ask about; mark() turns it away anyway
+            return true; // too large to ask about: taken as loaded
         }
         for (int x = x0; x <= x1; x++) {
             for (int z = z0; z <= z1; z++) {
@@ -346,8 +349,8 @@ public final class TerrainStreamer implements AutoCloseable {
     }
 
     /**
-     * {@code body} and every dynamic body joined to it, joint by joint, into {@code into}: a group is parked whole — one
-     * half of a cart left simulating would fall away from the other, and spring back at it when let go.
+     * {@code body} and every dynamic body joined to it, joint by joint, into {@code into}: a group is parked whole —
+     * one half of a cart left simulating would fall away from the other, and spring back at it when let go.
      */
     private void withJointed(Body body, Set<Body> into) {
         if (!into.add(body)) {
@@ -418,8 +421,7 @@ public final class TerrainStreamer implements AutoCloseable {
         if (changedCells.isEmpty()) {
             return;
         }
-        // working out a cell may load a chunk's worth of vanilla work that changes blocks again: those go to the next
-        // set
+        // working out a cell can set off vanilla work that changes blocks again: those go to the next set
         LongLinkedOpenHashSet cells = changedCells;
         changedCells = new LongLinkedOpenHashSet();
         edits.clear();
@@ -499,9 +501,9 @@ public final class TerrainStreamer implements AutoCloseable {
     }
 
     /**
-     * A chunk arrived, or the client was sent a chunk it had again: its own loaded sections are read anew, and the cells
-     * of loaded sections next to it, which had read it as air, look again — a taller shape in it may reach across. At
-     * once or at the next update, like {@link #onChunkUnloaded}.
+     * A chunk arrived, or the client was sent a chunk it had again: its own loaded sections are read anew, and the
+     * cells of loaded sections next to it, which had read it as air, look again — a taller shape in it may reach
+     * across. At once or at the next update, like {@link #onChunkUnloaded}.
      */
     public void onChunkLoaded(ChunkPos chunk) {
         onChunk(chunk, true);
@@ -617,6 +619,7 @@ public final class TerrainStreamer implements AutoCloseable {
         return cellsChangedLastTick;
     }
 
+    /** Whether the section, as {@link SectionPos#asLong}, is read into the grid. */
     public boolean isLoaded(long section) {
         return loaded.contains(section);
     }

@@ -22,11 +22,11 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
 
 /**
- * <b>A client predicting round its own body</b> (EntityStudio doc 61 §3.9), the client's half played on a private physics
- * of the test's own, the server's payloads handed to it by hand: round what predicts, a replica of a body the server
- * simulates is simulated here and one further off still follows the server's states; a server state off from where it
- * was run to by more than Unreal's 10 cm runs the ticks since again from it, one within does not; the predictor's own body
- * has no replica, and the server's word of it is held against the body here.
+ * <b>A client predicting round its own body</b> (EntityStudio doc 61 §3.9), the client's half played on a private
+ * physics of the test's own, the server's payloads handed to it by hand: round what predicts, a replica of a body the
+ * server simulates is simulated here and one further off still follows the server's states; a server state off from
+ * where it was run to by more than Unreal's 10 cm runs the ticks since again from it, one within does not; the
+ * predictor's own body has no replica, and the server's word of it is held against the body here.
  */
 @GameTestHolder(MineBox3D.MOD_ID)
 public final class PredictedReplicaGameTest {
@@ -37,7 +37,10 @@ public final class PredictedReplicaGameTest {
     private static final long OWN_TAG = 1L << 62 | 7;
     private static final long OTHER_TAG = 1L << 62 | 8;
 
-    /** A predictor at a fixed place, whose frames are the physics' own ticks; the body tagged {@link #OTHER_TAG} another's. */
+    /**
+     * A predictor at a fixed place, whose frames are the physics' own ticks; the body tagged {@link #OTHER_TAG}
+     * another's.
+     */
     private static final class Predicting implements SyncedBodies.Predictor {
         final Vec3 centre;
 
@@ -93,7 +96,10 @@ public final class PredictedReplicaGameTest {
             physics.sync().setPredictor(predictor);
         }
 
-        /** A tick as a client runs it: the replicas given their part, then the level's tick. */
+        /**
+         * One tick of the physics. On the server's level its prepare gives the replicas no part: a test that needs
+         * that calls {@code sync().beforeSteps} itself.
+         */
         void tick() {
             physics.tick();
         }
@@ -278,8 +284,8 @@ public final class PredictedReplicaGameTest {
     }
 
     /**
-     * A replica simulated here moves as the server's body does — weightless, damped, locked — and one whose state says it
-     * touches what this client lacks, or is held by joints it is not held by here, is only followed.
+     * A replica simulated here moves as the server's body does — weightless, damped, its rotation fixed — and one whose
+     * state says it touches what this client lacks, or is held by joints it is not held by here, is only followed.
      */
     @GameTest(template = "empty", batch = "minebox3d_predicted", timeoutTicks = 100)
     @PrefixGameTestTemplate(false)
@@ -326,9 +332,9 @@ public final class PredictedReplicaGameTest {
     }
 
     /**
-     * How a body moves changed on the server — its gravity, its damping — is put on its replica where it is, not the replica
-     * made again; and the joints the predictor's own body holds a replica by (standing on it) are not what keeps it from
-     * being simulated here — the server's count leaves them out too.
+     * How a body moves changed on the server — its gravity, its damping — is put on its replica where it is, not the
+     * replica made again; and the joints the predictor's own body holds a replica by (standing on it) are not what
+     * keeps it from being simulated here — the server's count leaves them out too.
      */
     @GameTest(template = "empty", batch = "minebox3d_predicted", timeoutTicks = 100)
     @PrefixGameTestTemplate(false)
@@ -356,8 +362,7 @@ public final class PredictedReplicaGameTest {
             helper.assertTrue(crate.gravityScale() == 0 && crate.linearDamping() == 0.5f, "moving as the server's now");
 
             // held on the server by a joint this client has not got, and here by its own body standing on it: that
-            // joint
-            // is its own body's, not the one the server counts — followed
+            // joint is its own body's, not the one the server counts — followed
             stage.spawn(
                     2,
                     new BodySyncPayload.State(2, c.x + 3, c.y + 3, c.z, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, true, 1),
@@ -377,7 +382,9 @@ public final class PredictedReplicaGameTest {
         helper.succeed();
     }
 
-    /** A predictor that comes after another — its tree made again — finds its own body, sent while the first one was. */
+    /**
+     * A predictor that comes after another — its tree made again — finds its own body, sent while the first one was.
+     */
     @GameTest(template = "empty", batch = "minebox3d_predicted", timeoutTicks = 100)
     @PrefixGameTestTemplate(false)
     public static void aPredictorAfterAnotherFindsItsOwnBody(GameTestHelper helper) {

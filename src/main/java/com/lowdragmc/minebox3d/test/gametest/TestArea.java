@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.Blocks;
  * ⚠️ A GameTest structure is walled in barriers (StructureUtils.encaseStructure: the walls always, the
  * ceiling unless skyAccess), one block outside its bounds. Barriers have collision, so terrain streaming
  * picks them up like any block: a test that builds beyond the 1×1×1 "empty" structure clears its area
- * first. Every physics test runs in a batch of its own, so the walls it removes guard nothing else.
+ * first. Each test that clears runs in a batch of its own, so the walls it removes guard nothing else.
  */
 final class TestArea {
 
@@ -22,10 +22,9 @@ final class TestArea {
     private TestArea() {}
 
     /**
-     * ⚠️ Entities beyond the structure's own chunk may not tick at all (a stand pushed 30 ticks with tickCount 0): the
-     * runner keeps the structure's chunk going, and where the area crosses into the next chunk depends on where the run
-     * happens to place the test. A test whose entities must move forces the chunks of its area ({@code forced = true}),
-     * waits for them ({@link #ticks}) and lets them go when it is done.
+     * ⚠️ Entities beyond the structure's own chunk may not tick at all: the runner keeps only that chunk going, and
+     * where the area crosses into the next chunk depends on where the run places the test. A test whose entities must
+     * move forces its area's chunks ({@code forced = true}), waits for them ({@link #ticks}) and lets them go after.
      */
     static void forceChunks(GameTestHelper helper, int x0, int z0, int x1, int z1, boolean forced) {
         BlockPos from = helper.absolutePos(new BlockPos(x0, 0, z0)), to = helper.absolutePos(new BlockPos(x1, 0, z1));
@@ -42,9 +41,9 @@ final class TestArea {
     }
 
     /**
-     * Whether the entities have ticked, and every chunk the test forced ticks entities: a forced chunk comes up over a
-     * while — far out, and with the runner ticking as fast as it can, hundreds of ticks — and an entity that walks into
-     * one still coming up stops there.
+     * Whether the entities have ticked, and every chunk the test forced ticks entities: a forced chunk takes a while to
+     * come up (far out, with the runner ticking flat out, hundreds of ticks), and an entity that walks into one still
+     * coming up stops there.
      */
     static boolean ticks(GameTestHelper helper, Entity... entities) {
         for (Entity entity : entities) {

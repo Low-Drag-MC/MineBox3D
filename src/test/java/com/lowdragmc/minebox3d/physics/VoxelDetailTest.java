@@ -19,7 +19,7 @@ import org.junit.jupiter.api.Test;
 /**
  * <b>Voxel terrain in the corners</b>: every neighbour direction, far coordinates, rays in every direction, query
  * filters, contact points, continuous collision with pre-solve events, section borders at every alignment, push-out
- * directions, exposure details, the candidate cap, per-cell materials.
+ * directions, exposure details, wide boxes on many triangles, per-cell materials.
  */
 class VoxelDetailTest {
 
@@ -55,8 +55,8 @@ class VoxelDetailTest {
                 }
             }
 
-            // section (-1, 0, 0) holds the cube's cells at x = -1, y and z in {0, 1}: without it, the four faces behind
-            // it show
+            // section (-1, 0, 0) holds the cube's cells at x = -1, y and z in {0, 1}: without it, the four faces
+            // behind it show
             assertEquals(0, westAt0(t), 1e-4);
             t.grid.setSection(-1, 0, 0, null);
             assertEquals(4, westAt0(t), 1e-4, "the neighbour gone, its side shows");
@@ -326,10 +326,10 @@ class VoxelDetailTest {
     // ---- a seam between sections, wherever it falls -----------------------------------------------
 
     /**
-     * The GameTest server puts tests anywhere, so the section borders fall anywhere in a scene. A box's corner just past
-     * the border between two sections finds the edge there with a normal a degree off the face; the other section's
-     * face contact that would have hidden it is in another contact. Kept tilted, it turned a box 40 degrees on stair
-     * tops and threw it off (5 m/s up) when the border fell between two stairs. Every alignment, at the GameTest's y.
+     * The GameTest server puts tests anywhere, so section borders fall anywhere in a scene. A box's corner just past a
+     * section border meets the edge there with a normal a degree off the face, and the face contact that would have
+     * hidden it is in the other section's contact: kept tilted, it once turned a box 40° on stair tops and threw it off
+     * (5 m/s up). Every alignment, at the GameTest's y.
      */
     @Test
     void aBoxSlidingOverStairTopsIsNotTurnedWhereverTheSectionBorderFalls() {
@@ -465,8 +465,8 @@ class VoxelDetailTest {
                     if (Math.abs(m.x - 5) > 1e-4f) {
                         continue;
                     }
-                    // the stone's top meets the stair's upper half (z 4 to 4.5) flat, and its tread (z 4.5 to 5) as an
-                    // edge
+                    // the stone's top meets the stair's upper half (z 4 to 4.5) flat, and its tread (z 4.5 to 5)
+                    // as an edge
                     assertEquals(m.z < 4.5f, face.flat()[e], "the stone top's east edge at " + m);
                     checked++;
                 }
@@ -500,13 +500,13 @@ class VoxelDetailTest {
         }
     }
 
-    // ---- the candidate cap ----------------------------------------------------------------------
+    // ---- many candidate triangles ---------------------------------------------------------------
 
     /**
      * Box3D used to give one convex shape at most 512 triangles of one section, cells taken y, z, x, so the far rows
      * in z were dropped: a 10 × 10 box on stairs (six triangles a cell) lost its far half and a 12 × 12 one sank in
-     * (doc 01 §12.6.3). The candidates grow as needed now; a box as wide as a section of stairs still lands flat and
-     * still, held near every corner.
+     * (doc 01 §12.6.3). The candidates grow as needed now: boxes up to 14 wide, nearly a section of stairs, land flat
+     * and still, held near every corner.
      */
     @Test
     void aBoxOnStairsIsHeldUpUnderAllFourCornersUpToAWholeSection() {

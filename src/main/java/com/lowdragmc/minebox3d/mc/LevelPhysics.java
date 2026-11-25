@@ -23,8 +23,8 @@ import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * <b>Physics in a {@link Level}</b> (design doc §3): a {@link PhysicsWorld}, the terrain streamed into it and the
- * entities standing in it.
+ * <b>Physics in a {@link Level}</b> (design doc {@code 00-overview.md} §3): a {@link PhysicsWorld}, the terrain
+ * streamed into it and the entities standing in it.
  *
  * <p>Every level has its own on each side, made on first use by {@link #of}, stepped once per tick of that level and
  * closed when the level unloads; a body made on the server does not appear on the client. It belongs to the level's
@@ -40,8 +40,9 @@ public final class LevelPhysics implements AutoCloseable {
     /** Minecraft's own gravity for an entity: 0.08 blocks per tick per tick. */
     public static final float GRAVITY = -32f;
     /**
-     * N per kg an entity's proxy in a level's own physics pushes with at most ({@link EntityProxies.Settings#strength}):
-     * about 21 kN for a player, which keeps up with it within centimetres and gives way to a crate held against a wall.
+     * N per kg an entity's proxy in a level's own physics pushes with at most
+     * ({@link EntityProxies.Settings#strength}): about 21 kN for a player, which keeps up with it within centimetres
+     * and gives way to a crate held against a wall.
      */
     public static final float ENTITY_STRENGTH = 300;
 
@@ -64,9 +65,9 @@ public final class LevelPhysics implements AutoCloseable {
     private final List<TickListener> listeners = new CopyOnWriteArrayList<>();
 
     /**
-     * Something that runs with this physics' {@link #tick()}, on the level's thread: told once the tick has read the level
-     * and before its steps, and after them — what a mod's own bodies need on either side of a step, as Unreal's components
-     * tick before and after physics. Not told on a tick that does not step ({@code /tick freeze}).
+     * Something that runs with this physics' {@link #tick()}, on the level's thread: told once the tick has read the
+     * level and before its steps, and after them — what a mod's own bodies need on either side of a step, as Unreal's
+     * components tick before and after physics. Not told on a tick that does not step ({@code /tick freeze}).
      */
     public interface TickListener {
 
@@ -77,12 +78,12 @@ public final class LevelPhysics implements AutoCloseable {
         default void afterSteps(LevelPhysics physics) {}
 
         /**
-         * A past tick simulated again ({@link LevelRewind}), before its steps: what moves a body of the listener's in a tick,
-         * given again as it was for that one — Unreal's resimulation replaying a tick's inputs.
+         * A past tick simulated again ({@link LevelRewind}), before its steps: what moves a body of the listener's in a
+         * tick, given again as it was for that one — Unreal's resimulation replaying a tick's inputs.
          */
         default void beforeResimTick(LevelPhysics physics, long tick) {}
 
-        /** That tick's steps taken again: a body whose place for it is known (the server said) is put there. */
+        /** That tick's steps taken again, before a body whose place for it is known (the server said) is put there. */
         default void afterResimTick(LevelPhysics physics, long tick) {}
     }
 
@@ -130,8 +131,8 @@ public final class LevelPhysics implements AutoCloseable {
 
     /**
      * The level's own physics, made if it has none yet; {@code null} when Box3D is not available on this platform, in
-     * which case the caller carries on without physics. Only on the level's own thread (the server thread, or the client
-     * thread for the client's level): the world belongs to it.
+     * which case the caller carries on without physics. Only on the level's own thread (the server thread, or the
+     * client thread for the client's level): the world belongs to it.
      */
     @Nullable
     public static LevelPhysics of(Level level) {
@@ -147,9 +148,9 @@ public final class LevelPhysics implements AutoCloseable {
     }
 
     /**
-     * A private physics on {@code level}, made on the level's thread: terrain and entities of the level come into it like
-     * into the level's own, but nothing else steps it and the caller closes it — at the latest when the level unloads,
-     * where one still open is closed with a warning. {@code null} when Box3D is not available.
+     * A private physics on {@code level}, made on the level's thread: terrain and entities of the level come into it
+     * like into the level's own, but nothing else steps it and the caller closes it — at the latest when the level
+     * unloads, where one still open is closed with a warning. {@code null} when Box3D is not available.
      *
      * <p>Its bodies do not push the level's entities (they meet them as walls) unless the maker turns it on:
      * {@code entities().settings().pushEntities(true)}. It reads the level; changing it is the maker's choice.
@@ -286,8 +287,8 @@ public final class LevelPhysics implements AutoCloseable {
     }
 
     /**
-     * Each listener told, in the order they came. ⚠️ One that throws is taken off, with one log entry, and the rest go on:
-     * a mod's mistake stops its own part, not the level's physics.
+     * Each listener told, in the order they came. ⚠️ One that throws is taken off, with one log entry, and the rest go
+     * on: a mod's mistake stops its own part, not the level's physics.
      */
     private void tell(boolean before) {
         for (TickListener listener : listeners) {
@@ -312,8 +313,8 @@ public final class LevelPhysics implements AutoCloseable {
      * One Minecraft tick of physics: {@link #prepare()} then {@link #step()}. Called at the end of the level's tick
      * (after entities moved) for the level's own. No steps while the level's tick is frozen ({@code /tick freeze};
      * {@code /tick step} runs them) — the bodies are still sent to the clients that come to see them — and nothing more
-     * once a tick has failed: an error stops this physics, with one log entry, instead of failing the level's tick every
-     * tick.
+     * once a tick has failed: an error stops this physics, with one log entry, instead of failing the level's tick
+     * every tick.
      */
     public void tick() {
         if (stopped) {
@@ -329,14 +330,13 @@ public final class LevelPhysics implements AutoCloseable {
                 tell(false);
                 rewind.afterSteps(ticks);
                 if (existing(level) == this) {
-                    // what stands on the bodies, to where the steps took them (EntityBases; only the level's own bodies
-                    // bear)
+                    // what stands on the bodies, to where the steps took them (EntityBases; only the level's own
+                    // bodies bear)
                     riders.carry(level);
                 }
             }
             // what the server's steps did, out to the clients that see it (nothing on a client, or for private
-            // physics);
-            // then what stands on them, which the clients place on the bodies they have just been sent
+            // physics); then what stands on them, which the clients place on the bodies they have just been sent
             sync.afterTick();
             sync.riders().afterTick();
         } catch (RuntimeException e) {
@@ -351,8 +351,9 @@ public final class LevelPhysics implements AutoCloseable {
 
     /**
      * The half of a tick that reads the level, on the level's thread: starts the interpolation frame, brings terrain in
-     * around the bodies, moves the entity proxies to where their entities are now, and on a client drives the server's
-     * bodies' replicas to where the server last said.
+     * around the bodies, moves the entity proxies to where their entities are now, runs a rewind asked for since the
+     * last tick ({@link LevelRewind#resimulateIfAsked}), and on a client drives the server's bodies' replicas to where
+     * the server last said.
      */
     public void prepare() {
         checkLevelThread(level);
@@ -360,8 +361,7 @@ public final class LevelPhysics implements AutoCloseable {
         world.beginInterpolationFrame();
         terrain.update();
         entities.update(1f / 20f);
-        // what was asked since the last tick, before the replicas are given this one's targets (the rewind would undo
-        // them)
+        // before the replicas are given this tick's targets: the rewind would undo them
         rewind.resimulateIfAsked();
         if (level.isClientSide) {
             sync.beforeSteps(1f / 20f);

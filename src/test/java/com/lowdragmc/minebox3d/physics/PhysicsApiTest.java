@@ -159,8 +159,7 @@ class PhysicsApiTest {
             steps(world, 2);
 
             // as the solver flinging a body would: two of the largest forces add up to an infinite one, which the
-            // step's
-            // speed clamp makes NaN, and the step fails Box3D's own check
+            // step's speed clamp makes NaN, and the step fails Box3D's own check
             B3.bodyApplyForceToCenter(balls[0].id(), Float.MAX_VALUE, 0, 0, true);
             B3.bodyApplyForceToCenter(balls[0].id(), Float.MAX_VALUE, 0, 0, true);
             assertThrows(Box3DException.class, () -> steps(world, 1));

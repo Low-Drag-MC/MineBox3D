@@ -6,12 +6,12 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Which pairs among a fixed set of bodies never collide — a physics asset's collision groups and disabled pairs. Box3D asks
- * on its own threads and the bridge answers in C, so it costs nothing in Java; only shapes made with
+ * Which pairs among a fixed set of bodies never collide — a physics asset's collision groups and disabled pairs. Box3D
+ * asks on its own threads and the bridge answers in C, so it costs nothing in Java; only shapes made with
  * {@link ShapeDef#enableCustomFiltering} are asked about. A body is in one table at most.
  *
- * <p>Changes reach Box3D with {@link #apply()}, pairs already touching included: the bodies whose pairs changed lose their
- * contacts and have them found again the next step. Gone with {@link #destroy()} or the world.
+ * <p>Changes reach Box3D with {@link #apply()}, pairs already touching included: the bodies whose pairs changed lose
+ * their contacts and have them found again the next step. Gone with {@link #destroy()} or the world.
  */
 public final class BodyPairTable {
 

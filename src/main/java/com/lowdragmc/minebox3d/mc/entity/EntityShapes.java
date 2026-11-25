@@ -33,7 +33,6 @@ import org.jetbrains.annotations.Nullable;
  * <p>⚠️ A part entity has no proxy unless a provider gives it one. NeoForge's {@code getEntities} hands
  * parts out with everything else, and what a part stands for is the owner's business: a dragon's are
  * its body, but EntityStudio's are hit volumes that must never move anything (docs/design/04 §8.2).
- * Vanilla agrees by default — a part is neither pushable nor collidable.
  */
 public final class EntityShapes {
 
@@ -49,9 +48,8 @@ public final class EntityShapes {
         }
 
         /**
-         * The entity's mass in kg, for how far a body pushes it; {@link Float#NaN} to leave it to the next provider,
-         * {@link Float#POSITIVE_INFINITY} for an entity no body moves. Asked when its proxy is made, and again when the entity
-         * changes size.
+         * The entity's mass, kg, more than 0; {@link Float#NaN} to leave it to the next provider,
+         * {@link Float#POSITIVE_INFINITY} for an entity no body moves. Asked when its proxy is made or resized.
          */
         default float mass(Entity entity) {
             return Float.NaN;
@@ -60,7 +58,7 @@ public final class EntityShapes {
 
     private static final List<Provider> PROVIDERS = new CopyOnWriteArrayList<>();
     private static final List<Predicate<Entity>> EXCLUSIONS = new CopyOnWriteArrayList<>();
-    /** Bit 62 of an entity's tag: a mod's own body tags leave it clear */
+    /** Bit 62 of an entity's tag: a mod's own body tags must leave it clear */
     private static final long ENTITY_TAG = 1L << 62;
 
     private static final DeferredRegister<AttachmentType<?>> ATTACHMENTS =
@@ -77,6 +75,7 @@ public final class EntityShapes {
         ATTACHMENTS.register(modBus);
     }
 
+    /** Adds a provider, asked before those registered earlier. */
     public static void register(Provider provider) {
         PROVIDERS.addFirst(provider);
     }
@@ -87,31 +86,33 @@ public final class EntityShapes {
     }
 
     /**
-     * What an entity's proxy is tagged ({@link Body#setTag}): a body that ignores it ({@code LevelBodies.setIgnoredEntity})
-     * and the entity never meet. The entity's id, which its level's client and server share, with bit 62 set.
+     * What an entity's proxy is tagged ({@link Body#setTag}): a body that ignores it
+     * ({@code LevelBodies.setIgnoredEntity}) and the entity never meet. The entity's id, which its level's client and
+     * server share, with bit 62 set.
      */
     public static long tagOf(Entity entity) {
         return ENTITY_TAG | (entity.getId() & 0xFFFFFFFFL);
     }
 
-    /** The entity of {@code level} an entity tag ({@link #tagOf}) names, or {@code null}: not an entity's tag, or gone. */
+    /** The entity of {@code level} a tag ({@link #tagOf}) names, or {@code null}: not an entity's tag, or gone. */
     @Nullable
     public static Entity entityOf(Level level, long tag) {
         return (tag & ~0xFFFFFFFFL) == ENTITY_TAG ? level.getEntity((int) tag) : null;
     }
 
     /**
-     * Whether the entity meets the level's bodies at all: a proxy near them that pushes them and that they stop against,
-     * its own moves stopped, stood on and carried by them. On unless turned off — Unreal's capsule with its physics
-     * collision on; off is what a game does to a character whose ragdoll takes over. Read on the level's thread.
+     * Whether the entity meets the level's bodies at all: a proxy near them that pushes them and that they stop
+     * against, its own moves stopped, stood on and carried by them. On unless turned off — Unreal's capsule with its
+     * physics collision on; off is what a game does to a character whose ragdoll takes over. Read on the level's
+     * thread.
      */
     public static boolean hasPhysicsCollision(Entity entity) {
         return !entity.hasData(NO_PHYSICS_COLLISION);
     }
 
     /**
-     * Turns the entity's meeting the level's bodies on or off ({@link #hasPhysicsCollision}), on this side: its proxy goes
-     * at the next update. Not saved; the last call wins. Set on the level's thread.
+     * Turns the entity's meeting the level's bodies on or off ({@link #hasPhysicsCollision}), on this side: its proxy
+     * goes at the next update. Not saved; the last call wins. Set on the level's thread.
      */
     public static void setPhysicsCollision(Entity entity, boolean on) {
         if (on) {
@@ -121,6 +122,7 @@ public final class EntityShapes {
         }
     }
 
+    /** Whether the entity gets no proxy: a spectator, gone, its physics collision off, or {@link #exclude excluded}. */
     public static boolean isExcluded(Entity entity) {
         if (entity.isSpectator() || entity.isRemoved() || !hasPhysicsCollision(entity)) {
             return true;
@@ -147,13 +149,14 @@ public final class EntityShapes {
     }
 
     /**
-     * An entity's mass, kg: the first provider's answer, else its collision box's volume times {@code density}. Minecraft
-     * has no masses; a box is far roomier than the body in it, so the density that gives a player about 70 kg is about a
-     * tenth of water's (EntityProxies' default).
+     * An entity's mass, kg: the first provider's answer, else its collision box's volume times {@code density}.
+     * Minecraft has no masses; a box is far roomier than the body in it, so the density that gives a player about
+     * 70 kg is about a tenth of water's (EntityProxies' default).
      *
-     * <p>Unless a provider says otherwise, infinite — never pushed — for what a push would wreck or never move: a painting,
-     * an item frame or a leash knot ({@code BlockAttachedEntity.push} breaks it off its block), a no-AI mob (it does not
-     * travel, so its motion only piles up), and the bodiless markers ({@code Marker}, {@code Interaction}, displays).
+     * <p>Unless a provider says otherwise, infinite — never pushed — for what a push would wreck or never move: a
+     * painting, an item frame or a leash knot ({@code BlockAttachedEntity.push} breaks it off its block), a no-AI mob
+     * (it does not travel, so its motion only piles up), and the bodiless markers ({@code Marker}, {@code Interaction},
+     * displays).
      */
     public static float massOf(Entity entity, float density) {
         for (Provider provider : PROVIDERS) {

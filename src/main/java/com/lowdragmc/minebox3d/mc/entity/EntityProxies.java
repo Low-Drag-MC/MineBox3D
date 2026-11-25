@@ -36,7 +36,8 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 /**
- * <b>Minecraft entities as kinematic bodies</b> near the bodies that can hit them (design doc §5).
+ * <b>Minecraft entities as kinematic bodies</b> near the bodies that can hit them (design doc
+ * {@code 00-overview.md} §5).
  *
  * <p>Every tick: the entities around each body {@linkplain LevelBodies#pushedByEntities pushed by entities}
  * (its bounds grown by {@link Settings#reach()}) get a proxy if they have none; every proxy is driven with
@@ -51,24 +52,24 @@ import org.joml.Vector3f;
  * ({@link #afterSteps()}) each body that ran into an entity is settled as the inelastic collision of the two. Box3D,
  * which sees a proxy as kinematic (immovable), stopped the body against it with some impulse; the body gets back the
  * part the entity's lightness lets it keep, at the points it was taken, and the entity's velocity changes by the rest
- * before its next move (server only, through {@link EntityPushedByBodyEvent}). Momentum is kept by construction and no
- * energy is made: a crate slid into a stand nudges it; a block of iron hardly notices it and pushes it ahead.
+ * before its next move (server only, through {@link EntityPushedByBodyEvent}). Momentum is kept and no energy is made:
+ * a light crate slid into a player nudges it; a block of iron hardly notices it and pushes it ahead.
  *
  * <p>Only a body that is itself moving at the entity pushes: an entity walking into a resting body is not pushed back
- * (that is the body blocking it, the entity's own collision — §3), and one running into a light body coming at it takes
- * only what that body has to give. An entity that cannot give is met as Box3D meets it, as a wall: one standing on
- * something is not pushed down into it, and one that was pushed and hardly moved (a wall, a fence behind it, a
- * cancelled push) is held that way for a tick. The entity's mass is {@link EntityShapes#massOf}. Nothing is hurt
- * unless a listener of the event hurts it.
+ * (that is its own collision — doc 04 §3), and one running into a light body coming at it takes only what that body
+ * has to give. An entity that cannot give is met as Box3D meets it, as a wall: one standing on something is not pushed
+ * down into it, and one that was pushed and hardly moved (a wall, a fence behind it, a cancelled push) is held that way
+ * for a tick. The entity's mass is {@link EntityShapes#massOf}.
  *
- * <h2>Force-capped while it comes onto a body ({@link Settings#strength}; design doc §18)</h2>
- * <p>A kinematic proxy is immovable: driven into a body that cannot get away — a crate against a wall, a crate tipped under
- * a landing player — it squeezes it, and Box3D lets it out at tens of metres a second. So the tick a proxy is about to
- * sweep near a dynamic body it is made dynamic, of its entity's mass, and pulled after a kinematic target by a motor joint
- * of at most the strength: a body that cannot give stops it. Back to kinematic a few ticks after it last touched one —
- * put where its entity is if it has not caught up and no body it pushes is there; at once if left a quarter block behind.
- * Touching nothing it is kinematic, and costs what it did. Never for an entity whose moves push no body
- * ({@link EntityAuthority#pushesBodies}): its proxy is put where it is each update, not driven.
+ * <h2>Force-capped while it comes onto a body ({@link Settings#strength}; doc 04 §18)</h2>
+ * <p>A kinematic proxy is immovable: driven into a body that cannot get away — a crate against a wall, a crate tipped
+ * under a landing player — it squeezes it, and Box3D lets it out at tens of metres a second. So the tick a proxy is
+ * about to sweep near a dynamic body it is made dynamic, of its entity's mass, pulled after a kinematic target by a
+ * motor joint of at most the strength and kept upright by a motion-lock joint to it: a body that cannot give stops it.
+ * Back to kinematic a few ticks after it last touched one, once caught up with its entity — or put where its entity is
+ * if no body it pushes is there, at once if it lags a quarter block behind. Touching nothing it stays kinematic, at no
+ * extra cost. Never for an entity whose moves push no body ({@link EntityAuthority#pushesBodies}): its proxy is put
+ * where it is each update, not driven.
  *
  * <p>⚠️ Proxy shapes have hit events on: Box3D measures how fast a pair came together only for pairs that report hits
  * ({@code ContactPoints.normalVelocity}). So {@code events().contactHits()} also lists bodies hitting entities above
@@ -88,7 +89,7 @@ public final class EntityProxies implements AutoCloseable {
     private static final double CAUGHT_UP = 0.05;
     /** Metres round a proxy's sweep a body caps it from: Box3D's speculative reach and some. */
     private static final double LOOK_MARGIN = 0.1;
-    /** Metres a force-capped proxy may lag behind before it is put where its entity is, if no body it pushes is there. */
+    /** Metres a force-capped proxy may lag before it is put where its entity is, if no body it pushes is there. */
     private static final double LAGS = 0.25;
     /** Metres in from an entity's faces it is asked what it is in: touching is not being in. */
     private static final float SKIN = 0.02f;
@@ -134,8 +135,9 @@ public final class EntityProxies implements AutoCloseable {
         private Settings() {}
 
         /**
-         * N per kg of the entity: the most its proxy pushes a dynamic body with (the class notes), as Box3D's dynamic mover
-         * and Unreal's Chaos mover cap a character's force. 0: a kinematic proxy always, which squeezes a body held fast.
+         * N per kg of the entity: the most its proxy pushes a dynamic body with (the class notes), as Box3D's dynamic
+         * mover and Unreal's Chaos mover cap a character's force. 0, the default: a kinematic proxy always, which
+         * squeezes a body held fast. A level's own physics sets {@code LevelPhysics.ENTITY_STRENGTH}.
          */
         public float strength() {
             return strength;
@@ -150,9 +152,9 @@ public final class EntityProxies implements AutoCloseable {
         }
 
         /**
-         * Whether bodies push the entities they run into (§2 of doc 04); the server's to say. On in a level's own physics,
-         * off in a private one ({@code LevelPhysics.create}): what happens in a simulation of a mod's own stays in it unless
-         * the mod turns this on.
+         * Whether bodies push the entities they run into (doc 04 §2); the server's to say. On in a level's own
+         * physics, off in a private one ({@code LevelPhysics.create}): what happens in a mod's own simulation stays in
+         * it unless the mod turns this on.
          */
         public boolean pushEntities() {
             return pushEntities;
@@ -164,8 +166,8 @@ public final class EntityProxies implements AutoCloseable {
         }
 
         /**
-         * kg per m³ of collision box, for an entity no provider gives a mass ({@link EntityShapes#massOf}): 110 makes a
-         * player about 70 kg. Used when a proxy is made.
+         * kg per m³ of collision box, for an entity no provider gives a mass ({@link EntityShapes#massOf}): the default
+         * 110 makes a player about 70 kg. Used when a proxy is made or resized.
          */
         public float entityDensity() {
             return entityDensity;
@@ -206,9 +208,9 @@ public final class EntityProxies implements AutoCloseable {
         }
 
         /**
-         * An entity moving further than this in one update is teleported, not swept: 2 blocks, forty metres a second. Swept
-         * further — a /tp, a chorus fruit — a kinematic proxy flings what lies on the way (a crate 44 m), a force-capped
-         * one drags it.
+         * An entity moving further than this in one update is teleported, not swept; 2 blocks by default, 40 m/s.
+         * Swept further — a /tp, a chorus fruit — a kinematic proxy flings what lies on the way, a force-capped one
+         * drags it.
          */
         public double teleportDistance() {
             return teleportDistance;
@@ -291,8 +293,7 @@ public final class EntityProxies implements AutoCloseable {
             Proxy proxy = entry.getValue();
             if (!proxy.body.isValid()) {
                 // someone else destroyed it: made again next time the entity is near a body, not driven (which would
-                // throw
-                // and stop the level's physics)
+                // throw and stop the level's physics)
                 discard(proxy);
                 it.remove();
                 continue;
@@ -330,8 +331,7 @@ public final class EntityProxies implements AutoCloseable {
                 // would otherwise meet the proxy standing still for a tick and be stopped dead. Its motion cut as
                 // Minecraft's collision will cut it (the ground, a wall): a proxy driven past either springs back the
                 // tick after, flinging whatever rests on it. Not for a client-moved entity (its motion is not on the
-                // server), a client's entities (a remote mob's is stale) or an immovable one (a no-AI mob's piles up
-                // unused)
+                // server), a client's entities (a remote mob's is stale) or an immovable one (a no-AI mob's piles up)
                 Vec3 motion = entity.getDeltaMovement();
                 if (motion.lengthSqr() > 1.0e-10) {
                     // and as the bodies will: into a crate it pushes by the share its mass gives (EntityCollisions), so
@@ -342,9 +342,8 @@ public final class EntityProxies implements AutoCloseable {
                     tz += allowed.z;
                 }
             }
-            // and where the body it stands on carries it (EntityBases) — its client's move does too — so that the two
-            // go
-            // on together rather than the body being held back by its rider
+            // and where the body it stands on carries it (EntityBases) — its client's move does too — so the two go on
+            // together rather than the body being held back by its rider
             Body base = EntityBases.carryingBase(entity);
             if (base != null && base.world() == world) {
                 base.pointVelocity(x, y, z, baseVelocity);
@@ -356,11 +355,10 @@ public final class EntityProxies implements AutoCloseable {
             weigh(proxy, entity, pushes);
             ignoreBase(proxy, base != null && base.world() == world && base.type() == BodyType.DYNAMIC ? base : null);
             // one whose moves push no body is put where its entity is, not driven there: driven, its straight path cuts
-            // the corner its entity steps up around (onto a crate) and flings what it cuts; made dynamic, it carries
-            // its
-            // speed into a crate it walks up to. Put, it only stands in the way, and Box3D lets out what it overlaps no
-            // faster than its contact speed. So is one stepping up — in its next move as predicted, or in its last (a
-            // client moves a player) — and once more after, should the predicted step not come
+            // the corner its entity steps up around (onto a crate) and flings what it cuts; force-capped, it carries
+            // its speed into a crate it walks up to. Put, it only stands in the way, and Box3D lets out what it
+            // overlaps no faster than its contact speed. So is one stepping up — in its next move as predicted, or in
+            // its last (a client moves a player) — and once more after, should the predicted step not come
             boolean stepped = stepping[0] || proxy.wasOnGround && entity.onGround() && dy > STEPPED;
             boolean teleported =
                     !pushes || stepped || proxy.stepped || dx * dx + dy * dy + dz * dz > teleport * teleport;
@@ -422,10 +420,10 @@ public final class EntityProxies implements AutoCloseable {
     }
 
     /**
-     * An entity standing on a body it can push presses on it with its weight over the coming steps ({@link #beforeStep}):
-     * a plank on a pivot tips under whoever stands on its end. (Box3D meets the proxy as a wall it can lean on, not as a
-     * weight.) Where its feet meet the body: the body's centre as near as the feet reach. Not one whose moves push no
-     * body ({@link EntityAuthority#pushesBodies}).
+     * An entity standing on a body it can push presses on it with its weight over the coming steps
+     * ({@link #beforeStep}): a plank on a pivot tips under whoever stands on its end. (Box3D meets the proxy as a wall
+     * it can lean on, not as a weight.) Where its feet meet the body: the body's centre as near as the feet reach. Not
+     * one whose moves push no body ({@link EntityAuthority#pushesBodies}).
      */
     private void weigh(Proxy proxy, Entity entity, boolean pushes) {
         proxy.weighs = null;
@@ -450,8 +448,8 @@ public final class EntityProxies implements AutoCloseable {
     }
 
     /**
-     * A proxy and the dynamic body its entity stands on do not collide (a filter joint), as Unreal's movement base: the
-     * body carries the entity and bears its weight ({@link #weigh}). ⚠️ Touching, the proxy — kinematic, so of no
+     * A proxy and the dynamic body that carries its entity do not collide (a filter joint), as Unreal's movement base:
+     * the body carries the entity and bears its weight ({@link #weigh}). ⚠️ Touching, the proxy — kinematic, so of no
      * finite mass — would drag the body by friction, and whenever the entity's position jumps (a client-moved one put
      * on the body's frame) slam it away at the jump's speed.
      */
@@ -482,10 +480,11 @@ public final class EntityProxies implements AutoCloseable {
     // ---- bodies pushing entities ----------------------------------------------------------------
 
     /**
-     * After every step, holding the world (any thread: this reads only the physics): which bodies ran into which entities
-     * this step — how fast, along which normal, and the impulse Box3D stopped them with, point by point. A pair's points
-     * are taken together along the point that came together fastest; a pair met in several steps of a tick keeps its
-     * fastest. Settled once a tick by {@link #afterSteps()}. On either side, whether a force-capped proxy still touches one.
+     * After every step, holding the world (any thread): which bodies ran into which entities this step — how fast,
+     * along which normal, and the impulse Box3D stopped them with, point by point (on the server, with
+     * {@link Settings#pushEntities}). A pair's points are taken together along the point that came together fastest;
+     * a pair met in several steps of a tick keeps its fastest. Settled once a tick by {@link #afterSteps()}. On either
+     * side, whether a force-capped proxy still touches one.
      */
     public void afterStep() {
         boolean pushes = settings.pushEntities && !level.isClientSide;
@@ -526,7 +525,7 @@ public final class EntityProxies implements AutoCloseable {
         }
     }
 
-    /** The dynamic body point {@code i} touches, or {@code null} for terrain, a static or kinematic body, another proxy. */
+    /** The dynamic body point {@code i} touches; {@code null} for terrain, a static or kinematic body, a proxy. */
     @Nullable
     private Body otherBody(int i) {
         Shape shape = contacts.otherShape(i);
@@ -559,8 +558,7 @@ public final class EntityProxies implements AutoCloseable {
             }
         }
         if (!(impulse > 0)) {
-            return; // close enough to count as touching, not touching: Box3D did not push (its own hits want an impulse
-            // too)
+            return; // close enough to count as touching, not touching: Box3D did not push
         }
         if (other == EntityBases.baseOf(proxy.entity)) {
             return; // the body it stands on carries it (EntityBases), and its proxy goes along
@@ -582,8 +580,7 @@ public final class EntityProxies implements AutoCloseable {
         }
         float scale = 1;
         if (proxy.unechoedX != 0 || proxy.unechoedY != 0 || proxy.unechoedZ != 0) {
-            // a client-moved entity pushed and not yet seen moving: it is going away at that push, whatever its proxy
-            // does
+            // pushed, the push not shown yet (pushesShowLate): it is going away at that push, whatever its proxy does
             float away = normal.dot(proxy.unechoedX, proxy.unechoedY, proxy.unechoedZ);
             if (away > 0) {
                 if (approach - away <= PUSH_SPEED) {
@@ -625,10 +622,11 @@ public final class EntityProxies implements AutoCloseable {
     }
 
     /**
-     * Box3D stopped the body against the proxy with impulse {@code P}, as against a wall, at a relative speed {@code v}:
-     * the body's mass there, rotation included, is {@code m = P / v}. Against an entity of mass {@code M} the collision
-     * would have moved both on together: the entity by {@code P / (m + M)}, and the body would have kept {@code m / (m +
-     * M)} of {@code P} — given back at the points Box3D took it at. Nothing is given back that Box3D did not take.
+     * Box3D stopped the body against the proxy with impulse {@code P}, as against a wall, at a relative speed
+     * {@code v}: the body's mass there, rotation included, is {@code m = P / v}. Against an entity of mass {@code M}
+     * the collision would have moved both on together: the entity by {@code P / (m + M)}, and the body would have kept
+     * {@code m / (m + M)} of {@code P} — given back at the points Box3D took it at. Nothing is given back that Box3D
+     * did not take.
      */
     private void settle(Proxy proxy, Hit hit) {
         Body other = hit.body;
@@ -639,8 +637,8 @@ public final class EntityProxies implements AutoCloseable {
         float entityShare = 1 / (bodyMass + proxy.mass);
         float change = hit.impulse * entityShare;
         Vector3f n = hit.normal;
-        // pushes along one way do not add up (two bodies side by side): each asks for its own, only what is missing is
-        // added
+        // pushes along one way do not add up (two bodies side by side): each asks for its own, only what is missing
+        // is added
         float missing = change - n.dot(proxy.pushX, proxy.pushY, proxy.pushZ);
         if (missing > 0) {
             proxy.pushX += missing * n.x;
@@ -668,7 +666,7 @@ public final class EntityProxies implements AutoCloseable {
         return EntityAuthority.clientMoves(entity);
     }
 
-    /** A body that ran into an entity in this tick's steps, at its fastest step: its normal, speed, and impulse per point. */
+    /** A body that ran into an entity in this tick's steps, at its fastest: its normal, speed, impulse per point. */
     private static final class Hit {
         final Body body;
         final Vector3f normal = new Vector3f();
@@ -714,8 +712,7 @@ public final class EntityProxies implements AutoCloseable {
             proxy.pushTick = proxy.entity.tickCount;
             if (event.isCanceled()) {
                 // it did not go that way: next tick it holds there like a wall (readFreedom), rather than the body
-                // being
-                // handed back a velocity every tick for a push that is never taken
+                // being handed back a velocity every tick for a push that is never taken
                 proxy.pushGiven = change;
                 continue;
             }
@@ -729,8 +726,7 @@ public final class EntityProxies implements AutoCloseable {
             proxy.pushGiven = velocity;
             if (EntityAuthority.pushesShowLate(proxy.entity)) {
                 // it moves by it some ticks from now (its client a round trip on; a mod's own schedule): until then it
-                // is
-                // going away at this push whatever its proxy does (observe), rather than being pushed again by the same
+                // is going away at this push whatever its proxy does (observe), rather than pushed again by the same
                 // body for the same hit
                 proxy.unechoedX += (float) velocity.x;
                 proxy.unechoedY += (float) velocity.y;
@@ -741,19 +737,18 @@ public final class EntityProxies implements AutoCloseable {
     }
 
     /**
-     * What the entity can give, read on the level's thread before the steps: standing on something it cannot be pushed
-     * down into it; pushed last tick and hardly moved that way, something holds it there (a wall, a fence, another mob) —
-     * either way a body running into it that way meets it as Box3D does, as a wall, rather than being handed back a
-     * velocity it would only drive into the entity again.
+     * What the entity can give, read on the level's thread before the steps: standing on something it cannot be
+     * pushed down into it; pushed last tick and hardly moved that way, something holds it there (a wall, a fence,
+     * another mob) — either way a body running into it that way meets it as Box3D does, as a wall, rather than being
+     * handed back a velocity it would only drive into the entity again.
      */
     private void readFreedom(Proxy proxy, Entity entity, double dx, double dy, double dz) {
         proxy.supported = entity.onGround() && EntityBases.baseOf(entity) != null
                 || !level.noCollision(entity, entity.getBoundingBox().move(0, -0.05, 0));
         proxy.heldX = proxy.heldY = proxy.heldZ = 0;
         if (proxy.pushesShowLate) {
-            // its move of a push comes late (its client's a round trip on; a mod's own schedule): not seen moving is
-            // not
-            // held. The push it has not shown yet is let go once it shows, or after a while
+            // its move of a push comes late: not seen moving is not held. The push it has not shown yet is let go once
+            // it shows, or after UNECHOED_TICKS
             float unechoed = (float) Math.sqrt(proxy.unechoedX * proxy.unechoedX
                     + proxy.unechoedY * proxy.unechoedY
                     + proxy.unechoedZ * proxy.unechoedZ);
@@ -806,20 +801,18 @@ public final class EntityProxies implements AutoCloseable {
         // said for when it is dynamic (cap): it meets no terrain, and the default would stream terrain in round it
         LevelBodies.setNeedsTerrain(proxy.body, false);
         // the bodies that never meet this entity (LevelBodies.setIgnoredEntity) never meet its proxy; before the
-        // shapes,
-        // so none has pairs to find again
+        // shapes, so none has pairs to find again
         proxy.body.setTag(EntityShapes.tagOf(entity));
         ShapeDef def = new ShapeDef();
         def.filter.categoryBits = CollisionCategories.ENTITY;
-        // a proxy has nothing to say to terrain or to another proxy (kinematic bodies would not
-        // collide with them anyway; the mask keeps them out of each other's queries too)
+        // a proxy meets neither terrain nor another proxy, even force-capped (dynamic), and a query made as either
+        // (EntityCollisions.FILTER) misses it
         def.filter.maskBits = ~(CollisionCategories.TERRAIN | CollisionCategories.ENTITY);
         // the tags are asked of a pair only where one of its shapes asks the custom filter: the proxy always does, so a
         // body ignoring this entity is never met whatever its own shapes say (a new pair asks once)
         def.enableCustomFiltering = true;
         // Box3D's default, said out loud: it reports a touch when either shape asks, and a body that wants to hear
-        // about
-        // entities asks itself
+        // about entities asks itself
         def.enableContactEvents = false;
         // not for the events: pushing the entity back needs normalVelocity (the class notes)
         def.enableHitEvents = true;
@@ -831,10 +824,10 @@ public final class EntityProxies implements AutoCloseable {
     }
 
     /**
-     * An entity that changed size (crouching, a baby growing up) keeps its proxy: the same body, each shape given its new
-     * geometry in place, and the mass asked again. So a body or joint another mod holds stays good, and so does what the
-     * proxy remembers of the pushes it was given. (Box3D rebuilds the shapes' contacts either way.) {@code false}, and
-     * nothing changed, where it cannot be: another provider answers now, or with another number of shapes, or with none.
+     * An entity that changed size (crouching, a baby growing up) keeps its proxy: the same body, each shape given its
+     * new geometry in place, and the mass asked again. So a body or joint another mod holds stays good, and so does
+     * what the proxy remembers of the pushes it was given. {@code false}, and nothing changed, where it cannot be:
+     * another provider answers now, or with another number of shapes, with none, or with a height field.
      */
     private boolean reshape(Entity entity, Proxy proxy) {
         EntityShapes.Answer answer = EntityShapes.shapesOf(entity);
@@ -866,9 +859,9 @@ public final class EntityProxies implements AutoCloseable {
     }
 
     /**
-     * The proxy made dynamic, of its entity's mass, and pulled after a kinematic target by a motor joint of at most
-     * {@link Settings#strength} per kg. A spring, not only a velocity drive: setting its velocity, or a velocity-only joint,
-     * still let crates out (doc 04 §18).
+     * The proxy made dynamic, of its entity's mass, pulled after a kinematic target by a motor joint of at most
+     * {@link Settings#strength} per kg, and kept upright by a motion-lock joint to the target. A spring, not only a
+     * velocity drive: a velocity drive alone still lets crates out (doc 04 §18).
      */
     private void cap(Proxy proxy) {
         Vector3d at = proxy.body.position(new Vector3d());
@@ -899,7 +892,7 @@ public final class EntityProxies implements AutoCloseable {
         pull.maxVelocityForce = force;
         pull.maxVelocityTorque = force;
         proxy.drive = world.createJoint(pull);
-        // upright, turned only about y by the drive: the target's y axis and its own kept parallel
+        // upright: both frames' z along the bodies' y, angular x and y locked, so it turns only about y, by the drive
         proxy.upright = world.createJoint(new MotionLockJointDef()
                 .bodies(proxy.target, proxy.body)
                 .localFrameA(0, 0, 0, Z_TO_Y)
@@ -918,8 +911,8 @@ public final class EntityProxies implements AutoCloseable {
     }
 
     /**
-     * Whether a force-capped proxy is near enough where it was driven to last to be made kinematic again: one left behind
-     * would otherwise be driven the whole way back at once, through whatever held it.
+     * Whether a force-capped proxy is near enough where it was driven to last to be made kinematic again: one left
+     * behind would otherwise be driven the whole way back at once, through whatever held it.
      */
     private boolean caughtUp(Proxy proxy) {
         proxy.body.position(center);
@@ -933,8 +926,8 @@ public final class EntityProxies implements AutoCloseable {
     }
 
     /**
-     * Whether the entity's box at {@code (tx, ty, tz)}, a {@link #SKIN} in from its faces, is in a dynamic body its proxy
-     * meets — the squeeze capping is for. Exact, so only asked of a proxy that lags behind.
+     * Whether the entity's box at {@code (tx, ty, tz)}, a {@link #SKIN} in from its faces, is in a dynamic body its
+     * proxy meets — the squeeze capping is for. An exact query, so only asked of a proxy that lags behind.
      */
     private boolean intoABody(Proxy proxy, Entity entity, double tx, double ty, double tz) {
         AABB box = entity.getBoundingBox();
@@ -968,11 +961,11 @@ public final class EntityProxies implements AutoCloseable {
     }
 
     /**
-     * Whether the proxy, going from where it was driven last to {@code (tx, ty, tz)}, sweeps near a dynamic body it meets.
-     * Any such body, not only one held fast or one it heads at: a tipping crate hooked on its edge cannot get away, and a
-     * player jumping off a crate's middle clips its raised corner. The proxy's travel, not the entity's motion: a
-     * client-moved player has none. Off the bounds {@link #update} took, not a query per proxy, which cost more than the
-     * capping saved.
+     * Whether the proxy, going from where it was driven last to {@code (tx, ty, tz)}, sweeps near a dynamic body it
+     * meets. Any such body, not only one held fast or one it heads at: a tipping crate hooked on its edge cannot get
+     * away, and a player jumping off a crate's middle clips its raised corner. The proxy's travel, not the entity's
+     * motion: a client-moved player has none. Off the bounds {@link #update} took: a query per proxy costs more than
+     * the capping saves.
      */
     private boolean comesOntoABody(Proxy proxy, Entity entity, double tx, double ty, double tz) {
         double mx = tx - proxy.targetX, my = ty - proxy.targetY, mz = tz - proxy.targetZ;
@@ -991,8 +984,8 @@ public final class EntityProxies implements AutoCloseable {
     }
 
     /**
-     * Whether {@code box} moved by {@code o} and swept by {@code m} comes within {@link #LOOK_MARGIN} of a dynamic body the
-     * proxy meets: not one ignoring its entity, nor the base it is filtered from ({@link #ignoreBase}).
+     * Whether {@code box} moved by {@code o} and swept by {@code m} comes within {@link #LOOK_MARGIN} of a dynamic body
+     * the proxy meets: not one ignoring its entity, nor the base it is filtered from ({@link #ignoreBase}).
      */
     private boolean nearABody(Proxy proxy, AABB box, double ox, double oy, double oz, double mx, double my, double mz) {
         // the bounds are floats, a metre apart fifteen million blocks out: as much further
@@ -1098,8 +1091,8 @@ public final class EntityProxies implements AutoCloseable {
 
         Body body;
         /**
-         * force-capped ({@link #cap}): dynamic, pulled by this joint after this target and kept upright by the other; the
-         * last tick it came onto a body
+         * force-capped ({@link #cap}): dynamic, pulled by {@code drive} after {@code target} and kept upright by
+         * {@code upright}; {@code pressedTick} the last tick it came onto a body
          */
         boolean capped;
 

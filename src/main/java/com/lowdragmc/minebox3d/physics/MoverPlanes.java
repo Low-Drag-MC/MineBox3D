@@ -82,6 +82,7 @@ public final class MoverPlanes {
         return shapes[at(i)];
     }
 
+    /** {@code null} on voxel terrain (and for a shape destroyed since). */
     @Nullable
     public Shape shape(int i) {
         return world == null ? null : world.shape(shapeId(i));
@@ -91,6 +92,7 @@ public final class MoverPlanes {
         return cells[CELL * at(i)] != 0;
     }
 
+    /** The block cell, on terrain; zeros otherwise. */
     public Vector3i cell(int i, Vector3i out) {
         int o = CELL * at(i);
         return out.set(cells[o + 1], cells[o + 2], cells[o + 3]);

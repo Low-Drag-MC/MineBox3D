@@ -27,9 +27,8 @@ MB3_JNI( jlong, createMesh )( JNIEnv* env, jclass type, jfloatArray vertices, ji
 		return 0;
 	}
 
-	// Box3D reads everything during b3CreateMesh and keeps none of it ("No pointers are held to this
-	// data", types.h b3MeshDef), so the arrays are only pinned for the call.
-	// each pinned only once the one before it was: a failed pin leaves an exception pending, and no JNI call may follow
+	// Box3D holds no pointer to the arrays past b3CreateMesh (types.h b3MeshDef), so they are pinned only for the call,
+	// each once the one before it was: a failed pin leaves an exception pending, past which only releases may follow
 	jfloat* v = ( *env )->GetFloatArrayElements( env, vertices, NULL );
 	jint* i = v != NULL ? ( *env )->GetIntArrayElements( env, indices, NULL ) : NULL;
 	jbyte* m =

@@ -127,7 +127,7 @@ public final class SphericalJoint extends Joint {
         set(JointParam.SPHERICAL_MOTOR_VELOCITY, x, y, z, 0);
     }
 
-    /** The torque the motor applied in the last step, N·m. */
+    /** The torque the motor applied in the last step, N·m, world space. */
     public Vector3f motorTorque(Vector3f out) {
         return getVector(JointParam.SPHERICAL_MOTOR_TORQUE, out);
     }

@@ -140,8 +140,7 @@ public final class BlockCatalogueGameTest {
         states.add(Blocks.END_ROD.defaultBlockState().setValue(BlockStateProperties.FACING, Direction.EAST));
         states.add(Blocks.BIG_DRIPLEAF.defaultBlockState());
         // offset by their position: read at the block, not per state. Three of each, at three places, so a collider
-        // cached
-        // for the first would put the others' in the wrong place
+        // cached for the first would put the others' in the wrong place
         for (int i = 0; i < OFFSET_COPIES; i++) {
             states.add(Blocks.BAMBOO.defaultBlockState());
             states.add(Blocks.POINTED_DRIPSTONE.defaultBlockState());
@@ -222,7 +221,10 @@ public final class BlockCatalogueGameTest {
         helper.succeed();
     }
 
-    /** {@code [ox, oy, oz, tx, ty, tz]} relative to the block's corner: straight in from all six sides, and from the corners. */
+    /**
+     * {@code [ox, oy, oz, tx, ty, tz]}, the start relative to the block's corner: straight in from all six sides, and
+     * from the corners.
+     */
     private static List<double[]> rays() {
         List<double[]> rays = new ArrayList<>();
         for (int axis = 0; axis < 3; axis++) {

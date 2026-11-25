@@ -783,7 +783,7 @@ static int mb3_param_joint_type( int param )
 	return b3_motionLockJoint;
 }
 
-// Box3D asserts on a property of another joint type; say which instead.
+// Box3D asserts on a property of another joint type, then uses the joint as that type: refuse it first.
 static bool mb3_param_fits( JNIEnv* env, b3JointId joint, int param )
 {
 	int wanted = mb3_param_joint_type( param );

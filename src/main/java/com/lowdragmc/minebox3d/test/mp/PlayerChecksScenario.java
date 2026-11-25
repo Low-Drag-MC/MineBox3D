@@ -28,13 +28,14 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 /**
- * <b>Players on bodies, the harder cases</b> (design doc {@code 04-entities-and-bodies.md} §11, batch 4c-3, review), over a
- * real dedicated server and two real clients:
+ * <b>Players on bodies, the harder cases</b> (design doc {@code 04-entities-and-bodies.md} §11, batch 4c-3, review),
+ * over a real dedicated server and two real clients:
  * <ul>
  * <li>A sneaks on a synced deck: it moves (Minecraft's edge check sees the deck), and stops at the deck's edge;</li>
  * <li>A's client tells the server lies — a body it does not have, a point far from where it is, a push far harder than
  * a player gives: the server does not put A there, and the crate is pushed no harder than a player could;</li>
- * <li>A is sent onto a wide deck far off whose middle is in another chunk: held till the deck arrives, it lands on it;</li>
+ * <li>A is sent onto a wide deck far off whose middle is in another chunk: held till the deck arrives, it lands on
+ * it;</li>
  * <li>A, in a boat on a deck, rides the moving deck: the boat stays where it was on it, on the server too.</li>
  * </ul>
  *
@@ -155,8 +156,8 @@ public class PlayerChecksScenario implements MPScenario {
                                 r -> r.step("a step", ctx -> MpClient.self()
                                         .setDeltaMovement(0.1, MpClient.self().getDeltaMovement().y, 0)))
                         .step("where it got to", ctx -> {
-                            // stopped first: let go of sneaking while still walking, it would step off the edge onto
-                            // the crate
+                            // stopped first: let go of sneaking while still walking, it would step off the edge
+                            // onto the crate
                             MpClient.self().setDeltaMovement(0, MpClient.self().getDeltaMovement().y, 0);
                             MpClient.sneak(false);
                             double went = MpClient.self().getX() - (double) ctx.get("sneak.from");
@@ -184,8 +185,8 @@ public class PlayerChecksScenario implements MPScenario {
                         "A's client tells lies, then moves a little",
                         b -> b.step("lie", ctx -> {
                             int deck = (int) (double) ctx.get("deck.id"), crate = (int) (double) ctx.get("crate.id");
-                            // a body it does not have; a point of its deck six blocks from it; numbers that are not
-                            // numbers
+                            // a body it does not have; a point of its deck six blocks from it; numbers that are
+                            // not numbers
                             PacketDistributor.sendToServer(new StandingPayload(99_999, 0, 0.3f, 0, false));
                             PacketDistributor.sendToServer(new StandingPayload(deck, 1.9f, 0.3f, -6f, false));
                             PacketDistributor.sendToServer(new StandingPayload(deck, Float.NaN, 0, 0, false));

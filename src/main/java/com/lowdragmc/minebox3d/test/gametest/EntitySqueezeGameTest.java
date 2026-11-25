@@ -31,11 +31,12 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 /**
- * <b>A body held fast is not squeezed out by an entity's proxy</b> (design doc {@code 04-entities-and-bodies.md} §18): an
- * armor stand put on into a crate a quarter block a tick by its position alone — as a client moves its player, and as a
- * server takes its word — against a wall, or down onto it on the ground. Run with the cap off first, to show the squeeze
- * happens here at all. And the force-capped proxy's life: capped only by bodies it meets, kinematic again once off them,
- * resized and re-made in place, put where its entity is when held off it, and leaving nothing behind.
+ * <b>A body held fast is not squeezed out by an entity's proxy</b> (design doc {@code 04-entities-and-bodies.md} §18):
+ * an armor stand put on into a crate a quarter block a tick by its position alone — as a client moves its player, and
+ * as a server takes its word — against a wall, or down onto it on the ground. Run with the cap off first, to show the
+ * squeeze happens here at all. And the force-capped proxy's life: capped only by bodies it meets, kinematic again once
+ * off them, resized in place, given a new target when its own is destroyed, put where its entity is when held off it,
+ * and leaving nothing behind.
  */
 @GameTestHolder(MineBox3D.MOD_ID)
 public final class EntitySqueezeGameTest {
@@ -170,7 +171,9 @@ public final class EntitySqueezeGameTest {
         return stand;
     }
 
-    /** An armor stand's size as its saved data says it ({@code setSmall} is private), the rest left as it is spawned. */
+    /**
+     * An armor stand's size as its saved data says it ({@code setSmall} is private), the rest left as it is spawned.
+     */
     private static CompoundTag size(boolean small) {
         CompoundTag tag = new CompoundTag();
         tag.putBoolean("Small", small);
@@ -188,8 +191,8 @@ public final class EntitySqueezeGameTest {
     }
 
     /**
-     * The bodies proxies are pulled after while force-capped, but those of {@code before}: a test that failed before its
-     * clean-up leaves its own behind.
+     * The bodies proxies are pulled after while force-capped, but those of {@code before}: a test that failed before
+     * its clean-up leaves its own behind.
      */
     private static List<Body> targets(GameTestHelper helper, Set<Body> before) {
         return physics(helper).world().bodies().stream()
@@ -378,7 +381,8 @@ public final class EntitySqueezeGameTest {
 
     /**
      * Capped on a crate, then put back through a static wall it does not push: put where its entity is at once, rather
-     * than held behind the wall for good — while a stand put on into the squeezed crate stays capped (the squeeze tests).
+     * than held behind the wall for good — while a stand put on into the squeezed crate stays capped (the squeeze
+     * tests).
      */
     @GameTest(template = "empty", batch = "minebox3d_squeeze_held", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)

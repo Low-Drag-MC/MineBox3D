@@ -83,8 +83,8 @@ public final class ContactPoints {
 
     /**
      * How fast this body moved along the normal relative to the other at the start of the last step, m/s: negative
-     * coming together. ⚠️ Box3D only measures it for a pair where either shape has hit events on or that bounces
-     * ({@link ShapeDef#enableHitEvents}, restitution); otherwise 0.
+     * coming together. ⚠️ Box3D only keeps it for a pair where either shape has {@linkplain ShapeDef#enableHitEvents
+     * hit events} on; otherwise 0.
      */
     public float normalVelocity(int i) {
         return floats[FLOATS * at(i) + 6];

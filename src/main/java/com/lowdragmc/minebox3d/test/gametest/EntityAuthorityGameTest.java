@@ -43,9 +43,9 @@ public final class EntityAuthorityGameTest {
     }
 
     /**
-     * A player is its client's to move, and a mob the server's — until a mod says a player is the server's (a mover that
-     * runs on the server and only lets its client predict): then the server sweeps it among the bodies and keeps its
-     * base, as for any entity it moves. The moves of both push bodies, unless a mod says they push none.
+     * A player is its client's to move, and a mob the server's — until a mod says a player is the server's (a mover
+     * that runs on the server and only lets its client predict): then the server sweeps it among the bodies and keeps
+     * its base, as for any entity it moves. The moves of both push bodies, unless a mod says they push none.
      */
     @GameTest(template = "empty")
     @PrefixGameTestTemplate(false)

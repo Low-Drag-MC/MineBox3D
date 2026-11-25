@@ -19,8 +19,9 @@ import net.neoforged.neoforge.common.NeoForge;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * What a multi-process scenario reads on a client. ⚠️ The only class of the scenarios that names client types: a scenario
- * is defined on the dedicated server too, so it calls these only inside step bodies and they hand back common types.
+ * What a multi-process scenario reads on a client. ⚠️ The only class of the scenarios that names client types: a
+ * scenario is defined on the dedicated server too, so it calls these only inside step bodies and they hand back common
+ * types.
  */
 final class MpClient {
 
@@ -172,7 +173,7 @@ final class MpClient {
         EVENTS.computeIfAbsent(name == null ? "" : name, n -> new int[3])[which]++;
     }
 
-    /** {added, removed, removed already destroyed} for the replicas named {@code name}, since {@link #countEvents()}. */
+    /** {added, removed, removed already destroyed} for the replicas named {@code name} since {@link #countEvents()}. */
     static int[] events(String name) {
         return EVENTS.getOrDefault(name, new int[3]).clone();
     }

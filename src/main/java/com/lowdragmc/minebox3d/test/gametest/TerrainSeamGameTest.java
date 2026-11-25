@@ -31,7 +31,7 @@ import org.joml.Vector3f;
  * <b>Real blocks, no seams</b> (design doc {@code 01-voxel-terrain.md} §9 V3): bodies slid across the blocks a
  * world is made of — full and partial, across cell and section borders — are not kicked up by the joins.
  *
- * <p>The six floors option A failed on, and a farmland floor (15/16 high). Every run streams the real blocks
+ * <p>The six floors §9 V3 names, and a farmland floor (15/16 high). Every run streams the real blocks
  * through {@link TerrainStreamer} into a private world and steps it at 60 Hz × 4 sub-steps, sampling every step
  * (the level's own physics only steps per tick, which would hide a kick that lasts one step). Logs a table.
  */
@@ -73,8 +73,7 @@ public final class TerrainSeamGameTest {
     };
 
     // every one fits on a stair's upper half (0.5 wide) with room to spare: a body hanging over the drop beside it
-    // passes
-    // within a centimetre of real corners, where Box3D's speculative contact lifts it a little (design doc 01 §12.4)
+    // passes within a centimetre of real corners, where Box3D's speculative contact lifts it a little (doc 01 §12.4)
     private static final Geometry[] BODIES = {
         Geometry.Box.of(0.2f, 0.2f, 0.2f),
         new Geometry.Capsule(-0.3f, 0, 0, 0.3f, 0, 0, 0.15f),
@@ -85,9 +84,9 @@ public final class TerrainSeamGameTest {
     private static final float[] SPEEDS = {2, 6, 12};
 
     /**
-     * The angular speed that counts as being turned aside, rad/s; the runs stay under 0.01. Where the section borders
-     * fall depends on where the server places the test: a border between two stairs once turned a box 40 degrees (doc 01
-     * §12.6), which only some placements showed. {@code VoxelDetailTest} tries every alignment.
+     * The angular speed that counts as being turned aside, rad/s; the runs stay under 0.01. Where section borders fall
+     * depends on where the server places the test, so a turn at one (a box once turned 40°, doc 01 §12.6.2) shows only
+     * in some runs: {@code VoxelDetailTest} tries every alignment.
      */
     private static final float TURN = 0.1f;
 

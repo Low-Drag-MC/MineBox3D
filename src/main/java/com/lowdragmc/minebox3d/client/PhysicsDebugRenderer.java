@@ -24,7 +24,7 @@ import org.joml.Vector3f;
 /**
  * <b>Wireframes of the client level's physics</b>, toggled with {@code /minebox3d debug}.
  *
- * <p>Colours: dynamic awake green, dynamic asleep grey, kinematic (entity proxies) cyan, terrain
+ * <p>Colours: dynamic awake green, dynamic asleep grey, kinematic and entity proxies cyan, terrain
  * yellow-brown. Terrain is what contacts see — the outlines of the exposed parts of block faces — drawn only
  * within {@link #TERRAIN_RADIUS} blocks, refreshed every {@link #TERRAIN_REFRESH_FRAMES} frames; its lines are
  * pushed a hair off the surface so the block faces do not swallow them.

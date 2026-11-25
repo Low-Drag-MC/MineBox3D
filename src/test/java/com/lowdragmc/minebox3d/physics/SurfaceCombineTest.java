@@ -6,12 +6,12 @@ import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 
 /**
- * <b>Friction and restitution combine modes</b> (UE's physical material): two surfaces without one mix as Box3D always did,
- * with one the later mode of the two wins, the user's material id comes back as it went in.
+ * <b>Friction and restitution combine modes</b> (UE's physical material): two surfaces without one mix as Box3D
+ * always did, with one the later mode of the two wins, the user's material id comes back as it went in.
  */
 class SurfaceCombineTest {
 
-    /** A box sliding at 5 m/s on a floor of friction 0.9, itself 0.1: the friction they slide by, read off how fast it slows. */
+    /** A box sliding at 5 m/s on a floor of friction 0.9, itself 0.1: the friction read off how fast it slows. */
     private static float slidingFriction(SurfaceMaterial.Combine mode) {
         try (PhysicsWorld world = PhysicsWorld.create(new WorldDef().gravity(0, -10, 0))) {
             Body floor = world.createBody(new BodyDef().position(0, -0.5, 0));

@@ -106,7 +106,7 @@ public final class VoxelGrid implements AutoCloseable {
 
     /**
      * Changes cells: {@code [x, y, z, collider]} per edit, in grid cell coordinates. A cell in a section
-     * that does not exist yet creates it. Bodies near the changes are woken.
+     * that does not exist yet creates it. Bodies touching or resting on changed cells are woken.
      */
     public void setCells(int[] edits, int count) {
         world.enter();
@@ -120,6 +120,7 @@ public final class VoxelGrid implements AutoCloseable {
         }
     }
 
+    /** The collider in a cell, 0 if it is empty or its section does not exist. */
     public int cell(int x, int y, int z) {
         world.enter();
         try {

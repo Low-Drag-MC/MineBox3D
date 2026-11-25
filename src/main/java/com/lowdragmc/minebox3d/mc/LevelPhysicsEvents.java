@@ -49,7 +49,7 @@ public final class LevelPhysicsEvents {
         EntityCollisions.newTick();
     }
 
-    /** Every level has sent its bodies: the clients waiting for the bodies around their players are told (SyncedRiders). */
+    /** Every level has sent its bodies: each client waiting for those around its player is told (SyncedRiders). */
     @SubscribeEvent
     public static void onServerTickEnd(ServerTickEvent.Post event) {
         SyncedRiders.afterServerTick(event.getServer().getTickCount());
@@ -115,7 +115,7 @@ public final class LevelPhysicsEvents {
         }
     }
 
-    /** From the {@code LevelChunk.setBlockState} hook: every block change, on both sides, on whatever thread made it. */
+    /** From the {@code LevelChunk.setBlockState} hook: every block change, either side, on whatever thread made it. */
     public static void onBlockChanged(Level level, BlockPos pos, @Nullable BlockState previous, BlockState current) {
         TerrainStreamer.forLevel(level, streamer -> streamer.onBlockChanged(pos, previous, current));
     }

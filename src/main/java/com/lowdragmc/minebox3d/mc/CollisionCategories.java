@@ -17,7 +17,7 @@ public final class CollisionCategories {
 
     /** Block collision streamed in by the terrain streamer. */
     public static final long TERRAIN = 1L << 1;
-    /** Kinematic stand-ins for Minecraft entities. */
+    /** Stand-ins for Minecraft entities: their proxies. */
     public static final long ENTITY = 1L << 2;
 
     private static final int FIRST_FREE_BIT = 8;

@@ -19,6 +19,7 @@ public final class BodyDef {
     /** Unit quaternion. */
     public float rotationX, rotationY, rotationZ, rotationW;
 
+    /** m/s */
     public float linearVelocityX, linearVelocityY, linearVelocityZ;
     /** rad/s */
     public float angularVelocityX, angularVelocityY, angularVelocityZ;
@@ -28,7 +29,7 @@ public final class BodyDef {
     public float gravityScale;
     /** Sleep speed threshold, m/s. */
     public float sleepThreshold;
-    /** Continuous-collision safety factor, 0.01–0.5. */
+    /** Continuous-collision safety factor: 0.01–0.5 advised, which {@link Body#setSafetyFactor} insists on. */
     public float safetyFactor;
 
     @Nullable

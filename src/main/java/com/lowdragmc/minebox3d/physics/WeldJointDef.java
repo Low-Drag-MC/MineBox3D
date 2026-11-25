@@ -1,8 +1,8 @@
 package com.lowdragmc.minebox3d.physics;
 
 /**
- * Box3D's {@code b3WeldJointDef}: holds the two bodies together where they are — rigidly at zero hertz, or as a spring.
- * ⚠️ Box3D's solver cannot hold long chains of welded bodies perfectly rigid.
+ * Box3D's {@code b3WeldJointDef}: holds frame B to frame A in position and rotation — rigidly at zero hertz, or as a
+ * spring. ⚠️ Box3D's solver cannot hold long chains of welded bodies perfectly rigid.
  */
 public final class WeldJointDef extends JointDef<WeldJoint, WeldJointDef> {
     /** Hz, 0 = as stiff as possible. */

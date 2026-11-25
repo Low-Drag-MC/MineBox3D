@@ -96,7 +96,7 @@ public final class BlockColliders {
         }
         VoxelShape shape = state.isAir() ? Shapes.empty() : cut(state.getCollisionShape(level, pos));
         VoxelShape all = Shapes.join(shape, reach, BooleanOp.OR);
-        // the cell's own block gives the surface; only what reaches in from below when it has none
+        // the cell's own block gives the surface; a neighbour reaching in gives it when the cell's block has no shape
         return idOf(all, shape.isEmpty() ? material(level, pos, reachFrom) : material(level, pos, state));
     }
 
@@ -185,8 +185,8 @@ public final class BlockColliders {
 
     /**
      * Into the grid's table. A shape the table will not take — more than 65535 colliders in one world, or boxes too
-     * thin to survive the float conversion — falls back to its bounds, then to nothing, with a warning: a block missing
-     * from physics beats a server crashing in its tick.
+     * thin to survive the float conversion — falls back to its bounds, then to nothing, with a warning: a block
+     * missing from physics beats a server crashing in its tick.
      */
     private int addCollider(VoxelShape shape, float[] values, int boxCount, int material) {
         try {

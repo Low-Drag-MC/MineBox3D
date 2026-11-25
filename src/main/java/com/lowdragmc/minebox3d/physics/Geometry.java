@@ -28,9 +28,9 @@ public sealed interface Geometry {
     }
 
     /**
-     * A convex hull. {@code points} are its vertices, {@code [x, y, z]} each: whatever points it is made from, the record
-     * keeps Box3D's hull of them, at most {@link #MAX_VERTICES} (Box3D simplifies one with more). ⚠️ Do not change the
-     * array.
+     * A convex hull. {@code points} are its vertices, {@code [x, y, z]} each: whatever points it is made from, the
+     * record keeps Box3D's hull of them, at most {@link #MAX_VERTICES} (Box3D simplifies one with more). ⚠️ Do not
+     * change the array.
      */
     record Hull(float[] points) implements Geometry {
         /** Box3D's {@code B3_MAX_HULL_VERTICES}, which is also the most points a query shape may have. */
@@ -57,7 +57,10 @@ public sealed interface Geometry {
         }
     }
 
-    /** A triangle mesh, scaled per axis. Static bodies only collide with dynamic ones through it. */
+    /**
+     * A triangle mesh, scaled per axis, meant for static bodies. It collides only with spheres, capsules, boxes and
+     * hulls, never another mesh, height field or terrain.
+     */
     record Mesh(MeshData data, float sx, float sy, float sz) implements Geometry {
         public static Mesh of(MeshData data) {
             return new Mesh(data, 1, 1, 1);
@@ -67,7 +70,7 @@ public sealed interface Geometry {
     /** A height field — see {@link HeightFieldData}. Static bodies only. */
     record HeightField(HeightFieldData data) implements Geometry {}
 
-    /** Whether it has a radius (a sphere or capsule): Box3D measures how close it comes to its core, not its surface. */
+    /** Whether it has a radius (a sphere or capsule): Box3D measures distances to its core, not its surface. */
     default boolean isRounded() {
         return this instanceof Sphere || this instanceof Capsule;
     }

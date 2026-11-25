@@ -32,8 +32,9 @@ import org.joml.Vector3f;
  * not carried twice. Put elsewhere (a teleport), it is let go as it is ({@link #beforeMove}). Its weight presses on a
  * body it can push ({@link EntityProxies}), and the body it stands on carries it rather than pushes it.
  *
- * <p>Carried where it moves: on the server every entity but players, on a client what the client moves itself (its
- * own player). A mod that carries an entity on its own base itself — EntityStudio's mover has Unreal's movement base —
+ * <p>Kept where it moves: on the server for what the server moves, on a client for what that client moves (its own
+ * player). The server keeps a client-moved entity's base where its client says it stands ({@link #stand}). A mod that
+ * carries an entity on its own base itself — EntityStudio's mover has Unreal's movement base —
  * {@linkplain #registerCarrier says so}: MineBox3D then only keeps the base, for {@link #baseOf} /
  * {@link #baseVelocity}.
  */
@@ -54,8 +55,8 @@ public final class EntityBases {
         /**
          * For an entity it {@linkplain #carriesItself carries itself}: whether it is carrying it on {@code body} now —
          * standing on it, not in the air off it. Only then is {@code body} let be as the entity's base (not pushed out
-         * of, not collided with by its proxy); otherwise it is any other body to it. By default, whenever it carries the
-         * entity at all.
+         * of, not collided with by its proxy); otherwise it is any other body to it. By default, whenever it carries
+         * the entity at all.
          */
         default boolean isCarrying(Entity entity, Body body) {
             return true;
@@ -90,9 +91,9 @@ public final class EntityBases {
     }
 
     /**
-     * The entities on a level's bodies, carried by them right after the steps that moved them ({@link #carry()}): a
-     * level's entities move before its physics steps, so carried at their own next move they would ride a tick behind —
-     * a tenth of a block into a rising lift, a step behind on a moving deck. One per {@code LevelPhysics}.
+     * The entities on a level's bodies, carried by them right after the steps that moved them ({@link #carry}): a
+     * level's entities move before its physics steps, so carried at their own next move they would ride a tick
+     * behind — sunk into a rising lift, a step behind on a moving deck. One per {@code LevelPhysics}.
      */
     @ApiStatus.Internal
     public static final class Riders {
@@ -112,10 +113,10 @@ public final class EntityBases {
         }
 
         /**
-         * After the steps, on {@code level}'s thread, holding the world: each rider moved by as much as its base moved the
-         * point its feet were kept at. A server's player too, till its client says next where it stands (SyncedRiders) —
-         * or it would stand a tick behind its deck on the server. One gone, now without physics (a spectator), riding
-         * something, or in another level is let go.
+         * After the steps, on {@code level}'s thread, holding the world: each rider moved by as much as its base moved
+         * the point its feet were kept at. On the server what a client moves too, till its client says next where it
+         * stands (SyncedRiders) — or it would stand a tick behind its deck there. One gone, now without physics (a
+         * spectator), riding something, in another level or no longer meeting its base is let go.
          */
         public void carry(Level level) {
             for (Iterator<Entity> it = riders.iterator(); it.hasNext(); ) {
@@ -151,13 +152,14 @@ public final class EntityBases {
 
     private EntityBases() {}
 
+    /** Adds a mod's say on which entities it carries on their base itself. */
     public static void registerCarrier(Carrier carrier) {
         CARRIERS.add(carrier);
     }
 
     /**
-     * The body the entity stands on — or jumped off and is still carried by ({@link #afterMove}; {@code onGround()} tells
-     * the two apart) — or {@code null}. On a client a replica's {@code SyncedBodies.networkId} names it.
+     * The body the entity stands on — or jumped off and is still carried by ({@link #afterMove}; {@code onGround()}
+     * tells the two apart) — or {@code null}. On a client a replica's {@code SyncedBodies.networkId} names it.
      */
     @Nullable
     public static Body baseOf(Entity entity) {
@@ -166,8 +168,8 @@ public final class EntityBases {
     }
 
     /**
-     * Whether the entity still meets the body: its physics collision on, and not ignored by it (doc 04 §17). A base it no
-     * longer meets is let go as it is — not carried on, nor its velocity handed over: the entity is past it already.
+     * Whether the entity still meets the body: its physics collision on, and not ignored by it (doc 04 §17). A base it
+     * no longer meets is let go as it is — not carried on, nor its velocity handed over: the entity is past it already.
      */
     private static boolean meets(Entity entity, Body body) {
         return EntityShapes.hasPhysicsCollision(entity) && !LevelBodies.ignores(body, entity);
@@ -182,8 +184,8 @@ public final class EntityBases {
     // ---- from EntityCollisions --------------------------------------------------------------------
 
     /**
-     * How far its base carried the point an entity's feet were last kept at, blocks, its turn applied already; zero with
-     * no base, or one it carries itself. One put elsewhere since (a teleport) is let go, as it is.
+     * How far its base carried the point an entity's feet were last kept at, blocks, its turn applied already; zero
+     * with no base, or one it carries itself. One put elsewhere since (a teleport) is let go, as it is.
      */
     static Vec3 carry(Entity entity) {
         Holder holder = (Holder) entity;
@@ -228,14 +230,14 @@ public final class EntityBases {
     }
 
     /**
-     * After an entity's move: on the body its move ended on ({@code ground}), on blocks, or in the air. Not a server's
-     * player, whose client says where it stands.
+     * After an entity's move: on the body its move ended on ({@code ground}), on blocks, or in the air. Not on the
+     * server for what a client moves ({@link EntityAuthority}): its client says where it stands.
      *
-     * <p>⚠️ In the air it is still carried, for up to {@link #AIR_TICKS} (VS2's way, not Unreal's): Minecraft slows what
-     * flies by a tenth a tick, so the base's velocity handed over at the jump would fade and the jumper land behind —
-     * three quarters of a block at a walking cart's 3 m/s. Carried, a jump on a moving deck comes down where it went up.
-     * Landing elsewhere, or still in the air after that, the velocity of the point it stood on is handed over (and
-     * landing on another body, the difference between the two).
+     * <p>⚠️ In the air it is still carried, for up to {@link #AIR_TICKS} (VS2's way, not Unreal's): Minecraft slows
+     * what flies by about a tenth a tick, so the base's velocity handed over at the jump would fade and the jumper land
+     * behind. Carried, a jump on a moving deck comes down where it went up. Landing elsewhere, or still in the air
+     * after that, the velocity of the point it stood on is handed over (and landing on another body, the difference
+     * between the two).
      */
     static void afterMove(Entity entity, @Nullable Body ground) {
         if (EntityCollisions.isClientMoved(entity)) {
@@ -287,8 +289,9 @@ public final class EntityBases {
 
     /**
      * Before an entity's move: one put elsewhere since its base last had it (a teleport) is let go, as it is — not
-     * carried from there, nor given the base's velocity. Not a server's player, whose base moves ahead of its move
-     * ({@link #stand}). Nor is a base the entity no longer meets kept, whoever's it is.
+     * carried from there, nor given the base's velocity. Not what a client moves, on the server, whose base moves ahead
+     * of its move ({@link #stand}), nor one a mod carries itself. A base the entity no longer meets is let go whoever's
+     * it is.
      */
     static void beforeMove(Entity entity) {
         Holder holder = (Holder) entity;
@@ -344,8 +347,8 @@ public final class EntityBases {
     }
 
     /**
-     * The base that carries the entity now, or {@code null}: {@link #baseOf} for one MineBox3D carries (in the air off it
-     * too, for a while); for one a mod carries itself, its base only while that mod is carrying it there
+     * The base that carries the entity now, or {@code null}: {@link #baseOf} for one MineBox3D carries (in the air off
+     * it too, for a while); for one a mod carries itself, its base only while that mod is carrying it there
      * ({@link Carrier#isCarrying}) — in the air off it, the body is any other body to the entity.
      */
     @Nullable
@@ -363,7 +366,7 @@ public final class EntityBases {
     }
 
     /**
-     * What a client moves — a server's player, or the vehicle it steers — standing at {@code at} on {@code body}, where
+     * What a client moves (a server's player, or the vehicle it steers) standing at {@code at} on {@code body}, where
      * the client says (SyncedRiders): its base, as an entity the server moves gets one by moving onto it. Server only.
      */
     @ApiStatus.Internal
@@ -392,8 +395,8 @@ public final class EntityBases {
     }
 
     /**
-     * A rotation's turn about the vertical, radians, counter-clockwise seen from above: where it takes +X — or, when +X is
-     * tipped near the vertical (a crate rolled onto its side), where it takes +Z, a quarter on.
+     * A rotation's turn about the vertical, radians, counter-clockwise seen from above: where it takes +X — or, when
+     * +X is tipped near the vertical (a crate rolled onto its side), where it takes +Z.
      */
     @ApiStatus.Internal
     public static float yawOf(Quaternionf q) {

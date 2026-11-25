@@ -8,10 +8,10 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * <b>What one body wants from a level's physics</b>: terrain streamed in around it, entities standing in it as proxies
- * that push it, a copy on the clients of the players near it, an entity it never meets. Unless set, a dynamic body wants
- * terrain and proxies and other bodies neither, and no body is copied to clients; a mod sets it per body, so mods never
- * overrule each other (design doc {@code 03-threading-and-api.md} §6.5). Kept on the body ({@link Body#attachment},
- * {@link Body#ignoredTag}); read on the thread using the world.
+ * that push it, a copy on the clients of the players near it, an entity it never meets. Unless set, a dynamic body
+ * wants terrain and proxies and other bodies neither, and no body is copied to clients; a mod sets it per body, so mods
+ * never overrule each other (design doc {@code 03-threading-and-api.md} §6.5). Kept on the body
+ * ({@link Body#attachment}, {@link Body#ignoredTag}); read on the thread using the world.
  */
 public final class LevelBodies {
 
@@ -66,9 +66,9 @@ public final class LevelBodies {
 
     /**
      * The entity this body never meets, {@code null} for none (design doc {@code 04-entities-and-bodies.md} §17): the
-     * entity's proxy does not touch it, the entity's own moves pass through it, and it is not the entity's base — a ragdoll
-     * and the entity it is the body of, whose box would push it out of itself. Every other entity meets it as its filter
-     * says. Its copies on clients ({@link #setSynced}) never meet the entity either. One entity per body.
+     * entity's proxy does not touch it, the entity's own moves pass through it, and it is not the entity's base — a
+     * ragdoll and the entity it is the body of, whose box would push it out of itself. Every other entity meets it as
+     * its filter says. Its copies on clients ({@link #setSynced}) never meet the entity either. One entity per body.
      */
     public static void setIgnoredEntity(Body body, @Nullable Entity entity) {
         body.setIgnoredTag(entity == null ? 0 : EntityShapes.tagOf(entity));

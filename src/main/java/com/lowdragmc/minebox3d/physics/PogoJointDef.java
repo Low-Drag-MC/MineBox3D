@@ -9,7 +9,7 @@ package com.lowdragmc.minebox3d.physics;
 public final class PogoJointDef extends JointDef<PogoJoint, PogoJointDef> {
     /** The ground's normal at the contact, world space, unit. */
     public float normalX, normalY, normalZ;
-    /** Spring stiffness, Hz. */
+    /** Spring stiffness, Hz; 0, Box3D's default, turns the joint off. */
     public float hertz;
 
     public float dampingRatio;

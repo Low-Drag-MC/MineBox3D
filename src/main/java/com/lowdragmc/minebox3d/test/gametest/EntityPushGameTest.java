@@ -133,8 +133,8 @@ public final class EntityPushGameTest {
                 })
                 .thenExecuteAfter(30, () -> {
                     Body crate = boxes[0], iron = boxes[1];
-                    // the first hit: an inelastic collision of 31 kg and 54 kg at 6 m/s moves the stand at 2.2 m/s; of
-                    // 2 t and 54 kg at 5.8
+                    // the first hit: an inelastic collision of 31 kg and 54 kg at 6 m/s moves the stand at 2.2 m/s;
+                    // of 2 t and 54 kg, at 5.8
                     EntityPushedByBodyEvent first = FIRST.get(light);
                     helper.assertTrue(
                             first != null && Math.abs(first.getVelocityChange().x - 2.19) < 0.5,
@@ -300,7 +300,9 @@ public final class EntityPushGameTest {
                 });
     }
 
-    /** A crate riding on a falling stand lands with it: the stand's proxy is not driven into the ground and flung back. */
+    /**
+     * A crate riding on a falling stand lands with it: the stand's proxy is not driven into the ground and flung back.
+     */
     @GameTest(template = "empty", batch = "minebox3d_push_landing", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
     public static void aBodyRidingAFallingEntityLandsWithIt(GameTestHelper helper) {
@@ -336,7 +338,10 @@ public final class EntityPushGameTest {
                 });
     }
 
-    /** An item frame hanging in a body's way stays on its wall: a push would break it off ({@code BlockAttachedEntity.push}). */
+    /**
+     * An item frame hanging in a body's way stays on its wall: a push would break it off
+     * ({@code BlockAttachedEntity.push}).
+     */
     @GameTest(template = "empty", batch = "minebox3d_push_frame", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
     public static void aHangingEntityIsNeverPushedOffItsWall(GameTestHelper helper) {
@@ -382,8 +387,8 @@ public final class EntityPushGameTest {
     }
 
     /**
-     * A private physics (a mod's own simulation) reads the level's entities but does not push them unless its maker turns
-     * it on (user's ruling, 2026-10-29): two of them side by side, as made and turned on, each with iron sliding at a stand.
+     * A private physics (a mod's own simulation) reads the level's entities but does not push them unless its maker
+     * turns it on (doc 04 §9.3): two of them side by side, as made and turned on, each with iron sliding at a stand.
      */
     @GameTest(template = "empty", batch = "minebox3d_push_private", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)

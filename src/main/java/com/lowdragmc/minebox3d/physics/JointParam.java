@@ -2,7 +2,8 @@ package com.lowdragmc.minebox3d.physics;
 
 /**
  * The runtime joint properties by number, for {@code B3.jointSet / jointGet}. ⚠️ The same numbers as
- * {@code enum mb3_joint_param} in {@code native/src/mb3_joint.c}; {@code JointApiTest} sets and reads every one back.
+ * {@code enum mb3_joint_param} in {@code native/src/mb3_joint.c}; {@code JointTest} and {@code MoverJointTest} read
+ * back what they set.
  */
 final class JointParam {
 

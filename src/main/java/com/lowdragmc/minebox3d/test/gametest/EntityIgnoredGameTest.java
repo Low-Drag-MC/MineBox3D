@@ -25,10 +25,10 @@ import org.joml.Quaternionf;
 import org.joml.Vector3d;
 
 /**
- * <b>Entities that meet no body, and bodies that never meet one entity</b> (design doc {@code 04-entities-and-bodies.md}
- * §17): an entity whose physics collision is off has no proxy and moves through every body; a body ignoring an entity is
- * neither touched by its proxy nor in the way of its moves and sweeps, and meets every other entity as before; a moving
- * deck an entity stops meeting lets it go as it is.
+ * <b>Entities that meet no body, and bodies that never meet one entity</b> (design doc
+ * {@code 04-entities-and-bodies.md} §17): an entity whose physics collision is off has no proxy and moves through every
+ * body; a body ignoring an entity is neither touched by its proxy nor in the way of its moves and sweeps, and meets
+ * every other entity as before; a moving deck an entity stops meeting lets it go as it is.
  */
 @GameTestHolder(MineBox3D.MOD_ID)
 public final class EntityIgnoredGameTest {

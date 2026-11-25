@@ -29,14 +29,15 @@ import org.joml.Vector3d;
 
 /**
  * <b>Players and the bodies</b> (design doc {@code 04-entities-and-bodies.md} §11, batch 4c-3), over a real dedicated
- * server and two real clients: A lands on a synced deck on its own client, and the server — which takes the client's word
- * on bodies — has it standing on the server's deck; the deck sets off and A goes along on both sides, A's moves not taken
- * for wrong ones (A plays survival, where the server checks them); the deck turns a quarter and carries A round,
- * turning it too; B sees A stay put on the moving deck (placed on its replica, not eased in from Minecraft's packets),
- * looking down and turned with the deck; B, back from far off, sees the stand on the deck again, and put off it, at
- * once where it was put; B walks into a synced wall and stops at it, on both sides; B pushes a light synced crate
- * along; and A, sent far off its moving deck onto a deck its client has not got yet, lands on it rather than through
- * it, and is not dragged along by the old one on the server.
+ * server and two real clients: A lands on a synced deck on its own client, and the server — which takes the client's
+ * word on bodies — has it standing on the server's deck; the deck sets off and A goes along on both sides, A's moves
+ * not taken for wrong ones (A plays survival, where the server checks them); the deck turns a quarter and carries A
+ * round, turning it too; B sees A stay put on the moving deck (placed on its replica, not eased in from Minecraft's
+ * packets), looking down and turned with the deck; B, back from far off, sees the stand on the deck again, and put off
+ * it, at once where it was put; B walks into a synced wall and stops at it, on both sides; B pushes a light synced
+ * crate along, one crate into another, and one into a body its client has not got, each as the server has it; and A,
+ * sent far off its moving deck onto a deck its client has not got yet, lands on it rather than through it, and is not
+ * dragged along by the old one on the server.
  *
  * <p>⚠️ The harness's server allows flight, so the flying kick a body under a player keeps away is not reached here
  * (GameTest: EntityBlockedGameTest's body-under check).
@@ -119,8 +120,8 @@ public class PlayerOnBodyScenario implements MPScenario {
     }
 
     /**
-     * A crate B pushes rather than steps onto: as high as a player's step, it would be climbed ({@link StepUpOn}). Said on
-     * the server: B's client steps by its replica's, so a value lost on the way has B on top of it, not pushing it.
+     * A crate B pushes rather than steps onto: as high as a player's step, it would be climbed ({@link StepUpOn}). Said
+     * on the server: B's client steps by its replica's, so a value lost on the way has B on top of it, not pushing it.
      */
     private static void pushedNotClimbed(Body crate) {
         for (Shape shape : crate.shapes()) {
@@ -413,9 +414,8 @@ public class PlayerOnBodyScenario implements MPScenario {
                                 for (int i = 1; i < ticks.size(); i++) {
                                     back = Math.max(back, ticks.get(i - 1)[1] - ticks.get(i)[1]);
                                 }
-                                // the client's word on where B is, the push told to the server: the replica gives as
-                                // the
-                                // server's body moves, a round trip on
+                                // the client's word on where B is, the push told to the server: the replica gives
+                                // as the server's body moves, a round trip on
                                 ctx.log("pushing the crate: B held up " + heldUp(ticks)
                                         + " tick(s), its replica back by at most " + back);
                                 ctx.check("the replica never went back", back < 0.02, "< 0.02", back);
@@ -481,8 +481,7 @@ public class PlayerOnBodyScenario implements MPScenario {
                         }))
 
                 // a crate walked into what B's client does not have — a body that is not synced: it stops there on the
-                // server, and
-                // as B's client has it
+                // server, and as B's client has it
                 .server("a crate in front of B, a body its client does not have just past it", sc -> {
                     sc.player("B").teleportTo(sc.server().overworld(), 2.5, GROUND, 20.5, -90, 0);
                     pushedNotClimbed(

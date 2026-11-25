@@ -14,7 +14,10 @@ import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.junit.jupiter.api.Test;
 
-/** <b>How worlds are shared between threads</b> (design doc 03 §4.2): bound to an owner, or used by one thread at a time. */
+/**
+ * <b>How worlds are shared between threads</b> (design doc 03 §4.2): bound to an owner, or used by one thread at a
+ * time.
+ */
 class ThreadModeTest {
 
     private static PhysicsWorld exclusive() {
@@ -130,8 +133,8 @@ class ThreadModeTest {
     }
 
     /**
-     * The case the mode is for: many small worlds stepped on a pool, each frame on whichever thread is free (EntityStudio's
-     * Rigid Body nodes, doc 56 §3.4).
+     * The case the mode is for: many small worlds stepped on a pool, each frame on whichever thread is free
+     * (EntityStudio's Rigid Body nodes, doc 56 §3.4).
      */
     @Test
     void smallWorldsStepOnAPoolFrameAfterFrame() throws Exception {

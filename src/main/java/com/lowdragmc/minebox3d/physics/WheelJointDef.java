@@ -1,8 +1,8 @@
 package com.lowdragmc.minebox3d.physics;
 
 /**
- * Box3D's {@code b3WheelJointDef}: body A is the chassis, body B the wheel. The wheel spins about frame B's z axis, rides
- * a suspension along frame A's x axis, and may steer about it.
+ * Box3D's {@code b3WheelJointDef}: body A is the chassis, body B the wheel. The wheel spins about frame B's z axis,
+ * rides a suspension along frame A's x axis, and may steer about it.
  */
 public final class WheelJointDef extends JointDef<WheelJoint, WheelJointDef> {
     public boolean enableSuspensionSpring;

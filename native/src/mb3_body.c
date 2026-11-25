@@ -8,8 +8,8 @@
 #define MB3_CONTACT_FLOATS 10
 
 // Seen from the body (layout in B3.bodyGetContactPoints). normalVelocity is negative approaching, the same either way
-// round (so no flip), and sampled by Box3D only for a pair with hit events or restitution, else 0. The anchor is in
-// world orientation.
+// round (so no flip), and sampled by Box3D only for a pair with hit events on, else 0. The anchor is from the body's
+// centre of mass, in world orientation.
 MB3_JNI( jint, bodyGetContactPoints )( JNIEnv* env, jclass type, jlong body, jfloatArray points, jlongArray otherShapes,
 									   jintArray cells )
 {

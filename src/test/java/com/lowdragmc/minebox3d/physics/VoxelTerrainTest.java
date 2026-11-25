@@ -15,7 +15,7 @@ import org.joml.Vector3i;
 import org.junit.jupiter.api.Test;
 
 /**
- * <b>Voxel terrain</b> (design doc {@code 01-voxel-terrain.md}, milestone V1): the Box3D fork's voxel
+ * <b>Voxel terrain</b> (design doc {@code 01-voxel-terrain.md}, milestones V1 and V2): the Box3D fork's voxel
  * shape, without Minecraft. Blocks here are built from the same boxes Minecraft's collision shapes give.
  */
 class VoxelTerrainTest {
@@ -369,13 +369,13 @@ class VoxelTerrainTest {
 
     /**
      * A capsule lying across a stair's upper half, its ends over the drops on either side, slid from stone onto the
-     * stairs. Its axis passes exactly over the seam between the stone's top and the stair's: the stair's triangle under it
-     * reports an edge contact, and the corner of the next triangle, beside the drop, once pushed it sideways and turned it
-     * until it fell (found by the GameTest on real stairs).
+     * stairs. As its axis crosses the seam between the stone's top and the stair's, the triangle under it reports an
+     * edge contact, and the corner of the next triangle, beside the drop, once pushed it sideways and turned it until
+     * it fell.
      *
-     * <p>Only that crossing is measured. Back onto stone at x = 4 its ends pass 1 cm over the top corners of the stone's
-     * sides, the real step up from the stair's tread, and Box3D's speculative contact lifts it a little there, as it would
-     * off a mesh (design doc 01 §12.4).
+     * <p>Only that crossing is measured. Back onto stone at x = 4 its ends pass 1 cm over the top corners of the
+     * stone's sides, the real step up from the stair's tread, and Box3D's speculative contact lifts it a little there,
+     * as it would off a mesh (design doc 01 §12.4).
      */
     @Test
     void aCapsuleAcrossAStairsUpperHalfIsNotTurnedAsideAtTheSeam() {
@@ -448,7 +448,7 @@ class VoxelTerrainTest {
     @Test
     void aBuriedBodyHeadsForTheNearestOpenCell() {
         try (Terrain t = new Terrain()) {
-            // a solid 5 x 5 x 5 lump with the body in its middle cell, open air above the lump
+            // a solid 5 x 5 x 5 lump with the body in cell (2, 3, 2), under one layer: open air is nearest above
             for (int y = 0; y < 5; y++) {
                 t.floor(0, 5, 0, 5, y, (x, z) -> t.full);
             }

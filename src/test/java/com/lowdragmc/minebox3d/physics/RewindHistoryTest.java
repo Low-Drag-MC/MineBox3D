@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * <b>Putting bodies back and simulating again</b> ({@link RewindHistory}): where nothing touches, the run again is the
- * first run to the bit; where contacts and joints play a part — they keep no history, as Unreal's do not — it stays within
- * a centimetre and a degree. Ticks of three steps of four sub-steps, as a level's physics takes them.
+ * first run to the bit; where contacts and joints play a part — they keep no history, as Unreal's do not — it stays
+ * within a centimetre and a degree. Ticks of three steps of four sub-steps, as a level's physics takes them.
  */
 class RewindHistoryTest {
 
@@ -160,9 +160,8 @@ class RewindHistoryTest {
             List<Quaternionf> firstTurns =
                     links.stream().map(b -> b.rotation(new Quaternionf())).toList();
 
-            // back a round trip's worth (six ticks): a swinging chain is chaotic, and the joints' warm starts that are
-            // not
-            // held part the two runs by 2 cm over a second and a quarter
+            // back a round trip's worth (six ticks): a swinging chain is chaotic, and the joints' warm starts, not
+            // held, part the two runs by 2 cm over a second and a quarter
             for (Body link : links) {
                 assertTrue(history.restore(33, link));
             }

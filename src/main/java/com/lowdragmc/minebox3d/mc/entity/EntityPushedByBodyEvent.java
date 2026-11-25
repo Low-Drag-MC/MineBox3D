@@ -7,13 +7,13 @@ import net.neoforged.bus.api.ICancellableEvent;
 import net.neoforged.neoforge.event.entity.EntityEvent;
 
 /**
- * <b>A body moved into an entity hard enough to push it</b> (design doc {@code 04-entities-and-bodies.md} §2): fired on
- * {@code NeoForge.EVENT_BUS}, on the server's level thread, once per entity per tick, just before the push is added to
- * the entity's motion.
+ * <b>A body moved into an entity hard enough to push it</b> (design doc {@code 04-entities-and-bodies.md} §2): fired
+ * on {@code NeoForge.EVENT_BUS}, on the server's level thread, once per entity per tick, just before the push is added
+ * to the entity's motion.
  *
- * <p>Cancel it to leave the entity where it is; change {@link #setVelocityChange the velocity change} to push harder or
- * softer. MineBox3D does no damage on its own — a mod that wants a falling crate to hurt does it here, from
- * {@link #getApproachSpeed()} or {@link #getImpulse()}, as it sees fit.
+ * <p>Cancel it to leave the entity where it is; change {@link #setVelocityChange the velocity change} to push harder
+ * or softer. MineBox3D does no damage on its own — a mod that wants a falling crate to hurt does it here, from
+ * {@link #getApproachSpeed()} or {@link #getImpulse()}.
  */
 public class EntityPushedByBodyEvent extends EntityEvent implements ICancellableEvent {
 
@@ -45,7 +45,7 @@ public class EntityPushedByBodyEvent extends EntityEvent implements ICancellable
         return impulse;
     }
 
-    /** What is added to the entity's velocity, m/s (blocks a second; Minecraft's motion is a twentieth of it a tick). */
+    /** What is added to the entity's velocity, m/s (blocks a second; Minecraft's motion is a twentieth of it). */
     public Vec3 getVelocityChange() {
         return velocityChange;
     }

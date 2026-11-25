@@ -11,8 +11,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * <b>A turned box swept exactly</b> ({@link PhysicsWorld#sweepBox}, mb3_sweep.c) — what a character mover keeping its
- * box on what it stands on needs: it stops where it touches, touching is no hit unless it moves in, a box already inside
- * is told the least way out, and it is as exact ten million blocks out as at the origin.
+ * box on what it stands on needs: it stops where it touches, touching is no hit unless it moves in, a box already
+ * inside is told the least way out, and it is as exact ten million blocks out as at the origin.
  */
 class BoxSweepTest {
 
@@ -159,8 +159,7 @@ class BoxSweepTest {
                     Geometry.Mesh.of(MeshData.create(
                             new float[] {-3, 0, -3, 3, 0, -3, 3, 0, 3, -3, 0, 3}, new int[] {0, 2, 1, 0, 3, 2}, true)));
             // a half-block box dropped onto each: its bottom on the sphere's top (1), the capsule's (1.5), the hull's
-            // (1),
-            // the mesh's (0)
+            // (1), the mesh's (0)
             double[] xs = {0, 10, 20, 30};
             double[] tops = {1.0, 1.5, 1.0, 0.0};
             for (int i = 0; i < 4; i++) {
@@ -335,7 +334,7 @@ class BoxSweepTest {
     @Test
     void farFromALargeBodysOriginItTouchesAsNearIt() {
         try (PhysicsWorld world = world()) {
-            // a mesh floor a kilometre across: the box five hundred metres from its origin, where a float steps by 3e-5
+            // a mesh floor 1.2 km across: the box five hundred metres from its origin, where a float steps by 3e-5
             Body mesh = world.createBody(new BodyDef());
             mesh.createShape(
                     new ShapeDef(),

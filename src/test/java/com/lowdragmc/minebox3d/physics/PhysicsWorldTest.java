@@ -233,8 +233,7 @@ class PhysicsWorldTest {
         try (PhysicsWorld world = world()) {
             Body floor = world.createBody(new BodyDef());
             assertThrows(IllegalStateException.class, () -> floor.createShape(new ShapeDef(), Geometry.Mesh.of(mesh)));
-            // the first refusal must not have counted it back up: a second try reaching Box3D would hand it freed
-            // memory
+            // the first refusal must not have counted it back up: a second try would hand Box3D freed memory
             assertThrows(IllegalStateException.class, () -> floor.createShape(new ShapeDef(), Geometry.Mesh.of(mesh)));
         }
     }

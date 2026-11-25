@@ -55,7 +55,7 @@ class WorldEventsTest {
             long section = t.grid.sectionShapeId(0, 0, 0);
             assertTrue(begin.shapeIdA() == section || begin.shapeIdB() == section, "with the terrain");
 
-            assertEquals(1, hits.size(), "landing at about 8 m/s is a hit");
+            assertEquals(1, hits.size(), "landing at about 13 m/s is a hit");
             WorldEvents.ContactHit hit = hits.getFirst();
             assertTrue(hit.onTerrain());
             assertTrue(hit.approachSpeed() > 5, "speed " + hit.approachSpeed());

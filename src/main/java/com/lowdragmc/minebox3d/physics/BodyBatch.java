@@ -3,9 +3,9 @@ package com.lowdragmc.minebox3d.physics;
 import com.lowdragmc.minebox3d.internal.B3;
 
 /**
- * Many bodies of one world driven in one call — a physics asset's kinematic bodies following the animation. Reading where
- * they are needs no batch: {@link Body#position} costs no call into Box3D. The bodies are fixed when made; a destroyed one
- * makes every call throw.
+ * Many bodies of one world driven in one call — a physics asset's kinematic bodies following the animation. Reading
+ * where they are needs no batch: {@link Body#position} costs no call into Box3D. The bodies are fixed when made; a
+ * destroyed one makes {@link #setTargetTransforms} throw.
  */
 public final class BodyBatch {
 
@@ -40,8 +40,8 @@ public final class BodyBatch {
     }
 
     /**
-     * {@link Body#setTargetTransform} for every body, {@link #TRANSFORM} doubles each, checked as it checks them: each reaches
-     * its target over {@code timeStep} by velocity, waking it, so what it meets on the way is pushed.
+     * {@link Body#setTargetTransform} for every body, {@link #TRANSFORM} doubles each, checked as it checks them —
+     * before any body is driven.
      */
     public void setTargetTransforms(double[] transforms, float timeStep) {
         if (transforms.length < ids.length * TRANSFORM) {

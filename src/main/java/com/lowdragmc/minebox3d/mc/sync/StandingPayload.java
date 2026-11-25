@@ -8,8 +8,8 @@ import net.minecraft.resources.ResourceLocation;
 
 /**
  * <b>Where a player — or the vehicle it steers — stands on a synced body</b> (design doc
- * {@code 04-entities-and-bodies.md} §11.2 #3): client to server, right before each move packet, while it stands on (or is
- * still carried off) one: the body's network number and its feet in the body's frame; {@code body} -1 once it is on
+ * {@code 04-entities-and-bodies.md} §11.2 #3): client to server, right before each move packet, while it stands on (or
+ * is still carried off) one: the body's network number and its feet in the body's frame; {@code body} -1 once it is on
  * none. The server puts the move that follows at that point of its own body before it checks it (SyncedRiders): the
  * client's world position is its replica's, a few ticks behind.
  */

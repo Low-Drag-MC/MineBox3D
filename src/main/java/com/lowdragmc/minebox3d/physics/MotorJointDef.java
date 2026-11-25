@@ -3,7 +3,8 @@ package com.lowdragmc.minebox3d.physics;
 /**
  * Box3D's {@code b3MotorJointDef}: drives body B towards frame B coinciding with frame A, by springs of limited force,
  * and towards a velocity relative to A, by a limited force — a body following an animated target. Move the target by
- * changing frame A ({@link Joint#setLocalFrameA}) on a body that stands still or moves with the animation.
+ * changing frame A ({@link Joint#setLocalFrameA}) on a body that stands still or moves with the animation. Each part
+ * acts only with its maximum force or torque above zero, a spring also with its hertz — Box3D's defaults are all zero.
  */
 public final class MotorJointDef extends JointDef<MotorJoint, MotorJointDef> {
     /** m/s of B relative to A, world space. */

@@ -32,9 +32,9 @@ import org.jetbrains.annotations.Nullable;
  *       {@link System#load} from here is what makes {@code B3}'s methods resolve.</li>
  * </ul>
  *
- * <p>A copy is never overwritten: the folder name is the hash of its content, so a file that is
- * there is the right file — and on Windows a library some other running game has loaded could not be
- * replaced anyway.
+ * <p>A copy of the right size is never overwritten: the folder name is the hash of its content, so
+ * such a file there is the right file — and on Windows a library some other running game has loaded
+ * could not be replaced anyway. One of another size (a copy cut short) is replaced.
  */
 public final class NativeLibrary {
 

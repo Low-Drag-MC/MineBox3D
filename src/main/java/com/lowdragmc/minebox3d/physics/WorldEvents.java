@@ -6,18 +6,19 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * <b>What happened in a world's steps</b> since the frame began ({@link PhysicsWorld#beginInterpolationFrame()}): touches
- * beginning and ending, hits, sensor overlaps, joints past their thresholds (design doc {@code 03-threading-and-api.md}
- * §6.3). Copied out of Box3D once per step and gathered over the frame's steps (a world that never begins a frame
- * keeps the last step's), then read on the thread using the world; nothing is called back during a step. The lists
- * are live: the next frame empties them.
+ * <b>What happened in a world's steps</b> since the frame began ({@link PhysicsWorld#beginInterpolationFrame()}):
+ * touches beginning and ending, hits, sensor overlaps, joints past their thresholds (design doc
+ * {@code 03-threading-and-api.md} §6.3). Copied out of Box3D once per step and gathered over the frame's steps (a world
+ * that never begins a frame keeps the last step's), then read on the thread using the world; nothing is called back
+ * during a step. The lists are live: the next frame empties them.
  *
  * <p>Shapes are resolved when copied. A shape destroyed between steps is still named by the end events Box3D reports
  * for it after the next step; {@code null} is voxel terrain, which has no {@link Shape}, with its id.
  *
  * <p>Box3D reports a pair when either shape asks: contacts with {@link ShapeDef#enableContactEvents}, hits with
  * {@link ShapeDef#enableHitEvents} above the world's hit threshold (all off by default). Sensor overlaps need
- * {@link ShapeDef#enableSensorEvents} on both the {@link ShapeDef#sensor} and the shape entering it.
+ * {@link ShapeDef#enableSensorEvents} on both the {@link ShapeDef#sensor} and the shape entering it, which must be a
+ * sphere, capsule, box or hull.
  */
 public final class WorldEvents {
 
@@ -28,9 +29,10 @@ public final class WorldEvents {
     public record ContactEnd(@Nullable Shape shapeA, @Nullable Shape shapeB, long shapeIdA, long shapeIdB) {}
 
     /**
-     * Two shapes met faster than the world's hit threshold. {@code x, y, z} is where, the normal points from A to B.
-     * When one of them is voxel terrain, {@code terrainSide} says which (1 = A, 2 = B, 0 = neither) and {@code cell}
-     * the block cell.
+     * Two shapes met faster than the world's hit threshold. {@code x, y, z} is where, the normal points from A to B,
+     * {@code approachSpeed} is in m/s, {@code materialA} and {@code materialB} are the surfaces'
+     * {@linkplain SurfaceMaterial#userMaterialId user material ids}. When one of them is voxel terrain,
+     * {@code terrainSide} says which (1 = A, 2 = B, 0 = neither) and {@code cellX, cellY, cellZ} the block cell.
      */
     public record ContactHit(
             @Nullable Shape shapeA,
@@ -62,9 +64,9 @@ public final class WorldEvents {
     public record SensorEnd(@Nullable Shape sensor, @Nullable Shape visitor, long sensorId, long visitorId) {}
 
     /**
-     * A joint whose force or torque passed its threshold ({@link JointDef#forceThreshold}) in a step, while awake. Box3D
-     * only reports it: breaking the joint is the reader's call ({@link Joint#destroy}). {@code null} for a joint made
-     * outside the API.
+     * A joint whose force or torque passed its threshold ({@link JointDef#forceThreshold}) in a step, while awake.
+     * Box3D only reports it: breaking the joint is the reader's call ({@link Joint#destroy}). {@code null} for a joint
+     * made outside the API.
      */
     public record JointEvent(@Nullable Joint joint, long jointId) {}
 

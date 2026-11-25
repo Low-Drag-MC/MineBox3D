@@ -228,8 +228,9 @@ public final class B3 {
             long[] longs);
 
     /**
-     * Every hit of a swept shape (as {@link #worldCastShapeClosest}), closest first, one per shape, 11 doubles and 2 longs
-     * each as {@link #worldCastRayClosest}. Returns how many there are; more than {@code capacity} writes nothing.
+     * Every hit of a swept shape (as {@link #worldCastShapeClosest}), closest first, one per shape, 11 doubles and 2
+     * longs each as {@link #worldCastRayClosest}. Returns how many there are; more than {@code capacity} writes
+     * nothing.
      */
     public static native int worldCastShape(
             int world,
@@ -345,7 +346,7 @@ public final class B3 {
     /** {@code [px, py, pz, qx, qy, qz, qw]} */
     public static native void bodyGetTransform(long body, double[] out);
 
-    /** Seven doubles per body into {@code out}, in the order of {@code bodies}. */
+    /** Seven doubles per body into {@code out}, in the order of {@code bodies}, each as {@link #bodyGetTransform}. */
     public static native void bodiesGetTransforms(long[] bodies, int count, double[] out);
 
     public static native void bodySetTransform(
@@ -381,7 +382,7 @@ public final class B3 {
             float timeStep,
             boolean wake);
 
-    /** {@link #bodySetTargetTransform} for {@code count} bodies, 7 doubles each {@code [px, py, pz, qx, qy, qz, qw]}. */
+    /** {@link #bodySetTargetTransform} for {@code count} bodies, 7 doubles each as {@link #bodiesGetTransforms}. */
     public static native void bodiesSetTargetTransforms(
             long[] bodies, int count, double[] transforms, float timeStep, boolean wake);
 
@@ -396,7 +397,7 @@ public final class B3 {
 
     public static native float bodyGetFloat(long body, int param);
 
-    /** {@code flag}: 0 bullet, 1 sleep enabled, 2 fast rotation allowed, 3 contact recycling. */
+    /** {@code flag}: 0 bullet, 1 sleep enabled, 2 fast rotation allowed, 3 contact recycling, 4 fixed rotation. */
     public static native void bodySetFlag(long body, int flag, boolean value);
 
     public static native boolean bodyGetFlag(long body, int flag);
@@ -464,11 +465,11 @@ public final class B3 {
     public static native float bodyGetClosestPoint(long body, double x, double y, double z, double[] out);
 
     /**
-     * The body's touching contact points: per point {@code [nx, ny, nz, separation, normalImpulse, totalNormalImpulse,
-     * normalVelocity, ax, ay, az]} (normal from the other shape into this body, impulse of the last sub-step and of the
-     * step, this body's normal velocity relative to the other at the step's start, anchor on this body relative to its
-     * centre of mass), the other shape and {@code [terrain, x, y, z]}. Returns how many there are, which may be more
-     * than the arrays take.
+     * The points of the body's touching contacts: per point {@code [nx, ny, nz, separation, normalImpulse,
+     * totalNormalImpulse, normalVelocity, ax, ay, az]} (normal from the other shape into this body; impulse of the last
+     * sub-step and of the step; relative normal velocity before the solve, negative approaching, 0 unless the pair has
+     * hit events; anchor from this body's centre of mass, world orientation), the other shape and
+     * {@code [terrain, x, y, z]}. Returns how many there are, which may be more than the arrays take.
      */
     public static native int bodyGetContactPoints(long body, float[] points, long[] otherShapes, int[] cells);
 
@@ -669,10 +670,16 @@ public final class B3 {
 
     public static native void constraintJointGetSettings(long joint, ConstraintJointSettings out);
 
-    /** 13 floats per joint: {@code [linear position xyz, linear velocity xyz, orientation xyzw, angular velocity xyz]} */
+    /**
+     * 13 floats per joint: {@code [linear position xyz, linear velocity xyz, orientation xyzw, angular velocity xyz]},
+     * as the settings' targets.
+     */
     public static native void constraintJointsSetTargets(long[] joints, int count, float[] values, boolean wake);
 
-    /** 8 floats per joint: {@code [twist, swing1, swing2, linear offset xyz, linear separation, angular separation]} */
+    /**
+     * 8 floats per joint: {@code [twist, swing1, swing2, linear offset xyz, linear separation, angular separation]},
+     * the offset in frame A.
+     */
     public static native void constraintJointsGetState(long[] joints, int count, float[] out);
 
     // ---- body pair tables ---------------------------------------------------------------------

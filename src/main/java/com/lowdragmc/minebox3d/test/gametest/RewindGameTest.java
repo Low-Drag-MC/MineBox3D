@@ -21,11 +21,11 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 /**
- * <b>A level's physics rolled back and simulated again</b> ({@link LevelRewind}): the ticks run again end where the first
- * run ended; a kick given again for a past tick ends where a run kicked then ends; what is outside the bubble stands still
- * meanwhile and is as it was after; what the run again sets off is dropped; what was drawn fades into where it is in six
- * frames; nothing is held while nothing is watched, nor for longer than a second. Each on a private physics of its own, high
- * over the test, ticked by hand.
+ * <b>A level's physics rolled back and simulated again</b> ({@link LevelRewind}): the ticks run again end where the
+ * first run ended; a kick given again for a past tick ends where a run kicked then ends; what is outside the bubble
+ * stands still meanwhile and is as it was after; what the run again sets off is dropped; what was drawn fades into
+ * where it is in six frames; nothing is held while nothing is watched, nor for longer than a second. Each on a private
+ * physics of its own, high over the test, ticked by hand.
  */
 @GameTestHolder(MineBox3D.MOD_ID)
 public final class RewindGameTest {

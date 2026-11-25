@@ -15,9 +15,9 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3d;
 
 /**
- * A private {@link LevelPhysics} of a test's own on the test's level ({@link LevelPhysics#create}), stepped by the test:
- * whole seconds of physics in one game tick, nothing else in the world. It hears the level's block and chunk changes
- * like the level's own one does.
+ * A private {@link LevelPhysics} of a test's own on the test's level ({@link LevelPhysics#create}), stepped by the
+ * test: whole seconds of physics in one game tick, nothing else in the world. It hears the level's block and chunk
+ * changes as the level's own does.
  */
 final class PrivatePhysics implements AutoCloseable {
 

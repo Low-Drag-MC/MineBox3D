@@ -91,8 +91,8 @@ static int mb3_assert( const char* condition, const char* fileName, int lineNumb
 		snprintf( t_error, MB3_ERROR_CAPACITY, "%s", message );
 		t_errorPending = true;
 	}
-	// 0 = no debugger break. Box3D carries on past the assertion; the Java call that caused it
-	// throws on its way out, and the Java side validates arguments so that this stays the exception.
+	// 0 = no debugger break: Box3D carries on and the call throws on its way out. Java validates arguments so that
+	// this stays the exception.
 	return 0;
 }
 

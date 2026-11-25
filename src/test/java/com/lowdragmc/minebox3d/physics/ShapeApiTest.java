@@ -259,7 +259,7 @@ class ShapeApiTest {
     /** With per-triangle materials the base material is not used: the first of them is the shape's own. */
     @Test
     void aMeshWithMaterialsHasTheFirstAsItsOwnAndASweepReportsTheTrianglesOwn() {
-        // two triangles side by side, x 0..1 and 1..2, the second with material 1
+        // two squares side by side, x 0..1 and 1..2, of two triangles each, the second with material 1
         float[] vertices = {0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 2, 0, 0, 2, 0, 1};
         try (PhysicsWorld world = world();
                 MeshData mesh = MeshData.create(
@@ -406,10 +406,11 @@ class ShapeApiTest {
     }
 
     /**
-     * Through a node reaching back to the origin, ten and twenty-five million blocks out: a ball there and the one cast at
-     * make one node, its middle millions of blocks off the cast; a third far the other way makes it a child of the root.
-     * ⚠️ Real shapes' bounds are fattened and rounded outwards, and with that slack even a walk that centres such a node
-     * unclipped met every ball here — what the clip is for was shown by an exact emulation (Entity Studio doc 56 §19.10).
+     * Through a node reaching back to the origin, ten and twenty-five million blocks out: a ball there and the one cast
+     * at make one node, its middle millions of blocks off the cast; a third far the other way makes it a child of the
+     * root. ⚠️ Real shapes' bounds are fattened and rounded outwards, and with that slack even a walk that centres such
+     * a node unclipped met every ball here — what the clip is for was shown by an exact emulation (EntityStudio doc 56
+     * §19.10).
      */
     @Test
     void castsFarOutThroughANodeReachingBackToTheOrigin() {
@@ -447,9 +448,9 @@ class ShapeApiTest {
     }
 
     /**
-     * Ten million blocks out a float holds whole blocks: the broad phase's walk, in float, dropped small shapes a cast ran
-     * straight through — two balls of 0.4 under a ray down a half-block line, found or not by where they stood
-     * (fork, doc 02). Many places, on half and whole blocks, so that the rounding goes every way it can.
+     * Ten million blocks out a float holds whole blocks: the broad phase's walk, in float, dropped small shapes a cast
+     * ran straight through — two balls of 0.4 under a ray down a half-block line, found or not by where they stood
+     * (fork, doc 02 §3.1). Many places, on half and whole blocks, so that the rounding goes every way it can.
      */
     @Test
     void castsTenMillionBlocksOutMeetTheSmallShapesTheyRunThrough() {
@@ -479,8 +480,8 @@ class ShapeApiTest {
                 if (count != 2 || hits.shape(0) != balls[p][0] || hits.shape(1) != balls[p][1]) {
                     missed.add("grain swept down at " + p + ": " + count);
                 }
-                // slanting, a tenth of a block off each ball's middle: straight down, the walk's edge tests had nothing
-                // to do
+                // slanting, a tenth of a block off each ball's middle: straight down, the walk's edge tests had
+                // nothing to do
                 count = world.castRay(x(p) - 0.6, -50, z(p) - 0.6, 1.2f, -12, 1.2f, QueryFilter.ALL, hits);
                 if (count != 2 || hits.shape(0) != balls[p][0] || hits.shape(1) != balls[p][1]) {
                     missed.add("ray slanting down at " + p + ": " + count);
@@ -509,8 +510,9 @@ class ShapeApiTest {
     }
 
     /**
-     * More than the natives hold on the stack — sixteen hits a cast or planes a mover, thirty-two shapes an overlap — all
-     * come back, closest first where that is the order, whether the arrays had room from the start or grew for them.
+     * More than the natives hold on the stack — sixteen hits a cast or planes a mover, thirty-two shapes an overlap —
+     * all come back, closest first where that is the order, whether the arrays had room from the start or grew for
+     * them.
      */
     @Test
     void morePastWhatTheNativesHoldOnTheStackAllComeBack() {
@@ -705,8 +707,7 @@ class ShapeApiTest {
                     "a filter leaves a category out");
             assertSame(mine, found.shape(0));
             assertNotSame(hidden, found.shape(0));
-            // the broad phase keeps float bounds: two blocks apart this far out, so "nothing between" is asked nearer
-            // in
+            // the broad phase keeps float bounds, two blocks apart this far out: "nothing between" is asked nearer in
             Body close = world.createBody(new BodyDef().position(1000.5, 0, 0));
             close.createShape(new ShapeDef(), Geometry.Box.of(0.5f, 0.5f, 0.5f));
             assertEquals(1, world.overlapAABB(1000.9, 0, 0, 1001.2, 1, 1, QueryFilter.ALL, found));

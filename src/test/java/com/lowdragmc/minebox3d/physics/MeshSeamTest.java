@@ -9,7 +9,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * <b>Sliding over a mesh's inner edges</b>: a floor of unit squares as one mesh with Box3D's
- * {@code identifyEdges}, which marks the edges inside a flat surface so a sliding body does not catch on them.
+ * {@code identifyEdges}, which links each triangle to its neighbours so a sliding body does not catch on the edges
+ * inside a flat surface.
  *
  * <p>Terrain no longer uses meshes (design doc {@code 01-voxel-terrain.md}); this keeps the general mesh shape
  * honest. Box3D's ghost collision rewrite of 2026-11 (upstream {@code 38f2ae1}) leaves capsules bumpier here than

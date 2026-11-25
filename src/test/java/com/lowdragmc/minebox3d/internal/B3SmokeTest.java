@@ -19,7 +19,10 @@ class B3SmokeTest {
         NativeLibrary.load();
     }
 
-    /** The bindings no Java class calls yet: each once, with an effect that can be seen. */
+    /**
+     * Bindings called raw, each once with an effect that can be seen; some (the gravity read, validity, a shape's body,
+     * a body's type) no Java class calls.
+     */
     @Test
     void everyOtherBindingDoesWhatItSays() {
         int world = B3.createWorld(new WorldDef().gravity(0, -9, 0));
@@ -141,7 +144,8 @@ class B3SmokeTest {
         int world = B3.createWorld(new WorldDef());
         try {
             long body = B3.createBody(world, new BodyDef().type(BodyType.DYNAMIC));
-            // a NaN position: Box3D asserts b3IsValidPosition (a rotation off unit length the bridge normalises)
+            // a NaN position trips Box3D's b3IsValidPosition (a rotation off unit length would not: the bridge
+            // normalises it)
             Box3DException e =
                     assertThrows(Box3DException.class, () -> B3.bodySetTransform(body, Double.NaN, 0, 0, 0, 0, 0, 1));
             assertTrue(e.getMessage().contains("b3IsValidPosition"), e.getMessage());

@@ -5,12 +5,13 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 /**
- * <b>Where a turned box swept through a world first met a shape</b> ({@link PhysicsWorld#sweepBox}) — or, when it started
- * inside some, the one it was deepest in and the least way out. A result object the caller keeps and passes in again;
- * valid until it is filled again.
+ * <b>Where a turned box swept through a world first met a shape</b> ({@link PhysicsWorld#sweepBox}) — or, when it
+ * started inside some, the one it was deepest in and the least way out. A result object the caller keeps and passes in
+ * again; valid until it is filled again.
  *
- * <p>Exact, as a character mover's sweep needs it: the box stops where it touches (not a linear slop short), touching is
- * no hit unless the box moves into the surface, and the normal is the surface's own, out of the shape toward the box.
+ * <p>Exact, as a character mover's sweep needs it: the box stops where it touches (not a linear slop short), touching
+ * is no hit unless the box moves into the surface, and the normal is the surface's own, out of the shape toward the
+ * box.
  */
 public final class BoxSweep {
 
@@ -28,7 +29,10 @@ public final class BoxSweep {
         return hit;
     }
 
-    /** How far along the sweep the box got before it touched, 0 to 1; 0 when it {@linkplain #startPenetrating started inside}. */
+    /**
+     * How far along the sweep the box got before it touched, 0 to 1; 0 when it
+     * {@linkplain #startPenetrating started inside}.
+     */
     public double fraction() {
         return doubles[0];
     }
@@ -48,12 +52,15 @@ public final class BoxSweep {
         return doubles[8] != 0;
     }
 
-    /** How far the box must move along {@link #normal} to be out, when it {@linkplain #startPenetrating started inside}. */
+    /**
+     * How far, m, the box must move along {@link #normal} to be out, when it
+     * {@linkplain #startPenetrating started inside}.
+     */
     public double depth() {
         return doubles[7];
     }
 
-    /** The shape met, {@code null} for one destroyed since. */
+    /** The shape met; {@code null} without a hit, or for one destroyed since. */
     @Nullable
     public Shape shape() {
         return hit && world != null ? world.shape(longs[0]) : null;

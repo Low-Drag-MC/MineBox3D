@@ -66,6 +66,7 @@ public abstract sealed class Joint
         return body == bodyA ? bodyB : bodyA;
     }
 
+    /** False once destroyed — by {@link #destroy}, with either body or with the world. */
     public boolean isValid() {
         return !destroyed && world.isOpen();
     }
@@ -111,7 +112,7 @@ public abstract sealed class Joint
         return out;
     }
 
-    /** Moves frame A on body A — for a {@link MotorJoint}, its target. Does not wake the bodies. */
+    /** Moves frame A on body A — for a {@link MotorJoint}, its target. */
     public void setLocalFrameA(float x, float y, float z, Quaternionfc rotation) {
         setFrame(false, x, y, z, rotation);
     }
@@ -192,7 +193,7 @@ public abstract sealed class Joint
         set(JointParam.CONSTRAINT_TUNING, hertz, dampingRatio, 0, 0);
     }
 
-    /** How far the joint's points have drifted apart, m. */
+    /** How far the joint is moved past what it allows, m. */
     public float linearSeparation() {
         return get(JointParam.LINEAR_SEPARATION, 0);
     }
@@ -212,6 +213,7 @@ public abstract sealed class Joint
         return getVector(JointParam.CONSTRAINT_TORQUE, out);
     }
 
+    /** Whether the joint is being simulated: an attached body is awake. */
     public boolean isAwake() {
         return getFlag(JointParam.AWAKE);
     }

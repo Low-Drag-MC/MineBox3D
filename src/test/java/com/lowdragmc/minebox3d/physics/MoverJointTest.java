@@ -10,9 +10,9 @@ import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 
 /**
- * <b>Box3D's dynamic mover joints</b>: the mover joint drives a character body at a velocity by a limited force, the pogo
- * joint holds it up off what it stands on and weighs that down — every property reads back what was set, and each does
- * what it is for: walks, pushes a light crate, is stopped by a heavy one, stands at its height, tips a plank.
+ * <b>Box3D's dynamic mover joints</b>: the mover joint drives a character body at a velocity by a limited force, the
+ * pogo joint holds it up off what it stands on and weighs that down. Every property reads back what was set, and each
+ * does what it is for: walks, pushes a light crate, is stopped by a heavy one, stands at its height, tips a plank.
  */
 class MoverJointTest {
 
@@ -29,7 +29,7 @@ class MoverJointTest {
         return ground;
     }
 
-    /** A capsule standing upright with its rotation locked, no friction: what Box3D's sample walks. */
+    /** A capsule standing upright with its rotation fixed, no friction: what Box3D's sample walks. */
     private static Body character(PhysicsWorld world, double x, double y, double z) {
         BodyDef def = new BodyDef()
                 .type(BodyType.DYNAMIC)

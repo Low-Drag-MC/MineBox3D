@@ -1,8 +1,8 @@
 package com.lowdragmc.minebox3d.physics;
 
 /**
- * MineBox3D's constraint joint ({@link JointType#CONSTRAINT}): one UE physics asset constraint between a parent (body A)
- * and a child (body B) — each of the six degrees of freedom free, limited or locked, soft limits, linear and angular
+ * MineBox3D's constraint joint ({@link JointType#CONSTRAINT}): one UE physics asset constraint between a parent (body
+ * A) and a child (body B) — each of the six degrees of freedom free, limited or locked, soft limits, linear and angular
  * drives. What it does is {@link #settings}; the frames are the base definition's.
  */
 public final class ConstraintJointDef extends JointDef<ConstraintJoint, ConstraintJointDef> {
@@ -13,6 +13,7 @@ public final class ConstraintJointDef extends JointDef<ConstraintJoint, Constrai
         super(JointType.CONSTRAINT);
     }
 
+    /** Copies {@code settings} into {@link #settings}. */
     public ConstraintJointDef settings(ConstraintJointSettings settings) {
         this.settings.set(settings);
         return this;

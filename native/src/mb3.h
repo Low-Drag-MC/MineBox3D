@@ -7,7 +7,7 @@
 //  2. The JNIEnv is the one the call arrived with. Nothing caches an env or calls back into Java
 //     from a thread it was not given.
 //  3. A Box3D assertion does not break into a debugger. It is recorded for the calling thread and
-//     turned into a Box3DException when the call returns (MB3_RETURN / mb3_check).
+//     turned into a Box3DException when the call returns (mb3_check).
 #pragma once
 
 #include "box3d/box3d.h"
@@ -93,9 +93,8 @@ static inline b3Pos mb3_pos( jdouble x, jdouble y, jdouble z )
 	return (b3Pos){ x, y, z };
 }
 
-// Normalised: Box3D asserts unit length to 20 float epsilons, far tighter than a rotation typed in or composed in Java
-// stays (0.7071 for √½ is already out), and stores the value before the assertion is reported. Java refuses what is not
-// near unit length; this takes the rest the last bit of the way.
+// Normalised: Box3D asserts unit length to 20 float epsilons, tighter than a rotation typed or composed in Java stays
+// (0.7071 for √½ already fails), and keeps the value anyway. Java refuses what is far from unit; this does the rest.
 static inline b3Quat mb3_quat( jfloat x, jfloat y, jfloat z, jfloat w )
 {
 	float lengthSquared = x * x + y * y + z * z + w * w;
@@ -184,8 +183,8 @@ float mb3_mix_restitution( float restitutionA, uint64_t userMaterialIdA, float r
 
 // ---- locking ------------------------------------------------------------------------------------
 // Box3D keeps its worlds in one global array and b3CreateWorld scans it for a free slot without a
-// lock (physics_world.c): two threads creating worlds at once can be handed the same slot. Creation
-// and destruction go through this lock; everything else is per world and needs none.
+// lock (physics_world.c): two threads creating worlds at once can be handed the same slot. World creation
+// and destruction go through this lock, as does destroyVoxelGrid (mb3_voxel.c); everything else is per world.
 void mb3_world_lock( void );
 void mb3_world_unlock( void );
 
@@ -224,7 +223,7 @@ enum mb3_class
 // The ordinal of a Java enum value, -1 for null
 int mb3_enum_ordinal( JNIEnv* env, jobject value );
 
-// Frees the body pair tables of a world about to be destroyed (mb3_pairs.c)
+// Frees the pair tables and body tags of a world about to be destroyed (mb3_pairs.c)
 void mb3_pairs_world_destroyed( b3WorldId world );
 
 // Whether the body never meets the bodies tagged tag (mb3_pairs.c); false for 0

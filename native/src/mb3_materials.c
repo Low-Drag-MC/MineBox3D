@@ -1,5 +1,5 @@
 // MineBox3D JNI bridge: friction and restitution combine modes — UE's physical material's FrictionCombineMode and
-// RestitutionCombineMode on Box3D's mixing callbacks. Two surfaces without a mode mix as Box3D always did.
+// RestitutionCombineMode on Box3D's mixing callbacks. Two surfaces without a mode mix as Box3D's defaults do.
 
 #include "mb3.h"
 
@@ -60,7 +60,7 @@ float mb3_mix_friction( float frictionA, uint64_t userMaterialIdA, float frictio
 	int b = mb3_material_friction_combine( userMaterialIdB );
 	if ( a < 0 && b < 0 )
 	{
-		// Box3D's b3MixFriction
+		// Box3D's b3DefaultFrictionCallback
 		return sqrtf( frictionA * frictionB );
 	}
 	return mb3_combine( mb3_mode( a, b ), frictionA, frictionB );
@@ -72,7 +72,7 @@ float mb3_mix_restitution( float restitutionA, uint64_t userMaterialIdA, float r
 	int b = mb3_material_restitution_combine( userMaterialIdB );
 	if ( a < 0 && b < 0 )
 	{
-		// Box3D's b3MixRestitution
+		// Box3D's b3DefaultRestitutionCallback
 		return restitutionA > restitutionB ? restitutionA : restitutionB;
 	}
 	return mb3_combine( mb3_mode( a, b ), restitutionA, restitutionB );

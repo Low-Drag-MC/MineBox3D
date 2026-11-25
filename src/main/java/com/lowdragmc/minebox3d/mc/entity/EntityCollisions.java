@@ -50,34 +50,34 @@ import org.joml.Vector3f;
  * onto ({@link StepUpOn}) join Minecraft's candidate step heights, so Minecraft's own step-up climbs onto bodies.
  *
  * <p><b>Stepping up</b> goes as Unreal's Mover goes ({@code TryMoveToStepUp}): none at all when what stopped the move
- * may not be stepped onto, none that lands on such a shape, and a step that climbs over a body does not push it. A shape
- * that may not be stepped onto is still walked on by an entity standing on its body: Minecraft has no slopes, and
- * walking up one is stepping up it a little at a time — what Unreal's option leaves alone ("not whether they can walk on
- * it after landing on it").
+ * may not be stepped onto, none that lands on such a shape, and a step that climbs over a body does not push it. A
+ * shape that may not be stepped onto is still walked on by an entity standing on its body: Minecraft has no slopes,
+ * and walking up one is stepping up it a little at a time — what Unreal's option leaves alone ("not whether they can
+ * walk on it after landing on it").
  *
- * <p><b>By mass</b> (§11.2 #1). Every body stops the entity at its surface; one it can push ({@link #pushable}) and did
- * not step up onto is then pushed, when the move ends, as an inelastic collision of the two along the cut axis: both go
- * on at the shared speed {@code u = (M v + m v_b) / (M + m)} (M the entity's mass, m the body's effective mass at the
- * point along the axis, its turning included), the body by an impulse at the point, the entity by keeping {@code u}
- * where Minecraft would zero the axis — and the cut is no collision to Minecraft (sprinting goes on). Next tick the gap
- * the body opened lets the entity on: a 5 kg crate goes along with a player at nearly its pace, two tonnes of iron stay
- * put against the ground's friction. A crate lower than the step is stepped onto rather than pushed, unless its shapes
- * say no ({@link StepUpOn#NO}). Falling onto a body pushes nothing — the weight of what stands on one is pressed into it
- * by its proxy ({@link EntityProxies}).
+ * <p><b>By mass</b> (§11.2 #1). Every body stops the entity at its surface; one it can push ({@link #pushable}) and
+ * did not step up onto is then pushed, when the move ends, as an inelastic collision of the two along the cut axis:
+ * both go on at the shared speed {@code u = (M v + m v_b) / (M + m)} (M the entity's mass, m the body's effective mass
+ * at the point along the axis, its turning included), the body by an impulse at the point, the entity by keeping
+ * {@code u} where Minecraft would zero the axis — and the cut is no collision to Minecraft (sprinting goes on). Next
+ * tick the gap the body opened lets the entity on: a 5 kg crate goes along with a player at nearly its pace, two
+ * tonnes of iron stay put against the ground's friction. One held from beyond by what does not give
+ * ({@link #isPinned}) is a wall. Falling onto a body pushes nothing — the weight of what stands on one is pressed into
+ * it by its proxy ({@link EntityProxies}).
  *
  * <p>Which bodies: the level's own physics only (a private one changes nothing of the level), shapes that accept
  * entities ({@link #FILTER}: not terrain, which is Minecraft's blocks, nor entity proxies; a shape that masks out
  * {@link CollisionCategories#ENTITY} lets entities through) and not sensors, nor the bodies that never meet the entity
  * moving ({@link LevelBodies#setIgnoredEntity}, §17) — and none at all for an entity whose physics collision is off
- * ({@link EntityShapes#hasPhysicsCollision}). On a client its replicas of the server's
- * bodies, with the server body's mass ({@link SyncedBodies#serverMass}); a push its own player gives one is told to
- * the server when the client moves it ({@link SyncedRiders}). An entity whose moves push no body
- * ({@link EntityAuthority#pushesBodies}) is stopped by them all, as by walls.
+ * ({@link EntityShapes#hasPhysicsCollision}). On a client its replicas of the server's bodies, with the server body's
+ * mass ({@link SyncedBodies#serverMass}); a push its own player gives one is told to the server when the client moves
+ * it ({@link SyncedRiders}). An entity whose moves push no body ({@link EntityAuthority#pushesBodies}) is stopped by
+ * them all, as by walls.
  *
  * <p>⚠️ Not what a client moves, on the server — a player, and what a player steers: the server takes the client's
- * word on bodies (§11.2 #2), its move put in the body's frame first (SyncedRiders). A server replaying a client's move
- * against its own bodies, which the client sees one to three ticks late, would pull players back near anything moving;
- * one whose client has no MineBox3D would be pulled back at every body.
+ * word on bodies (§11.2 #2), its move put in the body's frame first (SyncedRiders). The client sees the server's
+ * bodies one to three ticks late, so a server replaying its move against them would pull players back near anything
+ * moving — and one whose client has no MineBox3D at every body.
  */
 public final class EntityCollisions {
 
@@ -86,13 +86,13 @@ public final class EntityCollisions {
             new QueryFilter(CollisionCategories.ENTITY, ~(CollisionCategories.TERRAIN | CollisionCategories.ENTITY));
     /** How far a body that moved into an entity may have gone in and still be pushed out of, beyond the box's size. */
     private static final double PUSH_OUT_REACH = 2.0;
-    /** How much thinner across its move a swept box is (sweeping): twice Box3D's linear slop. */
+    /** How far in each face of a swept box across its move is drawn (sweeping): twice Box3D's linear slop. */
     private static final float SKIN = 0.01f;
     /** How far a body may be into an entity's box and still be only touching it. */
     private static final float OVERLAP = 0.01f;
     /** How much further along an axis than its own sweep a move's step-up went, to have stepped over what cut it. */
     private static final double STEPPED_OVER = 1.0e-4;
-    /** The least upward normal a top is stood and stepped on at: Unreal's walkable floor angle, 44.765 degrees. */
+    /** The least upward normal a top is stood and stepped on at, 45.6 degrees: near Unreal's walkable floor (0.71). */
     private static final float WALKABLE = 0.7f;
 
     private static final Quaternionfc NO_TURN = new Quaternionf();
@@ -103,14 +103,20 @@ public final class EntityCollisions {
 
     private EntityCollisions() {}
 
-    /** Whether entities push a body by mass rather than stop at it: dynamic, and {@linkplain LevelBodies#pushedByEntities pushed}. */
+    /**
+     * Whether entities push a body by mass rather than stop at it: dynamic, and
+     * {@linkplain LevelBodies#pushedByEntities pushed by entities}.
+     */
     public static boolean pushable(Body body) {
         return body.type() == BodyType.DYNAMIC && LevelBodies.pushedByEntities(body);
     }
 
     // ---- stepping up onto shapes ----------------------------------------------------------------
 
-    /** A mod's answer for its bodies' shapes set to {@link StepUpOn#OWNER} — Unreal's {@code AActor::CanBeBaseForCharacter}. */
+    /**
+     * A mod's answer for its bodies' shapes not set to {@link StepUpOn#NO} — Unreal's
+     * {@code AActor::CanBeBaseForCharacter}.
+     */
     public interface StepUpOwner {
         /** Whether {@code mover} may step up onto {@code body}; {@code null} for a body that is not this mod's. */
         @Nullable
@@ -119,13 +125,14 @@ public final class EntityCollisions {
 
     private static final List<StepUpOwner> STEP_UP_OWNERS = new CopyOnWriteArrayList<>();
 
+    /** Adds an owner, asked after those registered before it. */
     public static void registerStepUpOwner(StepUpOwner owner) {
         STEP_UP_OWNERS.add(owner);
     }
 
     /**
-     * Whether an entity walking into {@code shape} may step up onto it; {@code null} goes back to the default, yes. Copied
-     * to clients with the shape (a client moves its player, steps up included).
+     * Whether an entity walking into {@code shape} may step up onto it; {@code null} goes back to the default, yes.
+     * Copied to clients with the shape (a client moves its player, steps up included).
      */
     public static void setStepUpOn(Shape shape, @Nullable StepUpOn stepUpOn) {
         StepUpOn kept = stepUpOn == StepUpOn.YES ? null : stepUpOn;
@@ -135,15 +142,16 @@ public final class EntityCollisions {
         }
     }
 
+    /** The shape's own say ({@link #setStepUpOn}), its owner not asked. */
     public static StepUpOn stepUpOn(Shape shape) {
         StepUpOn set = shape.attachment(StepUpOn.class);
         return set != null ? set : StepUpOn.YES;
     }
 
     /**
-     * Whether {@code mover} may step up onto {@code shape} ({@link StepUpOn}) — as Unreal's {@code CanStepUpOnHitSurface}
-     * asks it (GroundMovementUtils.cpp:565-598): the shape's own no, and then its owner, the first with a say, else yes.
-     * So a shape set to yes on something whose owner says no (a part of a character) is not stepped onto either.
+     * Whether {@code mover} may step up onto {@code shape} ({@link StepUpOn}) — as Unreal's
+     * {@code CanStepUpOnHitSurface} asks it: the shape's own no, and then its owner, the first with a say, else yes. So
+     * a shape set to yes on something whose owner says no (a part of a character) is not stepped onto either.
      */
     public static boolean canStepUpOnto(Shape shape, Entity mover) {
         return stepUpOn(shape) != StepUpOn.NO && ownerLets(shape.body(), mover);
@@ -161,10 +169,9 @@ public final class EntityCollisions {
 
     /**
      * Whether something that does not give — terrain, a static or kinematic body (an entity's proxy, unless it is
-     * force-capped: EntityProxies.Settings#strength) — holds
-     * {@code body} from the far side of a push along {@code (dx, dy, dz)} (unit), as of the last step: pushed on, it would
-     * only be squeezed between the two, and Box3D lets a squeezed body out sideways, fast. Such a body is a wall to an
-     * entity walking into it.
+     * force-capped: {@link EntityProxies.Settings#strength}) — holds {@code body} from the far side of a push along
+     * {@code (dx, dy, dz)} (unit), as of the last step: pushed on, it would only be squeezed between the two, and Box3D
+     * lets a squeezed body out sideways, fast. Such a body is a wall to an entity walking into it.
      */
     public static boolean isPinned(Body body, float dx, float dy, float dz) {
         ContactPoints contacts = CONTACTS.get();
@@ -197,16 +204,16 @@ public final class EntityCollisions {
 
     /**
      * The shapes in {@code region} that stop entities ({@link #FILTER}, not sensors) in the level's own physics, into
-     * {@code out}; nothing off the level's thread. Candidates from Box3D's broad phase: a shape found may only come near
-     * (its bounds are floats — two blocks apart ten million blocks out).
+     * {@code out}; nothing off the level's thread. Candidates from Box3D's broad phase: a shape found may only come
+     * near (its bounds are floats — a block apart ten million blocks out).
      */
     public static List<Shape> shapesNear(Level level, AABB region, List<Shape> out) {
         return shapesNear(level, region, null, out);
     }
 
     /**
-     * {@link #shapesNear(Level, AABB, List)} for {@code mover}'s own sweep, {@code null} for nobody's: not the bodies that
-     * never meet it ({@link LevelBodies#setIgnoredEntity}), and none for one whose physics collision is off
+     * {@link #shapesNear(Level, AABB, List)} for {@code mover}'s own sweep, {@code null} for nobody's: not the bodies
+     * that never meet it ({@link LevelBodies#setIgnoredEntity}), and none for one whose physics collision is off
      * ({@link EntityShapes#hasPhysicsCollision}).
      */
     public static List<Shape> shapesNear(Level level, AABB region, @Nullable Entity mover, List<Shape> out) {
@@ -249,11 +256,12 @@ public final class EntityCollisions {
     /**
      * <b>A turned box swept exactly among the bodies that stop entities</b> ({@link #FILTER}: not terrain, not entity
      * proxies, not sensors) — {@link PhysicsWorld#sweepBox}: stopping where it touches, touching no hit unless it moves
-     * in, a body it starts inside told the least way out. For a mod that sweeps its own turned entities with a mover that
-     * keeps its box on what it stands on (EntityStudio's wall-walkers); {@link #sweep} is Box3D's own cast, a few
+     * in, a body it starts inside told the least way out. For a mod that sweeps its own turned entities with a mover
+     * that keeps its box on what it stands on (EntityStudio's wall-walkers); {@link #sweep} is Box3D's own cast, a few
      * millimetres short. False for none, and off the level's thread.
      *
-     * @param ignore a body not met, or {@code null}: the base the entity is being carried with ({@link PhysicsWorld#sweepBox})
+     * @param ignore a body not met, or {@code null}: the base the entity is being carried with
+     *               ({@link PhysicsWorld#sweepBox})
      */
     public static boolean sweepBox(
             Level level,
@@ -274,8 +282,8 @@ public final class EntityCollisions {
     }
 
     /**
-     * {@link #sweepBox(Level, double, double, double, Quaternionfc, float, float, float, float, float, float, boolean, Body, BoxSweep)}
-     * as {@code mover}'s own box, {@code null} for nobody's: not the bodies that never meet it
+     * {@link #sweepBox(Level, double, double, double, Quaternionfc, float, float, float, float, float, float, boolean,
+     * Body, BoxSweep)} as {@code mover}'s own box, {@code null} for nobody's: not the bodies that never meet it
      * ({@link LevelBodies#setIgnoredEntity}), and nothing for one whose physics collision is off
      * ({@link EntityShapes#hasPhysicsCollision}).
      */
@@ -325,11 +333,12 @@ public final class EntityCollisions {
     }
 
     /**
-     * The first of the shapes that stop entities that {@code geometry} — at {@code (x, y, z)} turned by {@code rotation},
-     * moved by {@code translation} — meets, as Box3D moves a box among bodies ({@link Shape#castShape}, {@code
-     * canEncroach}: what it rests on or slides along is no hit, it stops a few millimetres short), into {@code out}; false
-     * for none, or off the level's thread. Shapes it starts inside are passed through. A mod that sweeps its own entities
-     * (turned boxes, as EntityStudio's wall-walkers) meets the bodies with this as Minecraft's moves do.
+     * The first of the shapes that stop entities that {@code geometry} — at {@code (x, y, z)} turned by
+     * {@code rotation}, moved by {@code (tx, ty, tz)} — meets, as Box3D moves a box among bodies
+     * ({@link Shape#castShape}, {@code canEncroach}: what it rests on or slides along is no hit, it stops a few
+     * millimetres short), into {@code out}; false for none, or off the level's thread. Shapes it starts inside are
+     * passed through. A mod that sweeps its own entities (turned boxes, as EntityStudio's wall-walkers) meets the
+     * bodies with this as Minecraft's moves do.
      *
      * @param geometry a box or hull: a sphere or capsule cannot stop short of a mesh body ({@link Shape#castShape})
      */
@@ -425,8 +434,8 @@ public final class EntityCollisions {
     }
 
     /**
-     * Whether a body that stops entities is under or right around {@code entity} — the server's "no blocks around" before
-     * it kicks a player for flying, widened by a block.
+     * Whether a body that stops entities is under or right around {@code entity} — the server's "no blocks around"
+     * before it kicks a player for flying, widened by a block.
      */
     public static boolean isBodyUnder(Entity entity) {
         return anyBodyIn(
@@ -447,8 +456,8 @@ public final class EntityCollisions {
     }
 
     /**
-     * {@code Entity.move} starts: the bodies that may be in the way of {@code motion} (and of a step up), and the entity
-     * pushed out of one it is stuck in. Always paired with {@link #endMove}.
+     * {@code Entity.move} starts: the bodies that may be in the way of {@code motion} (and of a step up), and the
+     * entity pushed out of one it is stuck in. Always paired with {@link #endMove}.
      */
     @ApiStatus.Internal
     public static void beginMove(Entity entity, Vec3 motion) {
@@ -460,8 +469,8 @@ public final class EntityCollisions {
     }
 
     /**
-     * {@code Entity.move} ends: what it pushed, pushed ({@link Mover#settle}); on a body's top, the entity has it as its
-     * base ({@link EntityBases}).
+     * {@code Entity.move} ends: what it pushed, pushed ({@link Mover#settle}); on a body's top, the entity has it as
+     * its base ({@link EntityBases}).
      */
     @ApiStatus.Internal
     public static void endMove(Entity entity) {
@@ -505,9 +514,9 @@ public final class EntityCollisions {
     }
 
     /**
-     * {@code Entity.collideWithShapes}, with the bodies of the move going on ({@link #isActive()}; with none, the same as
-     * Minecraft's): Minecraft's axis order, each axis cut by blocks then bodies. Unlike Minecraft's, it does not stop at
-     * "no blocks around". {@code main}: the move's own sweep (not one of its step-up's), whose cuts are pushes.
+     * {@code Entity.collideWithShapes}, with the bodies of the move going on ({@link #isActive()}; with none, the same
+     * as Minecraft's): Minecraft's axis order, each axis cut by blocks then bodies. Unlike Minecraft's, it does not
+     * stop at "no blocks around". {@code main}: the move's own sweep (not one of its step-up's), whose cuts are pushes.
      */
     @ApiStatus.Internal
     public static Vec3 collideWithShapes(Vec3 motion, AABB box, List<VoxelShape> shapes, boolean main) {
@@ -555,8 +564,8 @@ public final class EntityCollisions {
     }
 
     /**
-     * {@code Entity.collectCandidateStepUpHeights}, with the tops of the bodies where the entity is going that it may step
-     * onto — and none at all when a body it may not step onto is what stopped it ({@link StepUpOn}).
+     * {@code Entity.collectCandidateStepUpHeights}, with the tops of the bodies where the entity is going that it may
+     * step onto — and none at all when a body it may not step onto is what stopped it ({@link StepUpOn}).
      */
     @ApiStatus.Internal
     public static float[] stepUpHeights(float[] heights, AABB box, float stepHeight) {
@@ -574,18 +583,17 @@ public final class EntityCollisions {
      */
     @ApiStatus.Internal
     public static boolean canFallInto(Entity entity, AABB box, boolean blocksFree) {
-        // thinner across than the sweep down that finds what it stands on (sweeping) by more than Box3D's "touching" (a
-        // slop
-        // and a quarter): where this still touches, that still stands
+        // thinner across than the sweep down that finds what it stands on (sweeping) by more than Box3D's "touching"
+        // (a slop and a quarter): where this still touches, that still stands
         return blocksFree
                 && !(LevelPhysics.existing(entity.level()) != null
                         && anyBodyIn(entity.level(), box.deflate(2 * SKIN, 0, 2 * SKIN), entity));
     }
 
     /**
-     * Where an entity's own next move takes it, bodies included: {@code Entity.collide} as the move does it, its step-up
-     * too — and into {@code steppedUp[0]}, whether it steps up. For a proxy's target (EntityProxies), from inside the
-     * physics' prepare.
+     * Where an entity's own next move takes it, bodies included: {@code Entity.collide} as the move does it, its
+     * step-up too — and into {@code steppedUp[0]}, whether it steps up. For a proxy's target (EntityProxies), from
+     * inside the physics' prepare.
      */
     static Vec3 predict(Entity entity, Vec3 motion, boolean[] steppedUp) {
         Movers movers = MOVERS.get();
@@ -601,9 +609,9 @@ public final class EntityCollisions {
     }
 
     /**
-     * The entity moved by {@code carry} as by a move of its own, through blocks and the bodies other than where it is
-     * carried to (EntityBases): a platform never carries it into a wall. Not a move — no step sounds, no fall. How far it
-     * went.
+     * The entity moved by {@code carry} as by a move of its own, cut short by blocks and the bodies other than the one
+     * carrying it (EntityBases): a platform never carries it into a wall. Not a move — no step sounds, no fall. How far
+     * it went.
      */
     static Vec3 carry(Entity entity, Vec3 carry) {
         Movers movers = MOVERS.get();
@@ -683,10 +691,11 @@ public final class EntityCollisions {
     }
 
     /**
-     * The box swept along {@code axis}: a centimetre thinner across it. Box3D counts shapes within its linear slop (5 mm)
-     * as touching, and a box resting that close above one top meets the edge of the next — a step it has just climbed, a
-     * crate beside the one it stands on — as an obstacle when it moves on sideways; Minecraft, sweeping exact boxes, does
-     * not. Thinner across the move, what it slides over or along is out of reach; what it moves into is not.
+     * The box swept along {@code axis}: each face across it a {@link #SKIN} (1 cm) in. Box3D counts shapes within its
+     * linear slop (5 mm) as touching, and a box resting that close above one top meets the edge of the next — a step it
+     * has just climbed, a crate beside the one it stands on — as an obstacle when it moves on sideways; Minecraft,
+     * sweeping exact boxes, does not. Thinner across the move, what it slides over or along is out of reach; what it
+     * moves into is not.
      */
     private static Geometry.Box sweeping(AABB box, Direction.Axis axis) {
         float hx = (float) (box.getXsize() / 2), hy = (float) (box.getYsize() / 2), hz = (float) (box.getZsize() / 2);
@@ -736,7 +745,7 @@ public final class EntityCollisions {
         /** the body it stood on as the move began: walked on, whatever its shapes say of stepping up onto them */
         @Nullable
         Body base;
-        /** per axis, in the move's own sweep: cut by a block or a body it does not push; the body it pushes, where, how fast */
+        /** per axis, in the move's own sweep: cut by a block or a body not pushed; the body pushed, where, how fast */
         final boolean[] stopped = new boolean[3];
 
         final Shape[] pushed = new Shape[3];
@@ -781,9 +790,9 @@ public final class EntityCollisions {
         }
 
         /**
-         * The solid shapes near the move; false (and the move goes as Minecraft's) for none — or for an entity the bodies
-         * do not stop here: one without physics, one off its level's thread, one a client moves (on the server), one whose
-         * physics collision is off. Not the bodies that never meet it.
+         * The solid shapes near the move; false (and the move goes as Minecraft's) for none — or for an entity the
+         * bodies do not stop here: one without physics, one off its level's thread, one a client moves (on the
+         * server), one whose physics collision is off. Not the bodies that never meet it.
          */
         boolean gather(Entity entity, Vec3 motion) {
             if (entity.noPhysics
@@ -839,7 +848,7 @@ public final class EntityCollisions {
             return true;
         }
 
-        /** One axis of the box's move: cut by the blocks, then by the bodies; in the move's own sweep, what cut it kept. */
+        /** One axis of the box's move: cut by blocks, then by bodies; in the move's own sweep, what cut it is kept. */
         double cut(Direction.Axis axis, AABB box, List<VoxelShape> blocks, double d, boolean main) {
             double free = Shapes.collide(axis, box, blocks, d);
             if (main && free != d) {
@@ -873,9 +882,8 @@ public final class EntityCollisions {
                 if (hit.normal(normal).lengthSquared() >= 0.25f) {
                     reach = hit.fraction() * d;
                 } else {
-                    // inside it. Barely (a body that moved a hair into the box) is touching: the box shorter along the
-                    // move
-                    // by more than that meets it moving in, and not moving out
+                    // inside it. Barely (a body that moved a hair into the box) is touching: the box shorter along
+                    // the move by more than that meets it moving in, and not moving out
                     if (shorter == null) {
                         shorter = shorter(query, axis);
                     }
@@ -907,8 +915,7 @@ public final class EntityCollisions {
                     pushedBy[i] = d;
                     // where on the face it pushes: the sweep's point is any of the touching face's (a crate's edge, as
                     // often as not, which would flip it); the body's centre as near as the entity's face reaches
-                    // instead —
-                    // a crate it covers is pushed straight, a plank by its end is turned
+                    // instead — a crate it covers is pushed straight, a plank by its end is turned
                     Body body = stopping.body();
                     massCenter(body, center);
                     Vector3d at = pushedAt[i].set(point);
@@ -929,10 +936,10 @@ public final class EntityCollisions {
         }
 
         /**
-         * {@code Entity.collide}'s result: further along x or z than the move's own sweep, Minecraft took a step-up — over
-         * what cut that axis, which is then not pushed (Unreal pushes what it walks into only when the step up failed). An
-         * axis the step went no further along keeps its push: a step tried at a crate taller than it, a hair higher, comes
-         * out an ulp further and is no step over it.
+         * {@code Entity.collide}'s result: further along x or z than the move's own sweep, Minecraft took a step-up —
+         * over what cut that axis, which is then not pushed (Unreal pushes what it walks into only when the step up
+         * failed). An axis the step went no more than {@link #STEPPED_OVER} further along keeps its push: a step tried
+         * at a crate a hair taller than it comes out an ulp further and is no step over it.
          */
         void collided(Vec3 result) {
             if (Double.isNaN(sweptX)) {
@@ -949,7 +956,7 @@ public final class EntityCollisions {
             steppedUp = overX || overZ;
         }
 
-        /** Whether it may step up onto {@code shape} — {@code null} for a block, or none — or stands on its body already. */
+        /** Whether it may step up onto {@code shape} ({@code null}: a block, or none) or stands on its body already. */
         boolean mayStepOnto(@Nullable Shape shape) {
             return shape == null || !shape.isValid() || shape.body() == base || canStepUpOnto(shape, entity);
         }
@@ -972,10 +979,10 @@ public final class EntityCollisions {
         }
 
         /**
-         * The move's end: each body it pushed, pushed — the inelastic collision of the two along the axis, the body by the
-         * impulse at the point (a replica's, told to the server by its player's client; one the server moves pushes the
-         * server's body from there itself), the entity by keeping the shared speed on a sideways axis nothing else cut,
-         * which then is no collision to Minecraft.
+         * The move's end: each body it pushed, pushed — the inelastic collision of the two along the axis, the body by
+         * the impulse at the point (a replica's, told to the server by its player's client; one the server moves
+         * pushes the server's body from there itself), the entity by keeping the shared speed on a sideways axis
+         * nothing else cut, which then is no collision to Minecraft.
          */
         void settle() {
             if (entity == null) {
@@ -1025,9 +1032,8 @@ public final class EntityCollisions {
                     body.applyLinearImpulse(ix, iy, iz, at.x, at.y, at.z);
                 } else if (entity.isControlledByLocalInstance() && EntityAuthority.clientMoves(entity)) {
                     // told to the server, which takes this client's word for where it is; not simulated here — walked
-                    // on
-                    // past what this client lacks (a body not synced), it would stand where the server holds the body,
-                    // and nothing would pull it back
+                    // on past what this client lacks (a body not synced), it would stand where the server holds the
+                    // body, and nothing would pull it back
                     physics.sync().riders().pushed(body, ix, iy, iz, at);
                 }
                 if (axis != Direction.Axis.Y && !stopped[i]) {
@@ -1045,8 +1051,8 @@ public final class EntityCollisions {
         }
 
         /**
-         * The body's mass at {@code at} along the axis, kg: {@code 1 / m = 1 / mass + (r × a) · I⁻¹ (r × a)}, its turning
-         * included, from {@link #massData} ({@link #massOf} first).
+         * The body's mass at {@code at} along the axis, kg: {@code 1 / m = 1 / mass + (r × a) · I⁻¹ (r × a)}, its
+         * turning included, from {@link #massData} ({@link #massOf} first).
          */
         float effectiveMass(Body body, Vector3d at, Direction.Axis axis, float sign) {
             body.position(center);
@@ -1070,8 +1076,8 @@ public final class EntityCollisions {
 
         /**
          * The body's centre of mass in the level, from {@link #massData} ({@link #massOf} first). ⚠️ Not
-         * {@code worldCenter}: a replica is kinematic, and Box3D puts a body that does not simulate's centre at its origin —
-         * a post's foot, where its joint turns it, and a push there turns nothing.
+         * {@code worldCenter}: a replica is kinematic, and Box3D puts the centre of a body that does not simulate at
+         * its origin — a post's foot, where its joint turns it, and a push there turns nothing.
          */
         Vector3d massCenter(Body body, Vector3d out) {
             body.position(out);
@@ -1104,17 +1110,14 @@ public final class EntityCollisions {
             if (stepHeight <= 0) {
                 return heights;
             }
-            // Unreal asks it of what stopped the move before it tries: a shape it may not step onto, and no step at all
-            // —
-            // nor onto a block beside it
+            // Unreal asks it of what stopped the move before it tries: a shape it may not step onto, and no step at
+            // all — nor onto a block beside it
             if (!mayStepOnto(cutBy[Direction.Axis.X.ordinal()]) || !mayStepOnto(cutBy[Direction.Axis.Z.ordinal()])) {
                 return new float[0];
             }
-            // the whole box, not one a centimetre thinner: a move into a body by less than that is still cut, and a top
-            // it
-            // did not find is a push instead of a step — then pushed on at its pace, a crate is never more than grazed
-            // again
-            // (Minecraft takes every top in the move's way)
+            // the whole box, not the swept one (sweeping): a move into a body by less than a SKIN is still cut, and a
+            // top not found here is a push instead of a step — pushed on at its pace, the crate is only ever grazed
+            // again (Minecraft takes every top in the move's way)
             Geometry.Box query = Geometry.Box.of(
                     (float) (box.getXsize() / 2), (float) (box.getYsize() / 2), (float) (box.getZsize() / 2));
             // from a step's height above where the move goes, down
@@ -1134,9 +1137,8 @@ public final class EntityCollisions {
                     continue;
                 }
                 float height = stepHeight * (1 - hit.fraction());
-                // a top less than the skin up is no step: the move's own sweep slides over it already. One tried anyway
-                // —
-                // the body it stands on, found a hair off its feet — tries the move again for nothing
+                // a top less than a SKIN up is no step: the move's own sweep slides over it already. One tried anyway
+                // — the body it stands on, found a hair off its feet — tries the move again for nothing
                 if (height >= SKIN && height <= stepHeight) {
                     if (more == null) {
                         more = new float[shapes.size()];
@@ -1155,14 +1157,14 @@ public final class EntityCollisions {
         }
 
         /**
-         * Out of a body that moved into the entity and stops it (one it pushes is let be: Box3D moves it off the entity's
-         * proxy): the least way out along an axis that Minecraft's blocks and the other bodies allow, as a move of its own
-         * before the entity's move.
+         * Out of a body that moved into the entity and stops it (one it pushes is let be: Box3D moves it off the
+         * entity's proxy): the least way out along an axis that Minecraft's blocks and the other bodies allow, as a
+         * move of its own before the entity's move.
          *
          * <p>⚠️ Not out of the base of an entity a mod carries itself ({@link EntityBases#carriesItself}) while it is
          * carrying it there: a deck that rose into its feet is what that mod's carry is about to lift it by, and pushed
-         * out first it was lifted twice. In the air off it the mod does not carry it, and a lift rising into it pushes it
-         * out as any body does.
+         * out first it would be lifted twice. In the air off it the mod does not carry it, and a lift rising into it
+         * pushes it out as any body does.
          */
         void pushOut() {
             Entity entity = this.entity;

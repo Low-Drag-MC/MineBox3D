@@ -5,7 +5,7 @@ import org.joml.Quaternionfc;
 import org.joml.Vector3f;
 
 /**
- * A {@link JointType#CONSTRAINT} joint — see {@link ConstraintJointDef}. Changing its settings or targets does not wake the
+ * A {@link JointType#CONSTRAINT} joint — see {@link ConstraintJointDef}. New settings or targets do not wake the
  * bodies ({@link #wakeBodies()}). Many at once: {@link ConstraintJointBatch}.
  */
 public final class ConstraintJoint extends Joint {
@@ -19,6 +19,7 @@ public final class ConstraintJoint extends Joint {
         return JointType.CONSTRAINT;
     }
 
+    /** The settings as Box3D keeps them — twist range ordered, angles clamped, target normalised — into {@code out}. */
     public ConstraintJointSettings settings(ConstraintJointSettings out) {
         world.enter();
         try {
@@ -31,8 +32,8 @@ public final class ConstraintJoint extends Joint {
     }
 
     /**
-     * Swaps everything the joint does at once — a profile. The impulses of rows that still hold the same thing are kept, so
-     * a profile that only retunes a drive does not jolt the bodies.
+     * Swaps everything the joint does at once — a profile. The impulses of rows that still hold the same thing are
+     * kept, so a profile that only retunes a drive does not jolt the bodies.
      */
     public void setSettings(ConstraintJointSettings settings) {
         world.enter();
@@ -45,7 +46,10 @@ public final class ConstraintJoint extends Joint {
         }
     }
 
-    /** The drive targets alone: linear in frame A, angular frame B relative to frame A (see {@link ConstraintJointSettings}). */
+    /**
+     * The drive targets alone, as {@link ConstraintJointSettings} has them: position (m) and velocity (m/s) in frame
+     * A, frame B's orientation relative to frame A, angular velocity (rad/s).
+     */
     public void setDriveTargets(
             float px,
             float py,
@@ -86,13 +90,16 @@ public final class ConstraintJoint extends Joint {
         }
     }
 
-    /** Twist, swing 1 and swing 2 now, as the limits measure them (a swing limited with the other free: its dual cone angle). */
+    /**
+     * Twist, swing 1 and swing 2 now, radians, as the limits measure them (a swing limited with the other free: its
+     * dual cone angle).
+     */
     public Vector3f angles(Vector3f out) {
         float[] v = state();
         return out.set(v[0], v[1], v[2]);
     }
 
-    /** Frame B's anchor from frame A's, in frame A. */
+    /** Frame B's anchor from frame A's, m, along frame A's axes. */
     public Vector3f linearOffset(Vector3f out) {
         float[] v = state();
         return out.set(v[3], v[4], v[5]);

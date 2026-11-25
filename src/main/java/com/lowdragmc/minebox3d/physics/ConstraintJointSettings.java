@@ -7,11 +7,13 @@ import org.joml.Quaternionfc;
 
 /**
  * Everything a {@link ConstraintJoint} does besides its bodies and frames — UE's {@code FConstraintProfileProperties},
- * what a profile swap changes ({@link ConstraintJoint#setSettings}). A new one holds Box3D's defaults: a ball and socket.
+ * what a profile swap changes ({@link ConstraintJoint#setSettings}). A new one holds Box3D's defaults: a ball and
+ * socket, every angle free with π/4 limits ready to turn on, no drives, mass conditioning on.
  *
- * <p>Frame A is the parent's and frame B the child's. Frame B's x axis is the twist axis; swing 1 turns about frame A's z
- * axis, swing 2 about its y axis — UE's axes, so a physics asset's frames go in as they are. Radians and metres; linear
- * motion is frame B's anchor along frame A's axes. Box3D keeps the twist within ±0.99π and each swing within 0.97π.
+ * <p>Frame A is the parent's and frame B the child's. Frame B's x axis is the twist axis; swing 1 turns about frame
+ * A's z axis, swing 2 about its y axis — UE's axes, so a physics asset's frames go in as they are. Radians and metres;
+ * linear motion is frame B's anchor along frame A's axes. Box3D keeps the twist within ±0.99π and each swing within
+ * 0.97π.
  */
 public final class ConstraintJointSettings {
 
@@ -61,11 +63,14 @@ public final class ConstraintJointSettings {
     /** rad/s. Slerp: a vector in frame A; twist and swing: x the twist's rate, y swing 2's, z swing 1's. */
     public float angularVelocityTargetX, angularVelocityTargetY, angularVelocityTargetZ;
 
-    /** The parent's inverse mass for this joint alone: 1 as normal, 0 for the parent unmoved by the child (UE's parent dominates). */
+    /**
+     * Scales the parent's inverse mass for this joint alone, 0 to 1: 1 as normal, 0 for the parent unmoved by the
+     * child (UE's parent dominates).
+     */
     public float parentInverseMassScale = 1;
     /**
-     * UE's mass conditioning: for this joint each body's inertia evened out to within 1:5 between its axes, and the parent
-     * counted no lighter than a fifth of the child.
+     * UE's mass conditioning: for this joint each body's inertia evened out to within 1:5 between its axes, and the
+     * parent counted no lighter than a fifth of the child. Steadier chains of very different bodies.
      */
     public boolean massConditioning = true;
 

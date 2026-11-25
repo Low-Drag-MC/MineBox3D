@@ -25,11 +25,11 @@ import org.joml.Quaternionf;
 import org.joml.Vector3d;
 
 /**
- * <b>Stepping up onto bodies, as Unreal's Mover steps</b> (design doc {@code 04-entities-and-bodies.md} §11.2 #1,
- * {@link StepUpOn}): a stand with a step climbs a low light crate rather than pushing it, and pushes one whose shape says
- * no; a low box that says no stops it, and one whose owner says no; a step up a body that would end on one that says no
- * is not taken; a board on a hinge is walked up; a slope that says no is walked up by a stand on it, and not stepped onto
- * from the ground.
+ * <b>Stepping up onto bodies, as Unreal's Mover steps</b> (design doc {@code 04-entities-and-bodies.md} §21,
+ * {@link StepUpOn}): a stand with a step climbs a low light crate rather than pushing it, and pushes one whose shape
+ * says no; a low box that says no stops it, and one whose owner says no; a step up a body that would end on one that
+ * says no is not taken; on a deck, a crate taller than the step is pushed along; a board on a hinge is walked up; a
+ * slope that says no is walked up by a stand on it, and not stepped onto from the ground.
  *
  * <p>Armor stands as in EntityBlockedGameTest — given a step (theirs is 0), walked by their motion set each tick.
  */
@@ -60,8 +60,8 @@ public final class EntityStepUpGameTest {
     }
 
     /**
-     * The area let go, before the asserts: a failed assert skips what follows it, and bodies left in the level poison the
-     * tests after (doc 04 §21.1).
+     * The area let go, before the asserts: a failed assert skips what follows it, and bodies left in the level poison
+     * the tests after (doc 04 §21.1).
      */
     private static void release(GameTestHelper helper, int x1, int z1, Body[] bodies, ArmorStand... stands) {
         for (Body body : bodies) {
@@ -141,8 +141,8 @@ public final class EntityStepUpGameTest {
 
     /**
      * A low light crate stepped onto, not pushed — also by a stand whose first step only grazes it (5 mm in: the top is
-     * still found, or that step is a push and the crate, pushed on at its pace, is never more than grazed again) — and one
-     * whose shape says no pushed along.
+     * still found, or that step is a push and the crate, pushed on at its pace, is never more than grazed again) — and
+     * one whose shape says no pushed along.
      */
     @GameTest(template = "empty", batch = "minebox3d_step_crate", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
@@ -196,16 +196,16 @@ public final class EntityStepUpGameTest {
     }
 
     /**
-     * On a deck (a body), pushing a crate taller than its step: pushed along all the way. The deck under it is no step
-     * (a top a hair off its feet), and a step tried at the crate that goes no further is not one — a push it does not lose.
+     * On a deck (a body), pushing a crate taller than its step: pushed along as far as by a stand that never tries a
+     * step. The deck under it is no step (a top a hair off its feet), and a step tried at the crate that goes no
+     * further is not one — a push it does not lose.
      */
     @GameTest(template = "empty", batch = "minebox3d_step_deck_push", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
     public static void onADeckACrateTallerThanTheStepIsPushedAlong(GameTestHelper helper) {
         area(helper, 9, 9);
         // the deck's top at 0.5, x from 0 to 9, z from 0.5 to 4.5; a crate a block high on it, x from 3.7 to 4.3,
-        // pushed by
-        // a stand with a step and by one with none, which never tries a step; the same crate on the ground
+        // pushed by a stand with a step and by one with none, which never tries a step; the same crate on the ground
         Body deck = box(helper, BodyType.STATIC, 4.5, 0.25, 2.5, 4.5f, 0.25f, 2, StepUpOn.YES);
         Body crate = box(helper, BodyType.DYNAMIC, 4, 1, 1.5, 0.3f, 0.5f, 0.3f, StepUpOn.YES);
         Body unstepped = box(helper, BodyType.DYNAMIC, 4, 1, 3.5, 0.3f, 0.5f, 0.3f, StepUpOn.YES);
@@ -219,8 +219,8 @@ public final class EntityStepUpGameTest {
         double[] start = new double[3];
         walk(helper, walking, highest, pusher, stepless, onTheGround);
         Body[] crates = {crate, unstepped, grounded};
-        // kept upright: a tall light crate pushed at its middle tips over, and its slanting back is no step only past
-        // 45°
+        // kept upright: a tall light crate pushed at its middle tips over, and its slanting back is no step only
+        // past 45°
         for (Body body : crates) {
             body.setFixedRotation(true);
         }
@@ -291,8 +291,9 @@ public final class EntityStepUpGameTest {
     }
 
     /**
-     * A step up a thin box that would end with the stand over a box that says no, level with it: not taken (Unreal's step
-     * down onto a surface it may not step up onto). The stand starts at the thin box's face, so every try ends over both.
+     * A step up a thin box that would end with the stand over a box that says no, level with it: not taken (Unreal's
+     * step down onto a surface it may not step up onto). The stand starts at the thin box's face, so every try ends
+     * over both.
      */
     @GameTest(template = "empty", batch = "minebox3d_step_landing", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
@@ -325,8 +326,8 @@ public final class EntityStepUpGameTest {
     }
 
     /**
-     * The doc 61 seesaw: a 40 kg board on a hinge at its middle, 0.6 up, one end on the ground — walked up from that end
-     * by a stand with a step, which Minecraft does as many small steps up its slope.
+     * EntityStudio's seesaw (doc 04 §21): a 40 kg board on a hinge at its middle, 0.6 up, one end on the ground —
+     * walked up from that end by a stand with a step, which Minecraft does as many small steps up its slope.
      */
     @GameTest(template = "empty", batch = "minebox3d_step_seesaw", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)
@@ -359,9 +360,9 @@ public final class EntityStepUpGameTest {
     }
 
     /**
-     * A slope that says no: a stand standing on it walks up it (Unreal's option is about the step onto it, not walking on
-     * it after landing — and walking up a slope in Minecraft is stepping up it); one on the ground walking into its foot
-     * does not step onto it.
+     * A slope that says no: a stand standing on it walks up it (Unreal's option is about the step onto it, not walking
+     * on it after landing — and walking up a slope in Minecraft is stepping up it); one on the ground walking into its
+     * foot does not step onto it.
      */
     @GameTest(template = "empty", batch = "minebox3d_step_slope", timeoutTicks = 1200)
     @PrefixGameTestTemplate(false)

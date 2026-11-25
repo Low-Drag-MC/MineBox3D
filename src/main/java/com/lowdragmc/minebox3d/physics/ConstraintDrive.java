@@ -1,17 +1,20 @@
 package com.lowdragmc.minebox3d.physics;
 
-/** A drive of a {@link ConstraintJoint} — UE's {@code FConstraintDrive}: toward a target position, a target velocity or both. */
+/**
+ * A drive of a {@link ConstraintJoint} — UE's {@code FConstraintDrive}: towards a target position, a target velocity
+ * or both.
+ */
 public final class ConstraintDrive {
 
-    /** Pull toward the target position, by {@link #stiffness}. */
+    /** Pull towards the target position, by {@link #stiffness}. */
     public boolean positionDrive;
-    /** Pull toward the target velocity, by {@link #damping}. */
+    /** Pull towards the target velocity, by {@link #damping}. */
     public boolean velocityDrive;
     /** 1/s² in {@link #accelerationMode}, otherwise N/m or N·m/rad. */
     public float stiffness;
     /** 1/s in {@link #accelerationMode}, otherwise N·s/m or N·m·s/rad. */
     public float damping;
-    /** The numbers per unit of mass, so any body follows alike; otherwise a physical spring heavier bodies follow slower. */
+    /** The numbers per unit of mass, so any body follows alike; otherwise a physical spring, heavier bodies slower. */
     public boolean accelerationMode = true;
     /**
      * The most force (N) or torque (N·m) along each axis; 0 for no limit (UE, unlike Box3D's motors). In
@@ -29,7 +32,7 @@ public final class ConstraintDrive {
         return this;
     }
 
-    /** A drive toward both targets. */
+    /** Drives towards the target position if {@code stiffness > 0} and the target velocity if {@code damping > 0}. */
     public ConstraintDrive drive(float stiffness, float damping, float maxForce) {
         positionDrive = stiffness > 0;
         velocityDrive = damping > 0;

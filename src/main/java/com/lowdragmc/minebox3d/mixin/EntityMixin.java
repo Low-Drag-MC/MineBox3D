@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Minecraft's entity movement sees the level's bodies (design doc {@code 04-entities-and-bodies.md} §11, 4c-1 / 4c-2):
- * every {@code Entity.move} is first carried by the body the entity stands on and gathers the bodies near it, the
+ * every {@code Entity.move} first gathers the bodies near it (and is pushed out of one it is stuck in), the
  * axis-by-axis collision — the move's and its step-up's — cuts each axis by them after the blocks, and the move's
  * end finds the body it stands on now. All the work is in {@link EntityCollisions} and {@link EntityBases}; the entity
  * keeps its base here.

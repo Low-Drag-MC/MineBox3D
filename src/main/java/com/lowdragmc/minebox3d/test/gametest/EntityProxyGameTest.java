@@ -210,7 +210,7 @@ public final class EntityProxyGameTest {
                 .thenSucceed();
     }
 
-    /** A part of a multipart entity: EntityStudio's hit volumes are these (docs/design/04 §8.2 #1). */
+    /** A part of a multipart entity: EntityStudio's hit volumes are these (doc 04 §8.2 #1). */
     private static final class Part extends PartEntity<Entity> {
         Part(Entity parent) {
             super(parent);

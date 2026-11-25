@@ -40,7 +40,7 @@ int mb3_enum_ordinal( JNIEnv* env, jobject value )
 	return mb3_ordinal( env, value );
 }
 
-// Copies a Java string into buffer; returns NULL for a null or empty string.
+// Copies a Java string into buffer, cut to fit; NULL for a null or empty string.
 static const char* mb3_copy_name( JNIEnv* env, jstring value, char* buffer, int capacity )
 {
 	if ( value == NULL )

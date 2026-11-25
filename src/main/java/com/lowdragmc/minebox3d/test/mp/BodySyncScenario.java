@@ -22,12 +22,13 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 /**
- * <b>Bodies copied to the clients</b> (design doc {@code 04-entities-and-bodies.md} §10, batch 4b), over a real dedicated
- * server and two real clients: a synced box shows up on both and follows the server's — falling, resting, shoved — while
- * one that is not synced never shows up; it is sent again with its new shape; a client whose player walks away loses it
- * while the other keeps it; a body seen before dying is let go after respawning in the same dimension; coming back
- * brings the box again; a body made while the tick is frozen is still sent; destroying them takes them from everyone; and
- * each coming and going was one event.
+ * <b>Bodies copied to the clients</b> (design doc {@code 04-entities-and-bodies.md} §10, batch 4b), over a real
+ * dedicated server and two real clients: a synced box shows up on both and follows the server's — falling, resting,
+ * shoved — while one that is not synced never shows up; a box that never meets one player never meets it on either
+ * client; the box is sent again with its new shape; a client whose player walks away loses it while the other keeps
+ * it; a body seen before dying is let go after respawning in the same dimension; coming back brings the box again; a
+ * body made while the tick is frozen is still sent; destroying them takes them from everyone; and each coming and going
+ * was one event.
  *
  * <p>{@code ./gradlew runMpTest -PldMpTest=group:minebox3d -PldTestHeadless}
  */
@@ -255,12 +256,10 @@ public class BodySyncScenario implements MPScenario {
                         .check("not the far one", ctx -> MpClient.replicas(FAR).isEmpty()))
 
                 // the server makes a new player and the client keeps its level, and with it what it was sent: the far
-                // one must
-                // go as if A had walked away, not stay behind for good
+                // one must go as if A had walked away, not stay behind for good
                 .server("A dies and respawns, in the same dimension", sc -> {
                     // as the respawn button does (ServerGamePacketListenerImpl.handleClientCommand): the connection is
-                    // handed
-                    // the new player by whoever asked for it, not by PlayerList.respawn
+                    // handed the new player by whoever asked for it, not by PlayerList.respawn
                     ServerPlayer dead = sc.player("A");
                     dead.connection.player =
                             sc.server().getPlayerList().respawn(dead, false, Entity.RemovalReason.KILLED);
@@ -319,8 +318,8 @@ public class BodySyncScenario implements MPScenario {
                         "A",
                         "A was told of each coming and going, while the replica was still there",
                         b -> b
-                                // the box: came, sent again as a ball, left behind, sent again on coming back,
-                                // destroyed
+                                // the box: came, sent again as a ball, left behind, sent again on coming
+                                // back, destroyed
                                 .step("its events", ctx -> {
                             checkEvents(ctx, SYNCED, 3, 3);
                             checkEvents(ctx, FAR, 1, 1);

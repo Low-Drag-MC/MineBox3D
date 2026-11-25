@@ -24,7 +24,7 @@ import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
 import org.joml.Vector3d;
 
 /**
- * <b>Terrain and entities streaming into the server level's physics</b> (design doc §4, §5).
+ * <b>Terrain and entities streaming into the server level's physics</b> (doc 00 §4, §5).
  *
  * <p>The GameTest level is a superflat world: the grass under a test's origin has its top at the
  * origin's y. Every test is in a batch of its own so no two tests' bodies share a neighbourhood.

@@ -11,10 +11,10 @@ import org.joml.Vector3f;
  * Box3D's {@code b3JointDef}: what every joint definition has. A new definition holds Box3D's own defaults.
  *
  * <h2>Frames</h2>
- * <p>A joint is measured between two frames, one on each body, given in that body's own space from its origin (not its
- * centre of mass, which moves when shapes change). Each joint type reads them its own way — a revolute joint turns about
- * their shared z axis, a prismatic one slides along frame A's x — see {@link JointType}. {@link #worldFrame} sets both
- * from one world pose and where the bodies are now, which is how a joint is usually placed.
+ * <p>A joint is measured between two frames, one on each body, given in that body's own space from its origin (not
+ * its centre of mass, which moves when shapes change). Each joint type reads them its own way — a revolute joint turns
+ * about their shared z axis, a prismatic one slides along frame A's x — see {@link JointType}. {@link #worldFrame}
+ * sets both from one world pose and where the bodies are now, which is how a joint is usually placed.
  *
  * <p>Re-usable: creating a joint reads it and keeps nothing. {@link #bodyA} and {@link #bodyB} are Java's; the rest is
  * Box3D's, field for field.
@@ -48,11 +48,11 @@ public abstract sealed class JointDef<J extends Joint, D extends JointDef<J, D>>
     public float positionBX, positionBY, positionBZ;
 
     public float rotationBX, rotationBY, rotationBZ, rotationBW;
-    /** Force (N) above which the joint is reported in {@link WorldEvents#jointEvents()}; Box3D never breaks it itself. */
+    /** Force (N) above which the joint is reported in {@link WorldEvents#jointEvents()}; Box3D never breaks it. */
     public float forceThreshold;
     /** Torque (N·m) above which the joint is reported, as {@link #forceThreshold}. */
     public float torqueThreshold;
-    /** How stiffly the joint corrects drift (advanced); Hz. */
+    /** How stiffly the joint corrects drift (advanced); Hz, with {@link #constraintDampingRatio}. */
     public float constraintHertz;
 
     public float constraintDampingRatio;
@@ -113,8 +113,8 @@ public abstract sealed class JointDef<J extends Joint, D extends JointDef<J, D>>
     }
 
     /**
-     * Places the joint at a world point with its frame turned by a world rotation, by setting both local frames from where
-     * the two bodies are now ({@link #bodies} first). The frames then coincide, so the joint starts at rest.
+     * Places the joint at a world point with its frame turned by a world rotation, by setting both local frames from
+     * where the two bodies are now ({@link #bodies} first). The frames then coincide, so the joint starts at rest.
      */
     public D worldFrame(double x, double y, double z, Quaternionfc rotation) {
         if (bodyA == null || bodyB == null) {
