@@ -240,7 +240,7 @@ public final class SyncedBodies {
         if (!NativeLibrary.isLoaded()) {
             return;
         }
-        var registrar = event.registrar("6").optional();
+        var registrar = event.registrar("7").optional();
         registrar.playToClient(
                 BodySyncPayload.TYPE,
                 BodySyncPayload.CODEC,
