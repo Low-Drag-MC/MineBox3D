@@ -249,6 +249,9 @@ test {
     useJUnitPlatform()
     dependsOn 'buildNative'
     systemProperty 'minebox3d.native.path', nativeLibraryPath.get()
+    // ⚠️ the library the tests load is an input: without it a change to the C side alone left the tests up to date, or
+    // restored their last results from the build cache, without running them
+    inputs.file(nativeLibraryFile).withPathSensitivity(PathSensitivity.NONE).withPropertyName('nativeLibrary')
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
