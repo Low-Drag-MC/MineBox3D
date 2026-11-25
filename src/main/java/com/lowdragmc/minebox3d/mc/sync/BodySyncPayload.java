@@ -349,7 +349,12 @@ public record BodySyncPayload(
     }
 
     public boolean isEmpty() {
-        return spawns.isEmpty() && states.isEmpty() && removals.length == 0 && !settled && tunings.isEmpty();
+        return !hasBodies() && !settled;
+    }
+
+    /** Whether it says anything about a body: a spawn, state, removal or tuning. */
+    public boolean hasBodies() {
+        return !spawns.isEmpty() || !states.isEmpty() || removals.length != 0 || !tunings.isEmpty();
     }
 
     // ---- the wire ---------------------------------------------------------------------------------

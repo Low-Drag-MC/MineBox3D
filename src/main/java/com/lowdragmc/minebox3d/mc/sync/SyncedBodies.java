@@ -361,10 +361,7 @@ public final class SyncedBodies {
         if (payload.settled()) {
             SyncedRiders.settled(); // the mark comes alone, after the bodies it is about
         }
-        if (payload.spawns().isEmpty()
-                && payload.states().isEmpty()
-                && payload.removals().length == 0
-                && payload.tunings().isEmpty()) {
+        if (!payload.hasBodies()) {
             return;
         }
         LevelPhysics physics = LevelPhysics.of(level);
@@ -596,7 +593,8 @@ public final class SyncedBodies {
             body.setAngularVelocity(r.wx, r.wy, r.wz);
         } else {
             body.setType(BodyType.KINEMATIC);
-            // Box3D keeps a fixed rotation body's target turn from turning it, and a followed replica turns as the server's
+            // Box3D keeps a fixed rotation body's target turn from turning it, and a followed replica turns as the
+            // server's
             body.setFixedRotation(false);
             r.coasting = 0;
         }

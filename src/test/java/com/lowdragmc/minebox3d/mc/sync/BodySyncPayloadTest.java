@@ -140,6 +140,7 @@ class BodySyncPayloadTest {
         BodySyncPayload tuned = roundTrip(new BodySyncPayload(
                 List.of(), List.of(), new int[0], false, 5, 6, List.of(new BodySyncPayload.Tuning(7, mass))));
         assertFalse(tuned.isEmpty());
+        assertTrue(tuned.hasBodies(), "a tuning alone is about a body");
         assertEquals(7, tuned.tunings().getFirst().id());
         assertEquals(0, tuned.tunings().getFirst().dynamics().gravityScale());
         assertEquals(1.5f, tuned.tunings().getFirst().dynamics().angularDamping());
@@ -168,6 +169,7 @@ class BodySyncPayloadTest {
         assertTrue(new BodySyncPayload(List.of(), List.of(), new int[0]).isEmpty());
         BodySyncPayload settled = roundTrip(BodySyncPayload.SETTLED);
         assertTrue(settled.settled() && !settled.isEmpty(), "the settled mark alone, read back");
+        assertFalse(settled.hasBodies(), "and nothing about a body");
         assertEquals(BodySyncPayload.NO_FRAME, read.frame(), "nobody's frame by default");
         // the server's tick and the player's frame it ran: what its client holds the states against (doc 61 §3.9)
         BodySyncPayload stamped =
