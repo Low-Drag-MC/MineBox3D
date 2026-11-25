@@ -1,0 +1,4 @@
+# Formatting-only commits, skipped by `git blame` (./gradlew mb3Setup sets blame.ignoreRevsFile) and by GitHub.
+
+# style: reformatted all Java sources with palantir-java-format and the bridge with clang-format
+942347e8f52d8b45171056a3d3bfec38cdc4d24e
