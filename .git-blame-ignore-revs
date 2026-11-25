@@ -2,3 +2,6 @@
 
 # style: reformatted all Java sources with palantir-java-format and the bridge with clang-format
 942347e8f52d8b45171056a3d3bfec38cdc4d24e
+
+# style: replaced fully qualified type names with imports
+0b39cad815636fc212a59e33651e82b729bf5a03
