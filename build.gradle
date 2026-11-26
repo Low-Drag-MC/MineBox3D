@@ -253,6 +253,9 @@ tasks.withType(Jar).configureEach {
     if (name == 'jar') {
         exclude 'com/lowdragmc/minebox3d/test/**'
     }
+    // the native library is Box3D's code: its MIT notice, and those of what it bundles, go wherever it goes
+    from('LICENSE') { rename { "${it}_${mod_id}" } }
+    from('THIRD_PARTY_NOTICES.md') { rename { "THIRD_PARTY_NOTICES_${mod_id}.md" } }
 }
 
 test {

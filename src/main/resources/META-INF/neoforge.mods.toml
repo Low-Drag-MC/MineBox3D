@@ -10,6 +10,7 @@ displayName = "${mod_name}"
 displayURL = "${mod_url}"
 authors = "${mod_authors}"
 description = '''${mod_description}'''
+credits = "Box3D by Erin Catto, MIT License (THIRD_PARTY_NOTICES_${mod_id}.md in the jar)"
 
 [[mixins]]
 config = "${mod_id}.mixins.json"
