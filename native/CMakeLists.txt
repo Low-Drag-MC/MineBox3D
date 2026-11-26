@@ -45,7 +45,9 @@ file(GLOB MB3_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 add_library(minebox3d SHARED ${MB3_SOURCES})
 target_compile_features(minebox3d PRIVATE c_std_17)
 target_include_directories(minebox3d PRIVATE "${MB3_JNI_INCLUDE}" "${MB3_JNI_PLATFORM_INCLUDE}" "${CMAKE_CURRENT_SOURCE_DIR}/src")
-target_link_libraries(minebox3d PRIVATE box3d::box3d)
+# Box3D's worker threads and semaphores: in libpthread up to glibc 2.33, which the library must then name itself
+find_package(Threads REQUIRED)
+target_link_libraries(minebox3d PRIVATE box3d::box3d Threads::Threads)
 set_target_properties(minebox3d PROPERTIES
     OUTPUT_NAME "minebox3d"
     C_VISIBILITY_PRESET hidden
