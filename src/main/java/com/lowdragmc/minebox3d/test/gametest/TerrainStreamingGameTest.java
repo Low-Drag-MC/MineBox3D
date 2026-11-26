@@ -13,6 +13,7 @@ import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.Joint;
 import com.lowdragmc.minebox3d.physics.PhysicsWorld;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
+import com.lowdragmc.minebox3d.physics.SurfaceMaterial;
 import com.lowdragmc.minebox3d.physics.ThreadMode;
 import com.lowdragmc.minebox3d.physics.WorldDef;
 import java.util.concurrent.CountDownLatch;
@@ -477,6 +478,36 @@ public final class TerrainStreamingGameTest {
             double carried = physics.relative(onLodestone).x - 2.5;
             helper.assertTrue(carried > 2, "carried along +x by the lodestone: " + carried);
             physics.near(2.5, physics.relative(onStone).x, 0.01, "the stone carries nothing");
+        }
+        helper.succeed();
+    }
+
+    static {
+        // stone's surface but for how its friction meets another's: 0.6 × 0.6 against the box, not √(0.6 · 0.6)
+        TerrainMaterials.register(
+                Blocks.CRYING_OBSIDIAN,
+                (level, pos, state, out) -> out.frictionCombine = SurfaceMaterial.Combine.MULTIPLY);
+    }
+
+    @GameTest(template = "empty", batch = "minebox3d_combine", timeoutTicks = 100)
+    @PrefixGameTestTemplate(false)
+    public static void aProvidersCombineModeIsNotSharedWithStoneThatFeelsTheSame(GameTestHelper helper) {
+        TestArea.clear(helper, -1, 0, -1, 18, 4, 5);
+        for (int x = 0; x < 16; x++) {
+            helper.setBlock(new BlockPos(x, 0, 1), Blocks.CRYING_OBSIDIAN);
+            helper.setBlock(new BlockPos(x, 0, 3), Blocks.STONE);
+        }
+        try (PrivatePhysics physics = new PrivatePhysics(helper)) {
+            Body onObsidian = physics.box(1.5, 1.3, 1.5, 0.25f);
+            Body onStone = physics.box(1.5, 1.3, 3.5, 0.25f);
+            physics.ticks(20);
+            onObsidian.setLinearVelocity(8, 0, 0);
+            onStone.setLinearVelocity(8, 0, 0);
+            physics.ticks(60);
+            // friction 0.36 against 0.6: about 2.8 m against 1.7 m, whichever of the two the section met first
+            double obsidian = physics.relative(onObsidian).x - 1.5, stone = physics.relative(onStone).x - 1.5;
+            helper.assertTrue(stone > 1 && stone < 2.3, "slid about 1.7 m on stone: " + stone);
+            helper.assertTrue(obsidian > stone + 0.6, "slid further on the multiplied friction: " + obsidian);
         }
         helper.succeed();
     }

@@ -219,7 +219,9 @@ public final class BlockColliders {
                 scratch.tangentVelocityY,
                 scratch.tangentVelocityZ,
                 scratch.userMaterialId,
-                scratch.customColor);
+                scratch.customColor,
+                scratch.frictionCombine,
+                scratch.restitutionCombine);
         int index = materials.getInt(key);
         if (index == MISSING) {
             index = grid.addMaterial(scratch);
@@ -359,5 +361,7 @@ public final class BlockColliders {
             float tangentVelocityY,
             float tangentVelocityZ,
             long userMaterialId,
-            int customColor) {}
+            int customColor,
+            @Nullable SurfaceMaterial.Combine frictionCombine,
+            @Nullable SurfaceMaterial.Combine restitutionCombine) {}
 }
