@@ -21,12 +21,18 @@ java {
 repositories {
     mavenLocal()
     mavenCentral()
+    maven {
+        url = 'https://maven.firstdark.dev/snapshots'
+        content { includeGroup 'com.lowdragmc.ldlib2' }
+    }
 }
 
 // LDLib2 is for tests only — its multi-process harness (a real dedicated server and clients over localhost, below) is
 // how the network sync is tested. MineBox3D does not depend on it: compileOnly keeps it out of the published POM, the
 // jar leaves out the test package that names it, neoforge.mods.toml does not mention it, and only the dev runs carry it.
-def ldlib2Test = "com.lowdragmc.ldlib2:ldlib2-neoforge-${minecraft_version}:${ldlib2_version}:all"
+// The version lives here, not in gradle.properties, which stays local: the build needs it wherever it is checked out.
+def ldlib2Version = '2.2.47'
+def ldlib2Test = "com.lowdragmc.ldlib2:ldlib2-neoforge-${minecraft_version}:${ldlib2Version}:all"
 
 configurations {
     // on the runs (whose classpath is runtimeClasspath, where a mod jar is found as a mod), not in what is published
