@@ -242,9 +242,11 @@ tasks.named('runMpTest') {
             configurations.runtimeClasspath.filter { it.name.contains('gson') })
 }
 
-tasks.matching { it.name in ['runClient', 'runServer', 'runGameTestServer', 'runData', 'runMpServer', 'runMpClientA',
-                             'runMpClientB'] }.configureEach {
-    dependsOn 'buildNative'
+if (prebuiltNatives == null) {
+    tasks.matching { it.name in ['runClient', 'runServer', 'runGameTestServer', 'runData', 'runMpServer', 'runMpClientA',
+                                 'runMpClientB'] }.configureEach {
+        dependsOn 'buildNative'
+    }
 }
 
 // the server console reads commands from this process's stdin: `printf 'cmd\nstop\n' | ./gradlew runServer`
