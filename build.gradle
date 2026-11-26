@@ -90,7 +90,12 @@ def nativePlatform = "${nativeOs()}-${nativeArch()}"
 def nativeCmakeDir = layout.buildDirectory.dir('native/cmake')
 def nativeOutDir = layout.buildDirectory.dir("native/out/${nativePlatform}")
 def nativeResourcesDir = layout.buildDirectory.dir('native/resources')
-def nativeLibraryFile = nativeOutDir.map { it.file(nativeFileName(nativeOs())) }
+// -Pminebox3d.natives=<dir>: libraries built elsewhere, as <dir>/<os>-<arch>/<library>; tests and runs load this
+// platform's from there and nothing is built here
+def prebuiltNatives = findProperty('minebox3d.natives')?.toString()
+def nativeLibraryFile = prebuiltNatives != null
+        ? providers.provider { layout.projectDirectory.file(file("${prebuiltNatives}/${nativePlatform}/${nativeFileName(nativeOs())}").absolutePath) }
+        : nativeOutDir.map { it.file(nativeFileName(nativeOs())) }
 
 // A tool: -P<property>=<path>, else PATH, else the copy Visual Studio ships (found with vswhere), else null.
 def findTool = { String property, String name, String visualStudioPath ->
@@ -169,9 +174,8 @@ tasks.register('collectNatives', Sync) {
     group = 'native'
     description = 'Lays the native libraries out the way the jar carries them.'
     into nativeResourcesDir.map { it.dir('natives/minebox3d') }
-    if (project.hasProperty('minebox3d.natives')) {
-        // a release: every platform, built elsewhere, as <dir>/<os>-<arch>/<library>
-        from(project.property('minebox3d.natives').toString())
+    if (prebuiltNatives != null) {
+        from(prebuiltNatives)
     } else {
         dependsOn 'buildNative'
         from(nativeLibraryFile) { into nativePlatform }
@@ -260,7 +264,9 @@ tasks.withType(Jar).configureEach {
 
 test {
     useJUnitPlatform()
-    dependsOn 'buildNative'
+    if (prebuiltNatives == null) {
+        dependsOn 'buildNative'
+    }
     systemProperty 'minebox3d.native.path', nativeLibraryPath.get()
     // the library the tests load: a change to the C side alone runs them again
     inputs.file(nativeLibraryFile).withPathSensitivity(PathSensitivity.NONE).withPropertyName('nativeLibrary')
@@ -337,6 +343,26 @@ publishing {
         register('mavenJava', MavenPublication) {
             artifactId = base.archivesName.get()
             from components.java
+            pom {
+                name = mod_name
+                description = mod_description
+                url = mod_url
+                licenses {
+                    license {
+                        name = 'MIT'
+                        url = "${mod_url}/blob/main/LICENSE"
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            url = 'https://maven.firstdark.dev/snapshots'
+            credentials {
+                username = System.getenv('MAVEN_USER')
+                password = System.getenv('MAVEN_PASS')
+            }
         }
     }
 }
