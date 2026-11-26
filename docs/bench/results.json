@@ -1,0 +1,440 @@
+{
+  "machine": {
+    "os": "Windows 11 amd64",
+    "java": "OpenJDK 64-Bit Server VM 21.0.7",
+    "cpu": "AMD Ryzen 9 9900X",
+    "hardwareThreads": 24,
+    "jvmArgs": [
+      "-Xmx2G"
+    ]
+  },
+  "settings": {
+    "stepsPerTick": 3,
+    "subSteps": 4,
+    "step": 0.016666668
+  },
+  "rain": [
+    {
+      "bodies": 500,
+      "threads": 1,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 1.2569,
+        "p50": 0.8458,
+        "p95": 3.7325,
+        "max": 6.7341
+      },
+      "nativeStepMs": {
+        "mean": 1.2056,
+        "p50": 0.8009,
+        "p95": 3.5738,
+        "max": 6.5433
+      },
+      "meanAwake": 347.3,
+      "sections": 41
+    },
+    {
+      "bodies": 1000,
+      "threads": 1,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 2.9045,
+        "p50": 2.0317,
+        "p95": 7.8003,
+        "max": 12.1971
+      },
+      "nativeStepMs": {
+        "mean": 2.7953,
+        "p50": 1.9408,
+        "p95": 7.6745,
+        "max": 12.0237
+      },
+      "meanAwake": 742.0433,
+      "sections": 41
+    },
+    {
+      "bodies": 2000,
+      "threads": 1,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 6.0189,
+        "p50": 4.5507,
+        "p95": 15.2248,
+        "max": 28.5238
+      },
+      "nativeStepMs": {
+        "mean": 5.7571,
+        "p50": 4.2525,
+        "p95": 14.8508,
+        "max": 27.6091
+      },
+      "meanAwake": 1420.8633,
+      "sections": 41
+    },
+    {
+      "bodies": 4000,
+      "threads": 1,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 16.2489,
+        "p50": 13.9087,
+        "p95": 33.6448,
+        "max": 49.1721
+      },
+      "nativeStepMs": {
+        "mean": 15.0915,
+        "p50": 12.6381,
+        "p95": 32.4538,
+        "max": 48.039
+      },
+      "meanAwake": 3349.1567,
+      "sections": 41
+    },
+    {
+      "bodies": 8000,
+      "threads": 1,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 42.8992,
+        "p50": 37.7119,
+        "p95": 86.3285,
+        "max": 117.6188
+      },
+      "nativeStepMs": {
+        "mean": 40.2742,
+        "p50": 35.0739,
+        "p95": 82.1519,
+        "max": 111.6597
+      },
+      "meanAwake": 7761.24,
+      "sections": 41
+    },
+    {
+      "bodies": 500,
+      "threads": 2,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 0.7768,
+        "p50": 0.5659,
+        "p95": 2.0181,
+        "max": 3.1391
+      },
+      "nativeStepMs": {
+        "mean": 0.7295,
+        "p50": 0.5251,
+        "p95": 1.9594,
+        "max": 3.0791
+      },
+      "meanAwake": 347.3,
+      "sections": 41
+    },
+    {
+      "bodies": 1000,
+      "threads": 2,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 1.6773,
+        "p50": 1.2589,
+        "p95": 4.1667,
+        "max": 6.2357
+      },
+      "nativeStepMs": {
+        "mean": 1.5711,
+        "p50": 1.1597,
+        "p95": 4.0488,
+        "max": 6.1032
+      },
+      "meanAwake": 742.0433,
+      "sections": 41
+    },
+    {
+      "bodies": 2000,
+      "threads": 2,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 3.388,
+        "p50": 2.617,
+        "p95": 8.3289,
+        "max": 12.4255
+      },
+      "nativeStepMs": {
+        "mean": 3.144,
+        "p50": 2.4115,
+        "p95": 8.089,
+        "max": 11.8997
+      },
+      "meanAwake": 1420.8633,
+      "sections": 41
+    },
+    {
+      "bodies": 4000,
+      "threads": 2,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 8.5836,
+        "p50": 7.6224,
+        "p95": 17.1044,
+        "max": 25.3834
+      },
+      "nativeStepMs": {
+        "mean": 7.7348,
+        "p50": 6.8072,
+        "p95": 16.1122,
+        "max": 24.1931
+      },
+      "meanAwake": 3349.1567,
+      "sections": 41
+    },
+    {
+      "bodies": 8000,
+      "threads": 2,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 22.3925,
+        "p50": 20.3823,
+        "p95": 38.2094,
+        "max": 56.124
+      },
+      "nativeStepMs": {
+        "mean": 19.8822,
+        "p50": 17.8693,
+        "p95": 35.8918,
+        "max": 53.0192
+      },
+      "meanAwake": 7761.24,
+      "sections": 41
+    },
+    {
+      "bodies": 500,
+      "threads": 4,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 0.5847,
+        "p50": 0.4631,
+        "p95": 1.3161,
+        "max": 2.0538
+      },
+      "nativeStepMs": {
+        "mean": 0.5347,
+        "p50": 0.4155,
+        "p95": 1.2626,
+        "max": 1.9483
+      },
+      "meanAwake": 347.3,
+      "sections": 41
+    },
+    {
+      "bodies": 1000,
+      "threads": 4,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 1.191,
+        "p50": 0.9457,
+        "p95": 2.641,
+        "max": 4.1917
+      },
+      "nativeStepMs": {
+        "mean": 1.0766,
+        "p50": 0.8452,
+        "p95": 2.4648,
+        "max": 3.9264
+      },
+      "meanAwake": 742.0433,
+      "sections": 41
+    },
+    {
+      "bodies": 2000,
+      "threads": 4,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 2.1796,
+        "p50": 1.7632,
+        "p95": 4.7865,
+        "max": 8.364
+      },
+      "nativeStepMs": {
+        "mean": 1.9354,
+        "p50": 1.5063,
+        "p95": 4.5474,
+        "max": 7.8335
+      },
+      "meanAwake": 1420.8633,
+      "sections": 41
+    },
+    {
+      "bodies": 4000,
+      "threads": 4,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 4.8326,
+        "p50": 4.1898,
+        "p95": 9.3212,
+        "max": 13.5844
+      },
+      "nativeStepMs": {
+        "mean": 4.1999,
+        "p50": 3.5829,
+        "p95": 8.5701,
+        "max": 12.8153
+      },
+      "meanAwake": 3349.1567,
+      "sections": 41
+    },
+    {
+      "bodies": 8000,
+      "threads": 4,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 17.5937,
+        "p50": 17.698,
+        "p95": 26.4843,
+        "max": 37.5257
+      },
+      "nativeStepMs": {
+        "mean": 14.5202,
+        "p50": 14.5878,
+        "p95": 21.479,
+        "max": 29.3554
+      },
+      "meanAwake": 7761.24,
+      "sections": 41
+    },
+    {
+      "bodies": 500,
+      "threads": 8,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 1.0431,
+        "p50": 0.8875,
+        "p95": 1.9438,
+        "max": 3.7767
+      },
+      "nativeStepMs": {
+        "mean": 0.9171,
+        "p50": 0.7589,
+        "p95": 1.7855,
+        "max": 3.4722
+      },
+      "meanAwake": 347.3,
+      "sections": 41
+    },
+    {
+      "bodies": 1000,
+      "threads": 8,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 1.5387,
+        "p50": 1.3287,
+        "p95": 2.6968,
+        "max": 4.668
+      },
+      "nativeStepMs": {
+        "mean": 1.3378,
+        "p50": 1.1295,
+        "p95": 2.4223,
+        "max": 4.3161
+      },
+      "meanAwake": 742.0433,
+      "sections": 41
+    },
+    {
+      "bodies": 2000,
+      "threads": 8,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 2.5962,
+        "p50": 2.2665,
+        "p95": 5.1514,
+        "max": 6.9907
+      },
+      "nativeStepMs": {
+        "mean": 2.1786,
+        "p50": 1.8994,
+        "p95": 4.5668,
+        "max": 6.3299
+      },
+      "meanAwake": 1420.8633,
+      "sections": 41
+    },
+    {
+      "bodies": 4000,
+      "threads": 8,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 5.3969,
+        "p50": 4.854,
+        "p95": 8.9421,
+        "max": 16.6517
+      },
+      "nativeStepMs": {
+        "mean": 4.2758,
+        "p50": 3.7175,
+        "p95": 7.6388,
+        "max": 14.1025
+      },
+      "meanAwake": 3349.1567,
+      "sections": 41
+    },
+    {
+      "bodies": 8000,
+      "threads": 8,
+      "ticks": 300,
+      "tickMs": {
+        "mean": 17.0827,
+        "p50": 16.2598,
+        "p95": 25.9282,
+        "max": 50.3668
+      },
+      "nativeStepMs": {
+        "mean": 13.2199,
+        "p50": 12.3343,
+        "p95": 21.1578,
+        "max": 38.6806
+      },
+      "meanAwake": 7761.24,
+      "sections": 41
+    }
+  ],
+  "terrain": {
+    "sectionReplaceUs": {
+      "mean": 7.59,
+      "p50": 6.3,
+      "p95": 12.1,
+      "max": 39.1
+    },
+    "blockEditUs": {
+      "mean": 1.4217,
+      "p50": 0.8,
+      "p95": 3.1,
+      "max": 54.0
+    },
+    "meshRebuildUs": {
+      "mean": 649.3435,
+      "p50": 595.6,
+      "p95": 919.3,
+      "max": 2222.2
+    },
+    "meshTriangles": 2156
+  },
+  "kinematic": {
+    "bodies": 1000,
+    "oneCallEachUs": {
+      "mean": 76.151,
+      "p50": 71.0,
+      "p95": 118.5,
+      "max": 418.7
+    },
+    "batchUs": {
+      "mean": 76.523,
+      "p50": 69.9,
+      "p95": 152.5,
+      "max": 331.2
+    }
+  },
+  "rays": {
+    "rays": 200000,
+    "bodies": 2000,
+    "usPerRay": 0.8251,
+    "hitFraction": 0.9799
+  }
+}

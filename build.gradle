@@ -272,6 +272,23 @@ test {
     inputs.file(nativeLibraryFile).withPathSensitivity(PathSensitivity.NONE).withPropertyName('nativeLibrary')
 }
 
+// The performance numbers of the README and the wiki (src/test/java/.../bench): build/bench/results.json, and the charts
+// from it with `python docs/bench/charts.py build/bench/results.json docs/bench`. -Pbench=quick for a short run.
+tasks.register('bench', JavaExec) {
+    group = 'verification'
+    description = 'Runs the physics benchmarks.'
+    dependsOn 'testClasses'
+    if (prebuiltNatives == null) {
+        dependsOn 'buildNative'
+    }
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.lowdragmc.minebox3d.bench.PhysicsBench'
+    systemProperty 'minebox3d.native.path', nativeLibraryPath.get()
+    systemProperty 'minebox3d.bench.cpu', (findProperty('benchCpu') ?: 'unknown').toString()
+    maxHeapSize = '2G'
+    args layout.buildDirectory.dir('bench').get().asFile.absolutePath, (findProperty('bench') ?: 'full').toString()
+}
+
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 tasks.withType(ProcessResources).configureEach {

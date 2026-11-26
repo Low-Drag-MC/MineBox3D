@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="420" viewBox="0 0 760 420" font-family="-apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" role="img" aria-label="Time per Minecraft tick against dynamic bodies">
+<title>Time per Minecraft tick against dynamic bodies</title>
+<rect width="760" height="420" rx="8" fill="#fcfcfb"/>
+<text x="64.0" y="30.0" font-size="17" fill="#0b0b0b" text-anchor="start" font-weight="600">Time per Minecraft tick</text>
+<text x="64.0" y="50.0" font-size="12.5" fill="#52514e" text-anchor="start" font-weight="400">Bodies raining onto voxel terrain and piling up: 3 steps × 4 substeps a tick, mean over 15 s</text>
+<line x1="64" y1="364.0" x2="610" y2="364.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54.0" y="368.0" font-size="12" fill="#898781" text-anchor="end" font-weight="400">0</text>
+<line x1="64" y1="312.0" x2="610" y2="312.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54.0" y="316.0" font-size="12" fill="#898781" text-anchor="end" font-weight="400">10</text>
+<line x1="64" y1="260.0" x2="610" y2="260.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54.0" y="264.0" font-size="12" fill="#898781" text-anchor="end" font-weight="400">20</text>
+<line x1="64" y1="208.0" x2="610" y2="208.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54.0" y="212.0" font-size="12" fill="#898781" text-anchor="end" font-weight="400">30</text>
+<line x1="64" y1="156.0" x2="610" y2="156.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="54.0" y="160.0" font-size="12" fill="#898781" text-anchor="end" font-weight="400">40</text>
+<line x1="64" y1="104.0" x2="610" y2="104.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="54.0" y="108.0" font-size="12" fill="#898781" text-anchor="end" font-weight="400">50</text>
+<text x="610.0" y="120.0" font-size="12" fill="#898781" text-anchor="end" font-weight="400">the whole tick: 50 ms</text>
+<text x="18.0" y="234.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">ms</text>
+<text x="64.0" y="386.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">500</text>
+<text x="200.5" y="386.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">1,000</text>
+<text x="337.0" y="386.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">2,000</text>
+<text x="473.5" y="386.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">4,000</text>
+<text x="610.0" y="386.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">8,000</text>
+<text x="337.0" y="408.0" font-size="12" fill="#898781" text-anchor="middle" font-weight="400">dynamic bodies</text>
+<path d="M64.0,357.5 L200.5,348.9 L337.0,332.7 L473.5,279.5 L610.0,140.9" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="64.0" cy="357.5" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>500 bodies, 1 thread: 1.3 ms</title></circle>
+<circle cx="200.5" cy="348.9" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>1,000 bodies, 1 thread: 2.9 ms</title></circle>
+<circle cx="337.0" cy="332.7" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>2,000 bodies, 1 thread: 6.0 ms</title></circle>
+<circle cx="473.5" cy="279.5" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>4,000 bodies, 1 thread: 16.2 ms</title></circle>
+<circle cx="610.0" cy="140.9" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"><title>8,000 bodies, 1 thread: 42.9 ms</title></circle>
+<path d="M64.0,360.0 L200.5,355.3 L337.0,346.4 L473.5,319.4 L610.0,247.6" fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="64.0" cy="360.0" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>500 bodies, 2 threads: 0.8 ms</title></circle>
+<circle cx="200.5" cy="355.3" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>1,000 bodies, 2 threads: 1.7 ms</title></circle>
+<circle cx="337.0" cy="346.4" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>2,000 bodies, 2 threads: 3.4 ms</title></circle>
+<circle cx="473.5" cy="319.4" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>4,000 bodies, 2 threads: 8.6 ms</title></circle>
+<circle cx="610.0" cy="247.6" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>8,000 bodies, 2 threads: 22.4 ms</title></circle>
+<path d="M64.0,361.0 L200.5,357.8 L337.0,352.7 L473.5,338.9 L610.0,272.5" fill="none" stroke="#1baf7a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="64.0" cy="361.0" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>500 bodies, 4 threads: 0.6 ms</title></circle>
+<circle cx="200.5" cy="357.8" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>1,000 bodies, 4 threads: 1.2 ms</title></circle>
+<circle cx="337.0" cy="352.7" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>2,000 bodies, 4 threads: 2.2 ms</title></circle>
+<circle cx="473.5" cy="338.9" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>4,000 bodies, 4 threads: 4.8 ms</title></circle>
+<circle cx="610.0" cy="272.5" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"><title>8,000 bodies, 4 threads: 17.6 ms</title></circle>
+<text x="622.0" y="144.9" font-size="12.5" fill="#52514e" text-anchor="start" font-weight="400">1 thread · 42.9 ms</text>
+<text x="622.0" y="251.6" font-size="12.5" fill="#52514e" text-anchor="start" font-weight="400">2 threads · 22.4 ms</text>
+<text x="622.0" y="276.5" font-size="12.5" fill="#52514e" text-anchor="start" font-weight="400">4 threads · 17.6 ms</text>
+<line x1="64" y1="76" x2="82" y2="76" stroke="#2a78d6" stroke-width="2" stroke-linecap="round"/>
+<circle cx="73" cy="76" r="4" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="88.0" y="80.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">1 thread</text>
+<line x1="171.2" y1="76" x2="189.2" y2="76" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<circle cx="180.2" cy="76" r="4" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"/>
+<text x="195.2" y="80.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">2 threads</text>
+<line x1="285.8" y1="76" x2="303.8" y2="76" stroke="#1baf7a" stroke-width="2" stroke-linecap="round"/>
+<circle cx="294.8" cy="76" r="4" fill="#1baf7a" stroke="#fcfcfb" stroke-width="2"/>
+<text x="309.8" y="80.0" font-size="13" fill="#52514e" text-anchor="start" font-weight="400">4 threads</text>
+</svg>
