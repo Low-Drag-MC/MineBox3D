@@ -11,6 +11,7 @@
   <img src="https://img.shields.io/badge/NeoForge-21.1-e68c37" alt="NeoForge 21.1">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License">
   <a href="https://low-drag-mc.github.io/LowDragMC-Doc/en/minebox3d/"><img src="https://img.shields.io/badge/docs-wiki-7a5cd6" alt="Wiki"></a>
+  <a href="#built-with-claude"><img src="https://img.shields.io/badge/built%20with-Claude-d97757" alt="Built with Claude"></a>
 </p>
 
 <p align="center">
@@ -102,6 +103,10 @@ cd MineBox3D
 ```
 
 `native/box3d` is MineBox3D's fork of Box3D (`Low-Drag-MC/box3d`, branch `minebox3d`), which adds the voxel terrain shape. What it changes and why is in [docs/design/02-box3d-fork.md](docs/design/02-box3d-fork.md). CI builds the native library for every platform and publishes the jar from [.github/workflows/build.yml](.github/workflows/build.yml).
+
+## Built with Claude
+
+MineBox3D is developed with [Claude](https://www.anthropic.com/claude), Anthropic's AI model, working in [Claude Code](https://claude.com/claude-code). Claude takes part in the code, the tests, the CI, the benchmarks and the documentation, including this README and the [wiki](https://low-drag-mc.github.io/LowDragMC-Doc/en/minebox3d/) with its recordings. The maintainer directs the work and decides what goes in.
 
 ## License
 
