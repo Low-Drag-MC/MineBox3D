@@ -1,7 +1,8 @@
 name: Build
 
 # Every push and pull request builds the native library for each platform, tests it where it runs, and packs one jar
-# that carries all of them. Publishing to Maven is a manual run (Actions → Build → Run workflow → publish).
+# that carries all of them. Publishing to Maven is a manual run (Actions → Build → Run workflow → publish, and the
+# version).
 
 on:
   push:
@@ -13,6 +14,10 @@ on:
         description: Publish the jar to Maven
         type: boolean
         default: false
+      version:
+        description: The version to publish, e.g. 0.4.0 (empty for gradle.properties' mod_version)
+        type: string
+        default: ''
 
 env:
   JAVA_VERSION: '21'
@@ -229,11 +234,19 @@ jobs:
           path: natives/
           merge-multiple: true
       - name: Publish
-        run: ./gradlew publish "-Pminebox3d.natives=$PWD/natives" -x test --stacktrace
         env:
+          VERSION: ${{ inputs.version }}
           MAVEN_USER: ${{ secrets.MAVEN_USER }}
           MAVEN_PASS: ${{ secrets.MAVEN_PASS }}
-      - name: Summary
         run: |
-          version=$(grep -E '^mod_version=' gradle.properties | cut -d= -f2)
-          echo "Published com.lowdragmc.minebox3d:minebox3d-1.21.1:$version" >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(grep -E '^mod_version=' gradle.properties | cut -d= -f2)
+          fi
+          if ! [[ "$VERSION" =~ ^[0-9A-Za-z.+-]+$ ]]; then
+            echo "::error::not a version: '$VERSION'"; exit 1
+          fi
+          if [ -z "$MAVEN_USER" ] || [ -z "$MAVEN_PASS" ]; then
+            echo "::error::the MAVEN_USER and MAVEN_PASS secrets are not set"; exit 1
+          fi
+          ./gradlew publish "-Pminebox3d.natives=$PWD/natives" "-Pmod_version=$VERSION" -x test --stacktrace
+          echo "Published com.lowdragmc.minebox3d:minebox3d-1.21.1:$VERSION" >> "$GITHUB_STEP_SUMMARY"
