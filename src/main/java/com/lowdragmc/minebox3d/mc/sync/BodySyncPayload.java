@@ -1,6 +1,7 @@
 package com.lowdragmc.minebox3d.mc.sync;
 
 import com.lowdragmc.minebox3d.MineBox3D;
+import com.lowdragmc.minebox3d.mc.CollisionCategories;
 import com.lowdragmc.minebox3d.mc.entity.StepUpOn;
 import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.Geometry;
@@ -19,8 +20,10 @@ import org.joml.Vector3f;
  * <b>One tick of synced bodies for one player</b> (design doc {@code 04-entities-and-bodies.md} §10), server to
  * client: the bodies it starts seeing, where the ones it sees moved to, and the ones it stops seeing; the server's
  * physics tick they are as of, and the player's own frame that tick ran ({@link SyncedBodies.Prediction}) — what its
- * client holds them against — or {@link #NO_FRAME}; and the bodies it sees whose damping, gravity scale or fixed
- * rotation changed ({@link Tuning}).
+ * client holds them against — or {@link #NO_FRAME}; the bodies it sees whose damping, gravity scale or fixed
+ * rotation changed ({@link Tuning}); and, with spawns, the {@link CollisionCategories} ids its client has not had yet,
+ * which the spawns' filters are read by: {@code categories.get(i)} is the server's bit
+ * {@code FIRST_FREE_BIT + categoriesFrom + i}.
  *
  * <p>Shapes travel as numbers and become {@link Geometry} only when a replica is built ({@link SyncedShape#geometry()},
  * on the client thread): a hull is Box3D's to build, and decoding must not need Box3D — the payload is read on the
@@ -33,7 +36,9 @@ public record BodySyncPayload(
         boolean settled,
         long tick,
         int frame,
-        List<Tuning> tunings)
+        List<Tuning> tunings,
+        int categoriesFrom,
+        List<ResourceLocation> categories)
         implements CustomPacketPayload {
 
     /** {@link #frame} for a player that predicts nothing. */
@@ -54,6 +59,17 @@ public record BodySyncPayload(
     public BodySyncPayload(
             List<Spawn> spawns, List<State> states, int[] removals, boolean settled, long tick, int frame) {
         this(spawns, states, removals, settled, tick, frame, List.of());
+    }
+
+    public BodySyncPayload(
+            List<Spawn> spawns,
+            List<State> states,
+            int[] removals,
+            boolean settled,
+            long tick,
+            int frame,
+            List<Tuning> tunings) {
+        this(spawns, states, removals, settled, tick, frame, tunings, 0, List.of());
     }
 
     /**
@@ -361,6 +377,8 @@ public record BodySyncPayload(
 
     /** Lists are made no bigger than this up front, whatever count the other end claims. */
     private static final int PREALLOCATE = 256;
+    /** The categories {@link CollisionCategories#register} can hand out. */
+    private static final int MAX_CATEGORIES = Long.SIZE - CollisionCategories.FIRST_FREE_BIT;
 
     void write(FriendlyByteBuf buffer) {
         buffer.writeVarInt(spawns.size());
@@ -414,6 +432,11 @@ public record BodySyncPayload(
         for (Tuning tuning : tunings) {
             buffer.writeVarInt(tuning.id);
             writeDynamics(buffer, tuning.dynamics);
+        }
+        buffer.writeVarInt(categoriesFrom);
+        buffer.writeVarInt(categories.size());
+        for (ResourceLocation id : categories) {
+            buffer.writeResourceLocation(id);
         }
     }
 
@@ -508,7 +531,20 @@ public record BodySyncPayload(
         for (int i = 0; i < tuningCount; i++) {
             tunings.add(new Tuning(buffer.readVarInt(), readDynamics(buffer)));
         }
-        return new BodySyncPayload(spawns, states, removals, settled, tick, frame, tunings);
+        int categoriesFrom = buffer.readVarInt();
+        int categoryCount = buffer.readVarInt();
+        if (categoriesFrom < 0
+                || categoriesFrom > MAX_CATEGORIES
+                || categoryCount < 0
+                || categoryCount > MAX_CATEGORIES - categoriesFrom) {
+            throw new IllegalArgumentException(
+                    "collision categories " + categoriesFrom + " to " + (categoriesFrom + categoryCount));
+        }
+        List<ResourceLocation> categories = new ArrayList<>(categoryCount);
+        for (int i = 0; i < categoryCount; i++) {
+            categories.add(buffer.readResourceLocation());
+        }
+        return new BodySyncPayload(spawns, states, removals, settled, tick, frame, tunings, categoriesFrom, categories);
     }
 
     private static void writeState(FriendlyByteBuf buffer, State state) {

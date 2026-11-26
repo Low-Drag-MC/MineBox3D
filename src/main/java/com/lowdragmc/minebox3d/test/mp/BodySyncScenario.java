@@ -7,14 +7,17 @@ import com.lowdragmc.lowdraglib2.uitest.TestContext;
 import com.lowdragmc.lowdraglib2.uitest.mp.MPScenario;
 import com.lowdragmc.lowdraglib2.uitest.mp.MPScenarioBuilder;
 import com.lowdragmc.lowdraglib2.uitest.mp.MPScenarioOptions;
+import com.lowdragmc.minebox3d.mc.CollisionCategories;
 import com.lowdragmc.minebox3d.mc.LevelBodies;
 import com.lowdragmc.minebox3d.mc.LevelPhysics;
 import com.lowdragmc.minebox3d.mc.sync.SyncedBodies;
 import com.lowdragmc.minebox3d.physics.Body;
 import com.lowdragmc.minebox3d.physics.BodyDef;
 import com.lowdragmc.minebox3d.physics.BodyType;
+import com.lowdragmc.minebox3d.physics.Filter;
 import com.lowdragmc.minebox3d.physics.Geometry;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import org.jetbrains.annotations.Nullable;
@@ -25,7 +28,8 @@ import org.joml.Vector3f;
  * <b>Bodies copied to the clients</b> (design doc {@code 04-entities-and-bodies.md} §10, batch 4b), over a real
  * dedicated server and two real clients: a synced box shows up on both and follows the server's — falling, resting,
  * shoved — while one that is not synced never shows up; a box that never meets one player never meets it on either
- * client; the box is sent again with its new shape; a client whose player walks away loses it while the other keeps
+ * client; a box in a collision category is in the client's bit for it, which is not the server's; the box is sent
+ * again with its new shape; a client whose player walks away loses it while the other keeps
  * it; a body seen before dying is let go after respawning in the same dimension; coming back brings the box again; a
  * body made while the tick is frozen is still sent; destroying them takes them from everyone; and each coming and going
  * was one event.
@@ -44,6 +48,11 @@ public class BodySyncScenario implements MPScenario {
     private static final String FAR = "mb3_mp_far";
     private static final String FROZEN = "mb3_mp_frozen";
     private static final String TAGGED = "mb3_mp_tagged";
+    private static final String CATEGORISED = "mb3_mp_categorised";
+    /** registered by the clients only, before {@link #SHARED}: their bit for that is not the server's */
+    private static final ResourceLocation CLIENT_ONLY = ResourceLocation.fromNamespaceAndPath("minebox3d", "mp_client");
+
+    private static final ResourceLocation SHARED = ResourceLocation.fromNamespaceAndPath("minebox3d", "mp_shared");
     /** past any view distance from the box */
     private static final double FAR_X = 1000;
     /** the flat world's surface */
@@ -192,6 +201,66 @@ public class BodySyncScenario implements MPScenario {
                 .allClients(
                         "and its replica",
                         b -> b.waitUntil("no replica of it", ctx -> MpClient.replicas(TAGGED)
+                                .isEmpty()))
+                .allClients(
+                        "a collision category of the client's own, asked for before the one it shares with the server",
+                        b -> b.step("register", ctx -> {
+                            CollisionCategories.register(CLIENT_ONLY);
+                            CollisionCategories.register(SHARED);
+                        }))
+                .server("a synced box in the shared category, meeting only it and the blocks", sc -> {
+                    long shared = CollisionCategories.register(SHARED);
+                    Body body = physics(sc)
+                            .createBody(new BodyDef()
+                                    .type(BodyType.DYNAMIC)
+                                    .position(15.5, GROUND + 5, 6.5)
+                                    .name(CATEGORISED));
+                    ShapeDef def = new ShapeDef().density(500);
+                    def.filter.categoryBits = shared;
+                    def.filter.maskBits = shared | CollisionCategories.TERRAIN;
+                    body.createShape(def, Geometry.Box.of(0.5f, 0.5f, 0.5f));
+                    LevelBodies.setSynced(body, true);
+                })
+                .fetch(
+                        "server.shared",
+                        "the server's bit for the shared category",
+                        Long.class,
+                        sc -> CollisionCategories.register(SHARED))
+                .allClients("its replica is in the client's bit for that category, not the server's", b -> b.waitUntil(
+                                "a replica of it", ctx -> MpClient.replica(CATEGORISED) != null)
+                        .step("its filter", ctx -> {
+                            long shared = CollisionCategories.register(SHARED);
+                            long own = CollisionCategories.register(CLIENT_ONLY);
+                            long servers = ctx.get("server.shared");
+                            ctx.check(
+                                    "the two sides' bits for it differ",
+                                    servers != shared,
+                                    "not " + Long.toHexString(servers),
+                                    Long.toHexString(shared));
+                            Filter filter = MpClient.replica(CATEGORISED)
+                                    .shapes()
+                                    .getFirst()
+                                    .filter(new Filter());
+                            ctx.check(
+                                    "in the shared category",
+                                    filter.categoryBits == shared,
+                                    Long.toHexString(shared),
+                                    Long.toHexString(filter.categoryBits));
+                            ctx.check(
+                                    "meeting it and the blocks",
+                                    filter.maskBits == (shared | CollisionCategories.TERRAIN),
+                                    Long.toHexString(shared | CollisionCategories.TERRAIN),
+                                    Long.toHexString(filter.maskBits));
+                            ctx.check(
+                                    "not in the client's own",
+                                    (filter.categoryBits & own) == 0,
+                                    0,
+                                    Long.toHexString(filter.categoryBits & own));
+                        }))
+                .server("the categorised box goes", sc -> named(sc, CATEGORISED).destroy())
+                .allClients(
+                        "and its replica",
+                        b -> b.waitUntil("no replica of it", ctx -> MpClient.replicas(CATEGORISED)
                                 .isEmpty()))
                 .serverWaitUntil(
                         "the box lands",

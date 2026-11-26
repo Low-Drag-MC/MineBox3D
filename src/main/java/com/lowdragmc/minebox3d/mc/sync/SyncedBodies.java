@@ -28,6 +28,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import net.minecraft.core.SectionPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ChunkMap;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -160,6 +161,8 @@ public final class SyncedBodies {
     private final Int2ObjectOpenHashMap<Body> replicas = new Int2ObjectOpenHashMap<>();
     /** What each body the server sent here is, by its number — replicas and a predictor's own alike */
     private final Int2ObjectOpenHashMap<Sent> sent = new Int2ObjectOpenHashMap<>();
+    /** The server's collision categories, which the replicas' filters are put in this client's bits by */
+    private final RemoteCategories categories = new RemoteCategories();
 
     @Nullable
     private Predictor predictor;
@@ -240,7 +243,7 @@ public final class SyncedBodies {
         if (!NativeLibrary.isLoaded()) {
             return;
         }
-        var registrar = event.registrar("7").optional();
+        var registrar = event.registrar("8").optional();
         registrar.playToClient(
                 BodySyncPayload.TYPE,
                 BodySyncPayload.CODEC,
@@ -382,6 +385,7 @@ public final class SyncedBodies {
         List<Event> events = new ArrayList<>();
         List<Body> gone = new ArrayList<>();
         try (PhysicsWorld.Use use = world.use()) {
+            categories.learn(payload.categoriesFrom(), payload.categories());
             for (int id : payload.removals()) {
                 remove(level, id, events, gone);
                 sent.remove(id);
@@ -396,7 +400,7 @@ public final class SyncedBodies {
                     ownId = spawn.id(); // its own: the body here is it
                     continue;
                 }
-                Body body = build(world, spawn);
+                Body body = build(world, spawn, categories);
                 if (body != null) {
                     replicas.put(spawn.id(), body);
                     events.add(new SyncedBodyEvent.Added(level, body, spawn.id()));
@@ -467,7 +471,7 @@ public final class SyncedBodies {
 
     /** A replica, whole, or {@code null} (and nothing left behind) if it could not be built. */
     @Nullable
-    private static Body build(PhysicsWorld world, BodySyncPayload.Spawn spawn) {
+    private static Body build(PhysicsWorld world, BodySyncPayload.Spawn spawn, RemoteCategories categories) {
         BodySyncPayload.State s = spawn.state();
         if (!s.isUsable()) {
             MineBox3D.LOGGER.warn("synced body {} arrived at an unusable place: {}", spawn.id(), s);
@@ -494,7 +498,10 @@ public final class SyncedBodies {
             body.setIgnoredTag(spawn.ignoredTag());
             for (BodySyncPayload.SyncedShape shape : spawn.shapes()) {
                 ShapeDef def = new ShapeDef().sensor(shape.sensor());
-                def.filter.set(new Filter(shape.categoryBits(), shape.maskBits(), shape.groupIndex()));
+                def.filter.set(new Filter(
+                        categories.translate(shape.categoryBits()),
+                        categories.translate(shape.maskBits()),
+                        shape.groupIndex()));
                 shape.surface(def.baseMaterial);
                 EntityCollisions.setStepUpOn(body.createShape(def, shape.geometry()), shape.stepUpOn());
             }
@@ -754,6 +761,8 @@ public final class SyncedBodies {
         final Int2IntOpenHashMap knownMotion = new Int2IntOpenHashMap();
         /** what it should see this tick */
         final Int2ObjectOpenHashMap<Body> visible = new Int2ObjectOpenHashMap<>();
+        /** how many of the collision category ids it has been sent, which its spawns' filters are read by */
+        int categoriesSent;
 
         View(ServerGamePacketListenerImpl connection) {
             this.connection = connection;
@@ -808,6 +817,11 @@ public final class SyncedBodies {
             if (removals == null && spawns == null && states == null && tunings == null) {
                 return null;
             }
+            // after the spawns read their filters: any id one of them is in has been registered by now
+            int categoriesFrom = categoriesSent;
+            List<ResourceLocation> categories =
+                    spawns == null ? List.of() : CollisionCategories.registered(categoriesFrom);
+            categoriesSent += categories.size();
             return new BodySyncPayload(
                     spawns == null ? List.of() : spawns,
                     states == null ? List.of() : states,
@@ -815,7 +829,9 @@ public final class SyncedBodies {
                     false,
                     tick,
                     frame,
-                    tunings == null ? List.of() : tunings);
+                    tunings == null ? List.of() : tunings,
+                    categoriesFrom,
+                    categories);
         }
 
         /** {@code state} for the client predicting {@code own}: less the joints {@code own} holds this body by. */

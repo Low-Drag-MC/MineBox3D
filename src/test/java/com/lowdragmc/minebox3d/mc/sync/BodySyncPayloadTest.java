@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -176,6 +177,23 @@ class BodySyncPayloadTest {
                 roundTrip(new BodySyncPayload(List.of(), List.of(state(3)), new int[0], false, 12_345_678_901L, -7));
         assertEquals(12_345_678_901L, stamped.tick());
         assertEquals(-7, stamped.frame());
+        assertEquals(List.of(), stamped.categories(), "no categories by default");
+        // the server's category ids from its third on, which the spawns' filters are read by
+        List<ResourceLocation> ids = List.of(
+                ResourceLocation.fromNamespaceAndPath("a_mod", "ragdoll"),
+                ResourceLocation.fromNamespaceAndPath("b_mod", "query/visibility"));
+        BodySyncPayload categorised = roundTrip(new BodySyncPayload(
+                List.of(new BodySyncPayload.Spawn(8, null, -1, 0, 0, List.of(), state(8), null, null)),
+                List.of(),
+                new int[0],
+                false,
+                0,
+                BodySyncPayload.NO_FRAME,
+                List.of(),
+                2,
+                ids));
+        assertEquals(2, categorised.categoriesFrom());
+        assertEquals(ids, categorised.categories());
     }
 
     private static Set<List<Float>> corners(Geometry.Hull hull) {
@@ -194,8 +212,11 @@ class BodySyncPayloadTest {
         assertNotNull(shape(Geometry.Box.of(1, 1, 1), 1, -1, 0, false));
     }
 
-    /** One shape, of that kind with that many numbers, as the wire carries it. */
-    private static FriendlyByteBuf oneShape(byte kind, int numbers) {
+    /**
+     * One shape, of that kind with that many numbers, as the wire carries it; with {@code categoryCount} of the server's
+     * category ids from its {@code categoriesFrom}th on.
+     */
+    private static FriendlyByteBuf oneShape(byte kind, int numbers, int categoriesFrom, int categoryCount) {
         FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
         buffer.writeVarInt(1);
         buffer.writeVarInt(1);
@@ -234,7 +255,16 @@ class BodySyncPayloadTest {
         buffer.writeVarLong(0); // the server's tick
         buffer.writeInt(BodySyncPayload.NO_FRAME);
         buffer.writeVarInt(0); // no tunings
+        buffer.writeVarInt(categoriesFrom);
+        buffer.writeVarInt(categoryCount);
+        for (int i = 0; i < categoryCount; i++) {
+            buffer.writeResourceLocation(ResourceLocation.fromNamespaceAndPath("a_mod", "c" + i));
+        }
         return buffer;
+    }
+
+    private static FriendlyByteBuf oneShape(byte kind, int numbers) {
+        return oneShape(kind, numbers, 0, 0);
     }
 
     @Test
@@ -276,6 +306,24 @@ class BodySyncPayloadTest {
                 () -> BodySyncPayload.CODEC.decode(oneShape((byte) 9, 4)),
                 "no such kind");
         assertDoesNotThrow(() -> BodySyncPayload.CODEC.decode(oneShape((byte) 3, 12)), "a hull of 4 points");
+    }
+
+    @Test
+    void moreCategoriesThanThereAreBitsAreRefused() {
+        assertEquals(
+                56,
+                BodySyncPayload.CODEC
+                        .decode(oneShape((byte) 0, 4, 0, 56))
+                        .categories()
+                        .size(),
+                "every one");
+        assertDoesNotThrow(() -> BodySyncPayload.CODEC.decode(oneShape((byte) 0, 4, 50, 6)), "the last ones");
+        assertThrows(IllegalArgumentException.class, () -> BodySyncPayload.CODEC.decode(oneShape((byte) 0, 4, 0, 57)));
+        assertThrows(IllegalArgumentException.class, () -> BodySyncPayload.CODEC.decode(oneShape((byte) 0, 4, 51, 6)));
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> BodySyncPayload.CODEC.decode(oneShape((byte) 0, 4, Integer.MAX_VALUE, 1)),
+                "past the end, not round to a small number");
     }
 
     @Test
