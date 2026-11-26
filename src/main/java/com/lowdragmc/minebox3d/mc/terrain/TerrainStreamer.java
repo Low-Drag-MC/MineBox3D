@@ -36,6 +36,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.phys.AABB;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
@@ -363,6 +364,33 @@ public final class TerrainStreamer implements AutoCloseable {
                 if (other.isValid() && other.type() == BodyType.DYNAMIC && into.add(other)) {
                     walk.add(other);
                 }
+            }
+        }
+    }
+
+    /**
+     * The sections {@code body} overlaps (bounds + {@link Settings#margin()}) loaded now rather than at the next
+     * {@link #update()}: for a body that came to {@linkplain LevelBodies#needsTerrain need terrain} after this tick's
+     * update — a replica a client starts simulating — and would otherwise step once over nothing.
+     */
+    @ApiStatus.Internal
+    public void loadAround(Body body) {
+        checkLevelThread();
+        float margin = settings.margin;
+        body.bounds(bounds);
+        urgent.clear();
+        mark(
+                bounds[0] - margin,
+                bounds[1] - margin,
+                bounds[2] - margin,
+                bounds[3] + margin,
+                bounds[4] + margin,
+                bounds[5] + margin,
+                urgent);
+        for (LongIterator it = urgent.iterator(); it.hasNext(); ) {
+            long section = it.nextLong();
+            if (!loaded.contains(section)) {
+                load(section);
             }
         }
     }

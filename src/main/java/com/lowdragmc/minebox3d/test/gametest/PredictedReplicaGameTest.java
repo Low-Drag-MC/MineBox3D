@@ -15,8 +15,10 @@ import com.lowdragmc.minebox3d.physics.RevoluteJointDef;
 import com.lowdragmc.minebox3d.physics.ShapeDef;
 import com.lowdragmc.minebox3d.physics.WorldDef;
 import java.util.List;
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.gametest.GameTestHolder;
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate;
@@ -87,16 +89,24 @@ public final class PredictedReplicaGameTest {
         final Predicting predictor;
 
         Stage(GameTestHelper helper) {
+            this(helper, new Vec3(4, 80, 4), true);
+        }
+
+        /** What predicts at {@code centre} in the test's frame; a floor of a body under it, or only the blocks. */
+        Stage(GameTestHelper helper, Vec3 centre, boolean floor) {
             LevelPhysics created =
                     LevelPhysics.create(helper.getLevel(), new WorldDef().gravity(0, LevelPhysics.GRAVITY, 0));
             if (created == null) {
                 throw new IllegalStateException("Box3D is not available");
             }
             physics = created;
-            centre = helper.absoluteVec(new Vec3(4, 80, 4));
-            Body floor = physics.createBody(new BodyDef().position(centre.x, centre.y - 0.5, centre.z));
-            floor.createShape(new ShapeDef(), Geometry.Box.of(30, 0.5f, 30));
-            predictor = new Predicting(centre);
+            this.centre = helper.absoluteVec(centre);
+            if (floor) {
+                Body body =
+                        physics.createBody(new BodyDef().position(this.centre.x, this.centre.y - 0.5, this.centre.z));
+                body.createShape(new ShapeDef(), Geometry.Box.of(30, 0.5f, 30));
+            }
+            predictor = new Predicting(this.centre);
             physics.sync().setPredictor(predictor);
         }
 
@@ -187,6 +197,33 @@ public final class PredictedReplicaGameTest {
             helper.assertTrue(
                     far.type() == BodyType.KINEMATIC && !SyncedBodies.isSimulated(far), "the far one following");
             helper.assertTrue(far.position(new Vector3d()).y > c.y + 2.9, "where the server last said");
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty", batch = "minebox3d_predicted", timeoutTicks = 100)
+    @PrefixGameTestTemplate(false)
+    public static void aReplicaSimulatedHereStandsOnTheBlocks(GameTestHelper helper) {
+        TestArea.clear(helper, 0, 0, 0, 8, 6, 8);
+        for (int x = 0; x <= 8; x++) {
+            for (int z = 0; z <= 8; z++) {
+                helper.setBlock(new BlockPos(x, 0, z), Blocks.STONE);
+            }
+        }
+        // nothing else here needs terrain: only the replica, once it is simulated, brings the stone in
+        try (Stage stage = new Stage(helper, new Vec3(4, 3, 4), false)) {
+            Vec3 at = helper.absoluteVec(new Vec3(6.5, 2, 4.5));
+            stage.spawn(1, at.x, at.y, at.z, 0);
+            Body replica = stage.physics.sync().replica(1);
+            helper.assertTrue(replica != null, "made");
+            helper.assertFalse(LevelBodies.needsTerrain(replica), "a followed replica brings no terrain");
+            stage.physics.sync().beforeSteps(1 / 20f);
+            helper.assertTrue(SyncedBodies.isSimulated(replica), "simulated round what predicts");
+            helper.assertTrue(LevelBodies.needsTerrain(replica), "and brings the blocks round it");
+            stage.ticks(helper, 20);
+            // a 0.8 m box on a block's top at y = 1: its middle at 1.4, not through the stone
+            double y = replica.position(new Vector3d()).y - helper.absoluteVec(Vec3.ZERO).y;
+            helper.assertTrue(Math.abs(y - 1.4) < 0.05, "standing on the stone: " + y);
         }
         helper.succeed();
     }

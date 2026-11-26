@@ -484,7 +484,8 @@ public final class SyncedBodies {
                 .userData(spawn.userData())
                 .enableSleep(false));
         try {
-            // nothing of the client's own runs off a replica: it brings no terrain and no entity proxies
+            // nothing of the client's own runs off a followed replica: it brings no terrain and no entity proxies (one
+            // simulated here brings terrain, see simulate)
             LevelBodies.setNeedsTerrain(body, false);
             LevelBodies.setPushedByEntities(body, false);
             // what the server's body never meets — an entity's tag is its id, the same on both sides; set before the
@@ -580,17 +581,19 @@ public final class SyncedBodies {
     }
 
     /**
-     * A replica simulated here — dynamic, as heavy as the server's body, going at the server's last velocity — or
-     * driven to the server's states again.
+     * A replica simulated here — dynamic, as heavy as the server's body, going at the server's last velocity, on the
+     * blocks round it (loaded now: this tick's terrain update has been) — or driven to the server's states again.
      */
-    private static void simulate(Body body, Replica r, boolean simulated) {
+    private void simulate(Body body, Replica r, boolean simulated) {
         r.simulated = simulated;
+        LevelBodies.setNeedsTerrain(body, simulated);
         if (simulated) {
             body.setType(BodyType.DYNAMIC);
             body.setMassData(r.dynamics.into(new MassData()));
             r.dynamics.moveAs(body);
             body.setLinearVelocity(r.vx, r.vy, r.vz);
             body.setAngularVelocity(r.wx, r.wy, r.wz);
+            physics.terrain().loadAround(body);
         } else {
             body.setType(BodyType.KINEMATIC);
             // Box3D keeps a fixed rotation body's target turn from turning it, and a followed replica turns as the
