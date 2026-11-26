@@ -82,16 +82,20 @@ jobs:
             -DCMAKE_BUILD_TYPE=RelWithDebInfo
           cmake --build build/native/cmake --config RelWithDebInfo --target minebox3d --parallel
 
-      - name: Keep the symbols, ship it stripped
-        if: runner.os != 'Windows'
+      # the symbols go to an artifact of their own: MSVC's beside the DLL, elsewhere the unstripped library
+      - name: Keep the symbols, ship the library alone
         shell: bash
         run: |
           mkdir -p symbols/${{ matrix.platform }}
-          cp natives/${{ matrix.platform }}/${{ matrix.library }} symbols/${{ matrix.platform }}/
-          if [ "$RUNNER_OS" = macOS ]; then
-            strip -x natives/${{ matrix.platform }}/${{ matrix.library }}
+          cd natives/${{ matrix.platform }}
+          if [ "$RUNNER_OS" = Windows ]; then
+            mv ./*.pdb ../../symbols/${{ matrix.platform }}/
           else
-            strip --strip-debug natives/${{ matrix.platform }}/${{ matrix.library }}
+            cp ${{ matrix.library }} ../../symbols/${{ matrix.platform }}/
+            if [ "$RUNNER_OS" = macOS ]; then strip -x ${{ matrix.library }}; else strip --strip-debug ${{ matrix.library }}; fi
+          fi
+          if [ "$(ls -A)" != "${{ matrix.library }}" ]; then
+            echo "::error::more than the library to ship: $(ls -A)"; exit 1
           fi
 
       - name: Box3D unit tests
@@ -112,7 +116,6 @@ jobs:
           if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
-        if: runner.os != 'Windows'
         with:
           name: symbols-${{ matrix.platform }}
           path: symbols/

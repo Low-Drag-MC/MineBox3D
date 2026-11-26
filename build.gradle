@@ -175,7 +175,8 @@ tasks.register('collectNatives', Sync) {
     description = 'Lays the native libraries out the way the jar carries them.'
     into nativeResourcesDir.map { it.dir('natives/minebox3d') }
     if (prebuiltNatives != null) {
-        from(prebuiltNatives)
+        // the libraries alone, whatever else (symbols) lies beside them
+        from(prebuiltNatives) { include "*/${nativeFileName('windows')}", "*/${nativeFileName('linux')}", "*/${nativeFileName('macos')}" }
     } else {
         dependsOn 'buildNative'
         from(nativeLibraryFile) { into nativePlatform }
